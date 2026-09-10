@@ -4578,6 +4578,328 @@
                 }
             }
         }
+
+
+        /* =========================================================
+           ERWEITERUNG CATERING: EDITIERBARE GETRÄNKENAMEN +
+           ERNÄHRUNGSAUFTEILUNG PRO BAND
+           ========================================================= */
+        (function() {
+            var DEFAULT_CATERING_DRINK_NAMES = [
+                "Bier", "Alkoholfreies Bier", "Wasser", "Bühnenwasser", "Cola",
+                "Cola light", "Saft", "Powerade", "Gatorade", "Rotwein",
+                "Weißwein", "Rum", "Whisky", "Wodka"
+            ];
+
+            var cateringDrinkNames = DEFAULT_CATERING_DRINK_NAMES.slice();
+
+            function loadCateringDrinkNames() {
+                try {
+                    var saved = localStorage.getItem('cmoa_catering_drink_names_v1');
+                    if (saved) {
+                        var parsed = JSON.parse(saved);
+                        if (Array.isArray(parsed) && parsed.length === DEFAULT_CATERING_DRINK_NAMES.length) {
+                            cateringDrinkNames = parsed.slice();
+                            return;
+                        }
+                    }
+                } catch(e) {}
+
+                if (Array.isArray(bands)) {
+                    for (var i = 0; i < bands.length; i++) {
+                        if (Array.isArray(bands[i].cateringDrinkNames) && bands[i].cateringDrinkNames.length === DEFAULT_CATERING_DRINK_NAMES.length) {
+                            cateringDrinkNames = bands[i].cateringDrinkNames.slice();
+                            return;
+                        }
+                    }
+                }
+            }
+
+            function saveCateringDrinkNames() {
+                var oldNames = cateringDrinkNames.slice();
+                var newNames = [];
+
+                for (var i = 0; i < oldNames.length; i++) {
+                    var input = document.getElementById('cat-global-drink-name-' + i);
+                    var name = input ? input.value.trim() : '';
+                    if (!name) {
+                        alert('⚠️ Bitte für jedes vorgegebene Getränk einen Namen eintragen.');
+                        return;
+                    }
+                    newNames.push(name);
+                }
+
+                var seen = {};
+                for (var j = 0; j < newNames.length; j++) {
+                    var key = newNames[j].toLocaleLowerCase('de-DE');
+                    if (seen[key]) {
+                        alert('⚠️ Der Getränkename "' + newNames[j] + '" ist doppelt vorhanden. Bitte eindeutige Namen verwenden.');
+                        return;
+                    }
+                    seen[key] = true;
+                }
+
+                // Die internen Getränkeschlüssel bleiben stabil. Nur die Anzeige-/Exportnamen
+                // werden geändert. Dadurch gehen vorhandene Mengen und Kommentare nicht verloren.
+                if (Array.isArray(bands)) {
+                    for (var bIdx = 0; bIdx < bands.length; bIdx++) {
+                        bands[bIdx].cateringDrinkNames = newNames.slice();
+                    }
+                }
+
+                cateringDrinkNames = newNames;
+                try { localStorage.setItem('cmoa_catering_drink_names_v1', JSON.stringify(cateringDrinkNames)); } catch(e) {}
+                saveToStorage();
+                renderCateringPage();
+                alert('✅ Getränkenamen wurden gespeichert.');
+            }
+
+            function ensureDietDefaults(b) {
+                if (!b) return;
+                var total = (parseInt(b.paxCount) || 0) + (parseInt(b.vipGuests) || 0);
+                if (b.meatCount === undefined || b.meatCount === null || b.meatCount === '') b.meatCount = total;
+                if (b.vegetarianCount === undefined || b.vegetarianCount === null || b.vegetarianCount === '') b.vegetarianCount = 0;
+                if (b.veganCount === undefined || b.veganCount === null || b.veganCount === '') b.veganCount = 0;
+            }
+
+            function escapeHtml(value) {
+                return String(value === undefined || value === null ? '' : value)
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#039;');
+            }
+
+            function buildGlobalDrinkEditor() {
+                var page = document.getElementById('catering-page');
+                if (!page) return;
+                var firstCard = page.querySelector('.card');
+                if (!firstCard) return;
+
+                var editor = document.getElementById('catering-drink-names-editor');
+                if (!editor) {
+                    editor = document.createElement('div');
+                    editor.id = 'catering-drink-names-editor';
+                    editor.className = 'catering-summary-card';
+                    editor.style.marginBottom = '12px';
+                    editor.innerHTML =
+                        '<h4 style="color:var(--accent-blue); font-size:0.9rem; text-transform:uppercase; margin-bottom:8px;">🥤 Vorgegebene Getränke – Namen bearbeiten</h4>' +
+                        '<p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:10px;">Diese Getränkenamen gelten für alle Bands. Bereits erfasste Mengen bleiben beim Umbenennen erhalten.</p>' +
+                        '<div id="catering-drink-name-fields"></div>' +
+                        '<button class="btn-primary" style="width:100%; margin-top:8px;" onclick="saveCateringDrinkNames()">💾 Getränkenamen speichern</button>';
+                    firstCard.insertBefore(editor, firstCard.querySelector('.catering-summary-card') || firstCard.children[0]);
+                }
+
+                var fields = document.getElementById('catering-drink-name-fields');
+                if (!fields) return;
+                var html = '';
+                for (var i = 0; i < cateringDrinkNames.length; i++) {
+                    html += '<div class="catering-item-row">' +
+                        '<div style="width:34px; font-weight:800; color:var(--text-muted);">' + (i + 1) + '.</div>' +
+                        '<input type="text" id="cat-global-drink-name-' + i + '" value="' + escapeHtml(cateringDrinkNames[i]) + '" placeholder="Getränkename">' +
+                        '</div>';
+                }
+                fields.innerHTML = html;
+            }
+
+            function addDietBlockToBand(b) {
+                ensureDietDefaults(b);
+                var body = document.getElementById('cat-body-' + b.id);
+                if (!body) return;
+                var total = (parseInt(b.paxCount) || 0) + (parseInt(b.vipGuests) || 0);
+                var meat = Math.max(0, parseInt(b.meatCount) || 0);
+                var veg = Math.max(0, parseInt(b.vegetarianCount) || 0);
+                var vegan = Math.max(0, parseInt(b.veganCount) || 0);
+                var categorized = meat + veg + vegan;
+                var unassigned = Math.max(0, total - categorized);
+
+                var old = document.getElementById('cat-diet-block-' + b.id);
+                if (old) old.remove();
+
+                var block = document.createElement('div');
+                block.id = 'cat-diet-block-' + b.id;
+                block.style.cssText = 'background:var(--input-bg); padding:10px; border-radius:8px; margin-bottom:12px; border:1px solid var(--border);';
+                block.innerHTML =
+                    '<div style="font-size:0.82rem; color:var(--accent-blue); font-weight:800; margin-bottom:8px;">🥩 Ernährungsaufteilung für diese Band</div>' +
+                    '<div class="form-row">' +
+                        '<div class="form-group"><label>🥩 Fleischesser</label><input type="number" min="0" id="cat-inp-meat-' + b.id + '" value="' + meat + '"></div>' +
+                        '<div class="form-group"><label>🥬 Vegetarier</label><input type="number" min="0" id="cat-inp-veg-' + b.id + '" value="' + veg + '"></div>' +
+                        '<div class="form-group"><label>🌱 Veganer</label><input type="number" min="0" id="cat-inp-vegan-' + b.id + '" value="' + vegan + '"></div>' +
+                    '</div>' +
+                    '<div style="font-size:0.78rem; color:' + (unassigned > 0 ? 'var(--accent-yellow)' : 'var(--accent-green)') + '; font-weight:700; text-align:right;">' +
+                        'Zuordnung: ' + categorized + ' / ' + total + ' Pers.' + (unassigned > 0 ? ' – ' + unassigned + ' noch offen' : ' – vollständig') +
+                    '</div>';
+
+                if (body.firstElementChild) body.insertBefore(block, body.children[1] || null);
+                else body.appendChild(block);
+            }
+
+            function applyDrinkDisplayNames() {
+                if (!Array.isArray(bands)) return;
+                for (var bIdx = 0; bIdx < bands.length; bIdx++) {
+                    var b = bands[bIdx];
+                    for (var i = 0; i < DEFAULT_CATERING_DRINK_NAMES.length; i++) {
+                        var rowInput = document.getElementById('cat-drink-cnt-' + b.id + '-' + i);
+                        if (!rowInput) continue;
+                        var row = rowInput.closest('.catering-item-row');
+                        if (!row) continue;
+                        var label = row.querySelector('div');
+                        if (label) label.innerText = cateringDrinkNames[i];
+                    }
+                }
+            }
+
+            function updateDietSummary() {
+                var totalMeat = 0, totalVeg = 0, totalVegan = 0, totalUnassigned = 0;
+                if (Array.isArray(bands)) {
+                    for (var i = 0; i < bands.length; i++) {
+                        ensureDietDefaults(bands[i]);
+                        var total = (parseInt(bands[i].paxCount) || 0) + (parseInt(bands[i].vipGuests) || 0);
+                        var meat = Math.max(0, parseInt(bands[i].meatCount) || 0);
+                        var veg = Math.max(0, parseInt(bands[i].vegetarianCount) || 0);
+                        var vegan = Math.max(0, parseInt(bands[i].veganCount) || 0);
+                        totalMeat += meat;
+                        totalVeg += veg;
+                        totalVegan += vegan;
+                        totalUnassigned += Math.max(0, total - meat - veg - vegan);
+                    }
+                }
+                var el = document.getElementById('cat-stat-total-meat'); if (el) el.innerText = totalMeat + ' Pers. / ' + (totalMeat * 2) + ' Mahlzeiten je Tag';
+                el = document.getElementById('cat-stat-total-veg'); if (el) el.innerText = totalVeg + ' Pers. / ' + (totalVeg * 2) + ' Mahlzeiten je Tag';
+                el = document.getElementById('cat-stat-total-vegan'); if (el) el.innerText = totalVegan + ' Pers. / ' + (totalVegan * 2) + ' Mahlzeiten je Tag';
+                el = document.getElementById('cat-stat-total-unassigned'); if (el) el.innerText = totalUnassigned + ' Pers.';
+            }
+
+            loadCateringDrinkNames();
+            window.saveCateringDrinkNames = saveCateringDrinkNames;
+
+            var originalRenderCateringPage = renderCateringPage;
+            renderCateringPage = function() {
+                loadCateringDrinkNames();
+                originalRenderCateringPage();
+
+                if (Array.isArray(bands)) {
+                    for (var i = 0; i < bands.length; i++) {
+                        ensureDietDefaults(bands[i]);
+                        if (bands[i].cateringDrinkNames && Array.isArray(bands[i].cateringDrinkNames) && bands[i].cateringDrinkNames.length === DEFAULT_CATERING_DRINK_NAMES.length) {
+                            cateringDrinkNames = bands[i].cateringDrinkNames.slice();
+                            break;
+                        }
+                    }
+                }
+
+                buildGlobalDrinkEditor();
+                if (Array.isArray(bands)) {
+                    for (var j = 0; j < bands.length; j++) addDietBlockToBand(bands[j]);
+                }
+                applyDrinkDisplayNames();
+                updateDietSummary();
+            };
+
+            var originalSaveSingleBandCatering = saveSingleBandCatering;
+            saveSingleBandCatering = function(bandId) {
+                var b = getBandById(bandId);
+                if (!b) return;
+
+                var get = function(id) { var el = document.getElementById(id); return el ? el.value : ''; };
+                b.meatCount = Math.max(0, parseInt(get('cat-inp-meat-' + bandId)) || 0);
+                b.vegetarianCount = Math.max(0, parseInt(get('cat-inp-veg-' + bandId)) || 0);
+                b.veganCount = Math.max(0, parseInt(get('cat-inp-vegan-' + bandId)) || 0);
+
+                var totalDiet = b.meatCount + b.vegetarianCount + b.veganCount;
+                var totalPax = (parseInt(get('cat-inp-pax-' + bandId)) || 0) + (parseInt(get('cat-inp-vip-' + bandId)) || 0);
+                if (totalDiet > totalPax) {
+                    alert('⚠️ Die Summe aus Fleischessern, Vegetariern und Veganern (' + totalDiet + ') ist größer als die Catering-Personenzahl (' + totalPax + '). Bitte korrigieren.');
+                    return;
+                }
+
+                originalSaveSingleBandCatering(bandId);
+            };
+
+            var originalRenderCateringGlobalTotals = renderCateringGlobalTotals;
+            renderCateringGlobalTotals = function() {
+                originalRenderCateringGlobalTotals();
+                var container = document.getElementById('catering-global-totals');
+                if (!container) return;
+
+                var meat = 0, veg = 0, vegan = 0, unassigned = 0;
+                if (Array.isArray(bands)) {
+                    for (var i = 0; i < bands.length; i++) {
+                        ensureDietDefaults(bands[i]);
+                        var pax = (parseInt(bands[i].paxCount) || 0) + (parseInt(bands[i].vipGuests) || 0);
+                        var m = Math.max(0, parseInt(bands[i].meatCount) || 0);
+                        var v = Math.max(0, parseInt(bands[i].vegetarianCount) || 0);
+                        var vg = Math.max(0, parseInt(bands[i].veganCount) || 0);
+                        meat += m; veg += v; vegan += vg;
+                        unassigned += Math.max(0, pax - m - v - vg);
+                    }
+                }
+
+                var totalHtml = container.innerHTML;
+                for (var dn = 0; dn < DEFAULT_CATERING_DRINK_NAMES.length; dn++) {
+                    if (DEFAULT_CATERING_DRINK_NAMES[dn] !== cateringDrinkNames[dn]) {
+                        totalHtml = totalHtml.split(DEFAULT_CATERING_DRINK_NAMES[dn]).join(cateringDrinkNames[dn]);
+                    }
+                }
+                container.innerHTML = totalHtml;
+
+                var box = document.createElement('div');
+                box.style.cssText = 'background:var(--card-bg); border:1px solid var(--border); border-radius:8px; padding:10px; margin-bottom:12px;';
+                box.innerHTML = '<strong>🥩 Ernährungsaufteilung (Alle Bands):</strong>' +
+                    '<div class="stat-row"><span>🥩 Fleischesser:</span><strong>' + meat + ' Pers. / ' + (meat * 2) + ' Mahlzeiten je Tag</strong></div>' +
+                    '<div class="stat-row"><span>🥬 Vegetarier:</span><strong>' + veg + ' Pers. / ' + (veg * 2) + ' Mahlzeiten je Tag</strong></div>' +
+                    '<div class="stat-row"><span>🌱 Veganer:</span><strong>' + vegan + ' Pers. / ' + (vegan * 2) + ' Mahlzeiten je Tag</strong></div>' +
+                    '<div class="stat-row"><span>⚠️ Noch nicht zugeordnet:</span><strong>' + unassigned + ' Pers.</strong></div>';
+                container.insertBefore(box, container.firstChild);
+            };
+
+            var originalRenderCateringPDF = renderCateringPDF;
+            renderCateringPDF = function(targetBands, layoutMode) {
+                // Die Originalfunktion erzeugt den bestehenden Report. Danach werden
+                // die editierbaren Getränkenamen im erzeugten Report ersetzt.
+                originalRenderCateringPDF(targetBands, layoutMode);
+                var container = document.getElementById('cat-export-preview-area');
+                if (!container) return;
+                var html = container.innerHTML;
+                for (var i = 0; i < DEFAULT_CATERING_DRINK_NAMES.length; i++) {
+                    var oldName = DEFAULT_CATERING_DRINK_NAMES[i];
+                    var newName = cateringDrinkNames[i];
+                    if (oldName !== newName) {
+                        html = html.split(oldName).join(newName);
+                    }
+                }
+                // Ernährungsaufteilung zusätzlich in den PDF-Report aufnehmen.
+                if (layoutMode === 'both' || layoutMode === 'summary') {
+                    var meat = 0, veg = 0, vegan = 0, unassigned = 0;
+                    for (var bIdx = 0; bIdx < targetBands.length; bIdx++) {
+                        var b = targetBands[bIdx];
+                        ensureDietDefaults(b);
+                        var pax = (parseInt(b.paxCount) || 0) + (parseInt(b.vipGuests) || 0);
+                        var m = Math.max(0, parseInt(b.meatCount) || 0);
+                        var v = Math.max(0, parseInt(b.vegetarianCount) || 0);
+                        var vg = Math.max(0, parseInt(b.veganCount) || 0);
+                        meat += m; veg += v; vegan += vg;
+                        unassigned += Math.max(0, pax - m - v - vg);
+                    }
+                    var dietHtml = '<h4 style="font-size:0.9rem; text-transform:uppercase; color:#2563eb; margin-top:14px; margin-bottom:6px;">🥩 Ernährungsaufteilung</h4>' +
+                        '<table class="pdf-table"><thead><tr><th>Kategorie</th><th>Personen</th><th>Warme Mahlzeiten / Tag</th></tr></thead><tbody>' +
+                        '<tr><td><strong>Fleischesser</strong></td><td>' + meat + '</td><td><strong>' + (meat * 2) + '</strong></td></tr>' +
+                        '<tr><td><strong>Vegetarier</strong></td><td>' + veg + '</td><td><strong>' + (veg * 2) + '</strong></td></tr>' +
+                        '<tr><td><strong>Veganer</strong></td><td>' + vegan + '</td><td><strong>' + (vegan * 2) + '</strong></td></tr>' +
+                        '<tr><td>Noch nicht zugeordnet</td><td>' + unassigned + '</td><td>' + (unassigned * 2) + '</td></tr>' +
+                        '</tbody></table>';
+                    var marker = '<h4 style="font-size:0.9rem; text-transform:uppercase; color:#2563eb; margin-top:14px; margin-bottom:6px;">🥤 Getränke Gesamtsummen</h4>';
+                    if (html.indexOf(marker) !== -1) html = html.replace(marker, dietHtml + marker);
+                    else html += dietHtml;
+                }
+                container.innerHTML = html;
+            };
+
+            // Falls der Nutzer Catering direkt über das Hauptmenü öffnet, ist die
+            // ursprüngliche showPage-Funktion bereits vorhanden und ruft renderCateringPage auf.
+            // Die Wrapper-Funktion greift daher automatisch auch dort.
+        })();
     </script>
 </body>
 </html>
