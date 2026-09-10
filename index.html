@@ -2534,7 +2534,12 @@
                     for (var dKey in b.drinks) {
                         var cnt = parseInt(b.drinks[dKey].count) || 0;
                         if (cnt > 0) {
-                            treeItems.push('<li class="tree-node-item"><strong>' + cnt + 'x</strong> ' + dKey + (b.drinks[dKey].comment ? ' <em>(' + b.drinks[dKey].comment + ')</em>' : '') + '</li>');
+                            var dDisplayName = dKey;
+                            var dDefaultIndex = DEFAULT_DRINKS.indexOf(dKey);
+                            if (dDefaultIndex !== -1 && typeof cateringDrinkNames !== 'undefined' && Array.isArray(cateringDrinkNames) && cateringDrinkNames[dDefaultIndex]) {
+                                dDisplayName = cateringDrinkNames[dDefaultIndex];
+                            }
+                            treeItems.push('<li class="tree-node-item"><strong>' + cnt + 'x</strong> ' + dDisplayName + (b.drinks[dKey].comment ? ' <em>(' + b.drinks[dKey].comment + ')</em>' : '') + '</li>');
                         }
                     }
 
