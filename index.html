@@ -2534,9 +2534,30 @@
                     for (var dKey in b.drinks) {
                         var cnt = parseInt(b.drinks[dKey].count) || 0;
                         if (cnt > 0) {
-                            var dDisplayName = (typeof window.getCateringDrinkDisplayName === 'function')
-                                ? window.getCateringDrinkDisplayName(dKey)
-                                : dKey;
+                            // Immer den AKTUELLEN Anzeigenamen ermitteln.
+                            // Wichtig: b.drinks[dKey] verwendet weiterhin den stabilen internen
+                            // Schlüssel (z.B. "Bühnenwasser"). Der sichtbare Name kommt ausschließlich
+                            // aus der aktuellen editierbaren Getränkenamen-Liste.
+                            var dDisplayName = dKey;
+                            try {
+                                var currentNames = null;
+                                var storedNamesRaw = localStorage.getItem('cmoa_catering_drink_names_v1');
+                                if (storedNamesRaw) {
+                                    var storedNames = JSON.parse(storedNamesRaw);
+                                    if (Array.isArray(storedNames) && storedNames.length === DEFAULT_DRINKS.length) {
+                                        currentNames = storedNames;
+                                    }
+                                }
+                                if (!currentNames && Array.isArray(window.cateringDrinkNames) && window.cateringDrinkNames.length === DEFAULT_DRINKS.length) {
+                                    currentNames = window.cateringDrinkNames;
+                                }
+                                var dDisplayIndex = DEFAULT_DRINKS.indexOf(dKey);
+                                if (currentNames && dDisplayIndex !== -1 && currentNames[dDisplayIndex]) {
+                                    dDisplayName = currentNames[dDisplayIndex];
+                                }
+                            } catch (displayNameError) {
+                                console.warn('Getränkename konnte nicht geladen werden:', displayNameError);
+                            }
                             treeItems.push('<li class="tree-node-item"><strong>' + cnt + 'x</strong> ' + dDisplayName + (b.drinks[dKey].comment ? ' <em>(' + b.drinks[dKey].comment + ')</em>' : '') + '</li>');
                         }
                     }
