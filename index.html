@@ -1,14 +1,19 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script>
-  // Korrekte Einbindung mit Anführungszeichen und reiner Projekt-URL
-  const SUPABASE_URL = 'https://yxsjfktrxjtljbcxovio.supabase.co';
-  const SUPABASE_ANON_KEY = 'sb_publishable_G4sZ1dFc8LMALE5ULB_HSg_qltBZhVM';
-
-  const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-</script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+      let _supabase = null;
+      
+      // Initialisierung sicherstellen, sobald das CDN da ist
+      function initSupabaseClient() {
+          if (window.supabase) {
+              const SUPABASE_URL = 'https://yxsjfktrxjtljbcxovio.supabase.co';
+              const SUPABASE_ANON_KEY = 'sb_publishable_G4sZ1dFc8LMALE5ULB_HSg_qltBZhVM';
+              _supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+          }
+      }
+    </script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>CMOA 2027 Planning</title>
@@ -970,7 +975,7 @@
             <div id="cat-export-preview-area"></div>
         </div>
 
-        <!-- AKKREDITIERUNG SEITE (MIT WIEDERHERGESTELLTEM DESIGN) -->
+        <!-- AKKREDITIERUNG SEITE -->
         <div id="akkreditierung-page" class="page">
             <button class="btn-back" onclick="showPage('main-page')">← Hauptmenü</button>
             
@@ -1668,41 +1673,54 @@
         ];
 
         window.onload = async function() {
-            try {
-                // Versuche, Daten aus der Supabase-Cloud zu laden
-                const { data, error } = await _supabase
-                    .from('app_state')
-                    .select('*')
-                    .eq('key', 'cmoa_main_state')
-                    .single();
+            initSupabaseClient();
 
-                if (!error && data && data.data) {
-                    var parsed = typeof data.data === 'string' ? JSON.parse(data.data) : data.data;
-                    bands = parsed.bands || [];
-                    manualTodos = parsed.manualTodos || [];
-                    hotelCostsList = parsed.hotelCostsList || [];
-                    akkDb = parsed.akkDb || [];
-                } else {
-                    // Fallback auf localStorage, falls Cloud leer ist
+            if (_supabase) {
+                try {
+                    // Versuche, Daten aus der Supabase-Cloud zu laden
+                    const { data, error } = await _supabase
+                        .from('app_state')
+                        .select('*')
+                        .eq('key', 'cmoa_main_state')
+                        .maybeSingle();
+
+                    if (!error && data && data.data) {
+                        var parsed = typeof data.data === 'string' ? JSON.parse(data.data) : data.data;
+                        bands = parsed.bands || [];
+                        manualTodos = parsed.manualTodos || [];
+                        hotelCostsList = parsed.hotelCostsList || [];
+                        akkDb = parsed.akkDb || [];
+                    } else {
+                        loadFromLocalStorage();
+                    }
+                } catch(e) {
+                    console.log("Cloud-Laden fehlgeschlagen, nutze Lokalspeicher:", e);
                     loadFromLocalStorage();
                 }
-            } catch(e) {
-                console.log("Cloud-Laden fehlgeschlagen, nutze Lokalspeicher:", e);
+
+                // Supabase Realtime Listener für automatische Updates
+                try {
+                    _supabase
+                        .channel('cmoa-realtime-channel')
+                        .on('postgres_changes', { event: '*', schema: 'public', table: 'app_state' }, payload => {
+                            console.log('Daten wurden extern aktualisiert, lade neu...');
+                            if (payload.new && payload.new.data) {
+                                var parsed = typeof payload.new.data === 'string' ? JSON.parse(payload.new.data) : payload.new.data;
+                                bands = parsed.bands || [];
+                                manualTodos = parsed.manualTodos || [];
+                                hotelCostsList = parsed.hotelCostsList || [];
+                                akkDb = parsed.akkDb || [];
+                                updateMainProgress();
+                                renderBandsList();
+                            }
+                        })
+                        .subscribe();
+                } catch(err) {
+                    console.log("Realtime konnte nicht gestartet werden:", err);
+                }
+            } else {
                 loadFromLocalStorage();
             }
-
-          // Supabase Realtime Listener für automatische Updates
-        try {
-            _supabase
-                .channel('cmoa-realtime-channel')
-                .on('postgres_changes', { event: '*', schema: 'public', table: 'app_state' }, payload => {
-                    console.log('Daten wurden extern aktualisiert,lade neu...');
-                    window.onload(); // Lädt die Daten frisch aus der Cloud
-                })
-                .subscribe();
-        } catch(err) {
-            console.log("Realtime konnte nicht gestartet werden:", err);
-        }
 
             // Theme laden
             try {
@@ -1753,13 +1771,15 @@
                     akkDb: akkDb
                 };
 
-                // Speichern in Supabase (Cloud)
-                const { error } = await _supabase
-                    .from('app_state')
-                    .upsert({ key: 'cmoa_main_state', data: statePayload });
+                if (_supabase) {
+                    // Speichern in Supabase (Cloud)
+                    const { error } = await _supabase
+                        .from('app_state')
+                        .upsert({ key: 'cmoa_main_state', data: statePayload });
 
-                if (error) {
-                    console.error('Fehler beim Cloud-Speichern:', error);
+                    if (error) {
+                        console.error('Fehler beim Cloud-Speichern:', error);
+                    }
                 }
 
                 // Zusätzlich als Backup lokal speichern
@@ -1866,7 +1886,6 @@
         // AKKREDITIERUNG LOGIK & INTERAKTIONEN
         // =============================================================
         function initAkkreditierung() {
-            // TABS SWITCH für Akkreditierung
             function switchAkkTab(secId, btn) {
                 document.querySelectorAll('#akkreditierung-page .akk-section').forEach(function(s){ s.classList.remove('active'); });
                 document.querySelectorAll('#akkreditierung-page .akk-nav-btn').forEach(function(b){ b.classList.remove('active'); });
@@ -1883,7 +1902,6 @@
             if (tabUebersicht) tabUebersicht.onclick = function() { switchAkkTab('sec-akk-uebersicht', this); };
             if (tabCheckin) tabCheckin.onclick = function() { switchAkkTab('sec-akk-checkin', this); };
 
-            // BUTTON CHOICES
             function setupGrid(containerId, callback) {
                 var container = document.getElementById(containerId);
                 if (!container) return;
@@ -1900,7 +1918,6 @@
             setupGrid('grid-perm', function(val){ selPerm = val; });
             setupGrid('grid-day', function(val){ selDay = val; });
 
-            // FREE TOGGLE
             var freeBtn = document.getElementById('btn-free');
             var amtIn = document.getElementById('in-amount');
             if (freeBtn && amtIn) {
@@ -1918,13 +1935,11 @@
                 };
             }
 
-            // GENERIERT CM27_XXX (3 ZAHLEN)
             function generateID() {
                 var randomNum = Math.floor(100 + Math.random() * 900);
                 return "CM27_" + randomNum;
             }
 
-            // ANLEGEN SUBMIT
             var btnSubmit = document.getElementById('btn-submit');
             if (btnSubmit) {
                 btnSubmit.onclick = function() {
@@ -1952,7 +1967,6 @@
                         chk: false
                     });
 
-                    // Reset
                     document.getElementById('in-name').value = "";
                     document.getElementById('in-org').value = "";
                     amtIn.value = "";
@@ -1970,7 +1984,6 @@
                 };
             }
 
-            // BACKUP DOWNLOAD (JSON)
             var btnExpJson = document.getElementById('btn-export-json');
             if (btnExpJson) {
                 btnExpJson.onclick = function() {
@@ -1985,7 +1998,6 @@
                 };
             }
 
-            // BACKUP IMPORT (JSON)
             var btnImpJson = document.getElementById('btn-import-json');
             var fileImport = document.getElementById('file-import');
             if (btnImpJson && fileImport) {
@@ -2009,7 +2021,6 @@
                 };
             }
 
-            // CSV EXPORT (Excel)
             var btnExpCsv = document.getElementById('btn-export-csv');
             if (btnExpCsv) {
                 btnExpCsv.onclick = function() {
@@ -2033,7 +2044,6 @@
             if (srcOv) srcOv.oninput = renderAkk;
             if (srcCh) srcCh.oninput = renderAkk;
 
-            // Delegierter Klick-Handler für Akkreditierungs-Listen (Check-In & Löschen)
             document.addEventListener('click', function(e) {
                 var act = e.target.getAttribute('data-akk-act');
                 var id = e.target.getAttribute('data-akk-id');
@@ -2075,7 +2085,6 @@
             var elMoney = document.getElementById('hs-money'); 
             if(elMoney) elMoney.textContent = collectedMoney.toFixed(2).replace('.',',') + " € / " + totalMoney.toFixed(2).replace('.',',') + " €";
 
-            // OVERVIEW LIST
             var srcOv = document.getElementById('src-overview');
             var qO = srcOv ? srcOv.value.toLowerCase() : "";
             var listO = document.getElementById('list-overview');
@@ -2098,7 +2107,6 @@
                 }
             }
 
-            // CHECKIN LIST
             var srcCh = document.getElementById('src-checkin');
             var qC = srcCh ? srcCh.value.toLowerCase() : "";
             var listC = document.getElementById('list-checkin');
