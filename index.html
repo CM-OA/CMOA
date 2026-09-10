@@ -2536,8 +2536,8 @@
                         if (cnt > 0) {
                             var dDisplayName = dKey;
                             var dDefaultIndex = DEFAULT_DRINKS.indexOf(dKey);
-                            if (dDefaultIndex !== -1 && typeof cateringDrinkNames !== 'undefined' && Array.isArray(cateringDrinkNames) && cateringDrinkNames[dDefaultIndex]) {
-                                dDisplayName = cateringDrinkNames[dDefaultIndex];
+                            if (dDefaultIndex !== -1 && Array.isArray(window.cateringDrinkNames) && window.cateringDrinkNames[dDefaultIndex]) {
+                                dDisplayName = window.cateringDrinkNames[dDefaultIndex];
                             }
                             treeItems.push('<li class="tree-node-item"><strong>' + cnt + 'x</strong> ' + dDisplayName + (b.drinks[dKey].comment ? ' <em>(' + b.drinks[dKey].comment + ')</em>' : '') + '</li>');
                         }
@@ -4596,7 +4596,7 @@
                 "Weißwein", "Rum", "Whisky", "Wodka"
             ];
 
-            var cateringDrinkNames = DEFAULT_CATERING_DRINK_NAMES.slice();
+            var cateringDrinkNames = DEFAULT_CATERING_DRINK_NAMES.slice(); window.cateringDrinkNames = cateringDrinkNames;
 
             function loadCateringDrinkNames() {
                 try {
@@ -4604,7 +4604,7 @@
                     if (saved) {
                         var parsed = JSON.parse(saved);
                         if (Array.isArray(parsed) && parsed.length === DEFAULT_CATERING_DRINK_NAMES.length) {
-                            cateringDrinkNames = parsed.slice();
+                            cateringDrinkNames = parsed.slice(); window.cateringDrinkNames = cateringDrinkNames;
                             return;
                         }
                     }
@@ -4613,7 +4613,7 @@
                 if (Array.isArray(bands)) {
                     for (var i = 0; i < bands.length; i++) {
                         if (Array.isArray(bands[i].cateringDrinkNames) && bands[i].cateringDrinkNames.length === DEFAULT_CATERING_DRINK_NAMES.length) {
-                            cateringDrinkNames = bands[i].cateringDrinkNames.slice();
+                            cateringDrinkNames = bands[i].cateringDrinkNames.slice(); window.cateringDrinkNames = cateringDrinkNames;
                             return;
                         }
                     }
@@ -4648,7 +4648,7 @@
                 // werden geändert. Dadurch gehen vorhandene Mengen und Kommentare nicht verloren.
                 if (Array.isArray(bands)) {
                     for (var bIdx = 0; bIdx < bands.length; bIdx++) {
-                        bands[bIdx].cateringDrinkNames = newNames.slice();
+                        bands[bIdx].cateringDrinkNames = newNames.slice(); window.cateringDrinkNames = cateringDrinkNames;
                     }
                 }
 
@@ -4777,11 +4777,13 @@
             }
 
             loadCateringDrinkNames();
+            window.cateringDrinkNames = cateringDrinkNames;
             window.saveCateringDrinkNames = saveCateringDrinkNames;
 
             var originalRenderCateringPage = renderCateringPage;
             renderCateringPage = function() {
                 loadCateringDrinkNames();
+                window.cateringDrinkNames = cateringDrinkNames;
                 originalRenderCateringPage();
 
                 if (Array.isArray(bands)) {
