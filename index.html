@@ -1667,30 +1667,53 @@
             "Weißwein", "Rum", "Whisky", "Wodka"
         ];
 
-        window.onload = function() {
+        window.onload = async function() {
             try {
-                var bSaved = localStorage.getItem('cmoa_bands_v4');
-                var tSaved = localStorage.getItem('cmoa_manual_todos_v1');
-                var hCostsSaved = localStorage.getItem('cmoa_hotel_costs_v1');
-                var akkSaved = localStorage.getItem('cmoa_akkreditierung_v1');
+                // Versuche, Daten aus der Supabase-Cloud zu laden
+                const { data, error } = await _supabase
+                    .from('app_state')
+                    .select('*')
+                    .eq('key', 'cmoa_main_state')
+                    .single();
+
+                if (!error && data && data.data) {
+                    var parsed = typeof data.data === 'string' ? JSON.parse(data.data) : data.data;
+                    bands = parsed.bands || [];
+                    manualTodos = parsed.manualTodos || [];
+                    hotelCostsList = parsed.hotelCostsList || [];
+                    akkDb = parsed.akkDb || [];
+                } else {
+                    // Fallback auf localStorage, falls Cloud leer ist
+                    loadFromLocalStorage();
+                }
+            } catch(e) {
+                console.log("Cloud-Laden fehlgeschlagen, nutze Lokalspeicher:", e);
+                loadFromLocalStorage();
+            }
+
+          // Supabase Realtime Listener für automatische Updates
+        try {
+            _supabase
+                .channel('cmoa-realtime-channel')
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'app_state' }, payload => {
+                    console.log('Daten wurden extern aktualisiert,lade neu...');
+                    window.onload(); // Lädt die Daten frisch aus der Cloud
+                })
+                .subscribe();
+        } catch(err) {
+            console.log("Realtime konnte nicht gestartet werden:", err);
+        }
+
+            // Theme laden
+            try {
                 var themeSaved = localStorage.getItem('cmoa_theme_v1');
-                
-                bands = bSaved ? JSON.parse(bSaved) : [];
-                manualTodos = tSaved ? JSON.parse(tSaved) : [];
-                hotelCostsList = hCostsSaved ? JSON.parse(hCostsSaved) : [];
-                akkDb = akkSaved ? JSON.parse(akkSaved) : [];
-                
                 if (themeSaved === 'night') {
                     document.body.classList.add('night-mode');
                     var btn = document.getElementById('theme-toggle-btn');
                     if (btn) btn.innerText = '☀️ Daymode';
                 }
-            } catch(e) {
-                bands = [];
-                manualTodos = [];
-                hotelCostsList = [];
-                akkDb = [];
-            }
+            } catch(e) {}
+
             if (!Array.isArray(bands)) bands = [];
             if (!Array.isArray(manualTodos)) manualTodos = [];
             if (!Array.isArray(hotelCostsList)) hotelCostsList = [];
@@ -1705,31 +1728,50 @@
             }
         };
 
-        function toggleTheme() {
-            var body = document.body;
-            var btn = document.getElementById('theme-toggle-btn');
-            if (body.classList.contains('night-mode')) {
-                body.classList.remove('night-mode');
-                if (btn) btn.innerText = '🌙 Nightmode';
-                localStorage.setItem('cmoa_theme_v1', 'day');
-            } else {
-                body.classList.add('night-mode');
-                if (btn) btn.innerText = '☀️ Daymode';
-                localStorage.setItem('cmoa_theme_v1', 'night');
-            }
+        function loadFromLocalStorage() {
+            var bSaved = localStorage.getItem('cmoa_bands_v4');
+            var tSaved = localStorage.getItem('cmoa_manual_todos_v1');
+            var hCostsSaved = localStorage.getItem('cmoa_hotel_costs_v1');
+            var akkSaved = localStorage.getItem('cmoa_akkreditierung_v1');
+            
+            bands = bSaved ? JSON.parse(bSaved) : [];
+            manualTodos = tSaved ? JSON.parse(tSaved) : [];
+            hotelCostsList = hCostsSaved ? JSON.parse(hCostsSaved) : [];
+            akkDb = akkSaved ? JSON.parse(akkSaved) : [];
         }
 
-        function saveToStorage() {
+        async function saveToStorage() {
             try {
                 if (Array.isArray(bands)) {
                     bands.sort(function(a, b) { return (a.name || '').localeCompare(b.name || '', 'de', { sensitivity: 'base' }); });
                 }
+
+                var statePayload = {
+                    bands: bands,
+                    manualTodos: manualTodos,
+                    hotelCostsList: hotelCostsList,
+                    akkDb: akkDb
+                };
+
+                // Speichern in Supabase (Cloud)
+                const { error } = await _supabase
+                    .from('app_state')
+                    .upsert({ key: 'cmoa_main_state', data: statePayload });
+
+                if (error) {
+                    console.error('Fehler beim Cloud-Speichern:', error);
+                }
+
+                // Zusätzlich als Backup lokal speichern
                 localStorage.setItem('cmoa_bands_v4', JSON.stringify(bands));
                 localStorage.setItem('cmoa_manual_todos_v1', JSON.stringify(manualTodos));
                 localStorage.setItem('cmoa_hotel_costs_v1', JSON.stringify(hotelCostsList));
                 localStorage.setItem('cmoa_akkreditierung_v1', JSON.stringify(akkDb));
+
                 updateMainProgress();
-            } catch(e) {}
+            } catch(e) {
+                console.error('Speicherfehler:', e);
+            }
         }
 
         function exportBackup() {
