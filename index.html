@@ -2614,7 +2614,7 @@
                         var dData = b.drinks[drinkName] || { count: 0, comment: '' };
                         bodyHtml += '<div class="catering-item-row">' +
                             '<div style="flex:2; font-weight:600; font-size:0.85rem;">' + drinkName + '</div>' +
-                            '<div style="flex:1;"><input type="number" id="cat-drink-cnt-' + b.id + '-' + d + '" placeholder="Anzahl" value="' + (dData.count !== 0 ? dData.count : '') + '"></div>' +
+                            '<div style="flex:1;"><input type="number" id="cat-drink-cnt-' + b.id + '-' + d + '" placeholder="Anzahl" value="' + (dData.count || '') + '"></div>' +
                             '<div style="flex:2;"><input type="text" id="cat-drink-cmt-' + b.id + '-' + d + '" placeholder="Kommentar..." value="' + (dData.comment || '') + '"></div>' +
                         '</div>';
                     }
@@ -2626,7 +2626,7 @@
                             var cData = b.drinks[customKey] || { count: 0, comment: '' };
                             bodyHtml += '<div class="catering-item-row">' +
                                 '<div style="flex:2; font-weight:600; font-size:0.85rem;">' + customKey + '</div>' +
-                                '<div style="flex:1;"><input type="number" id="cat-cdrink-cnt-' + b.id + '-' + cIdx + '" value="' + (cData.count !== 0 ? cData.count : '') + '"></div>' +
+                                '<div style="flex:1;"><input type="number" id="cat-cdrink-cnt-' + b.id + '-' + cIdx + '" value="' + (cData.count || '') + '"></div>' +
                                 '<div style="flex:2;"><input type="text" id="cat-cdrink-cmt-' + b.id + '-' + cIdx + '" value="' + (cData.comment || '') + '"></div>' +
                                 '<button class="btn-danger" style="padding:4px 8px;" onclick="removeCustomDrink(\'' + b.id + '\', \'' + customKey + '\')">🗑️</button>' +
                             '</div>';
@@ -2644,7 +2644,7 @@
                         var food = b.extraFood[f];
                         bodyHtml += '<div class="catering-item-row">' +
                             '<div style="flex:2;"><input type="text" id="cat-food-name-' + b.id + '-' + f + '" value="' + (food.name || '') + '" placeholder="Speise / Snack"></div>' +
-                            '<div style="flex:1;"><input type="number" id="cat-food-cnt-' + b.id + '-' + f + '" value="' + (food.count !== 0 ? food.count : '') + '" placeholder="Anzahl"></div>' +
+                            '<div style="flex:1;"><input type="number" id="cat-food-cnt-' + b.id + '-' + f + '" value="' + (food.count || '') + '" placeholder="Anzahl"></div>' +
                             '<div style="flex:2;"><input type="text" id="cat-food-cmt-' + b.id + '-' + f + '" value="' + (food.comment || '') + '" placeholder="Notiz"></div>' +
                             '<button class="btn-danger" style="padding:4px 8px;" onclick="removeExtraFood(\'' + b.id + '\', ' + f + ')">🗑️</button>' +
                         '</div>';
@@ -4574,4 +4574,10 @@
             for (var i = 0; i < manualTodos.length; i++) {
                 if (manualTodos[i].id === id) {
                     manualTodos[i].done = !manualTodos[i].done;
-                    Ich bin nur ein Sprachmodell und kann dabei nicht helfen.
+                    saveToStorage(); renderTodos(); break;
+                }
+            }
+        }
+    </script>
+</body>
+</html>
