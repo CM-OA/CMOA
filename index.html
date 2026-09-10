@@ -6,14 +6,17 @@
   let _supabase = null;
   
   function initSupabaseClient() {
-      if (window.supabase) {
+      if (window.supabase && !_supabase) {
           const SUPABASE_URL = 'https://yxsjfktrxjtljbcxovio.supabase.co';
-          // Hier den langen anon-Schlüssel einfügen:
           const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl4c2pma3RyeGp0bGpiY3hvdmlvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg5OTczNDQsImV4cCI6MjEwNDU3MzM0NH0.wGwbsieKlzSGwy1B5tc1Yfyw8a2t6Dn6nKFd2uQFwEc';
           _supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
       }
   }
+
+  // Sofort beim Laden der Seite initialisieren
+  initSupabaseClient();
 </script>
+
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>CMOA 2027 Planning</title>
