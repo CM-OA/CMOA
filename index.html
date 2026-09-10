@@ -2534,11 +2534,9 @@
                     for (var dKey in b.drinks) {
                         var cnt = parseInt(b.drinks[dKey].count) || 0;
                         if (cnt > 0) {
-                            var dDisplayName = dKey;
-                            var dDefaultIndex = DEFAULT_DRINKS.indexOf(dKey);
-                            if (dDefaultIndex !== -1 && Array.isArray(window.cateringDrinkNames) && window.cateringDrinkNames[dDefaultIndex]) {
-                                dDisplayName = window.cateringDrinkNames[dDefaultIndex];
-                            }
+                            var dDisplayName = (typeof window.getCateringDrinkDisplayName === 'function')
+                                ? window.getCateringDrinkDisplayName(dKey)
+                                : dKey;
                             treeItems.push('<li class="tree-node-item"><strong>' + cnt + 'x</strong> ' + dDisplayName + (b.drinks[dKey].comment ? ' <em>(' + b.drinks[dKey].comment + ')</em>' : '') + '</li>');
                         }
                     }
@@ -4653,6 +4651,7 @@
                 }
 
                 cateringDrinkNames = newNames;
+                window.cateringDrinkNames = cateringDrinkNames;
                 try { localStorage.setItem('cmoa_catering_drink_names_v1', JSON.stringify(cateringDrinkNames)); } catch(e) {}
                 saveToStorage();
                 renderCateringPage();
@@ -4776,6 +4775,16 @@
                 el = document.getElementById('cat-stat-total-unassigned'); if (el) el.innerText = totalUnassigned + ' Pers.';
             }
 
+            // Öffentlicher Resolver für alle bestehenden Catering-Anzeigen.
+            // Der interne Schlüssel (z.B. "Bühnenwasser") bleibt unverändert,
+            // angezeigt wird aber immer der aktuell gespeicherte Name.
+            window.getCateringDrinkDisplayName = function(drinkKey) {
+                var names = Array.isArray(window.cateringDrinkNames) ? window.cateringDrinkNames : cateringDrinkNames;
+                var idx = DEFAULT_CATERING_DRINK_NAMES.indexOf(drinkKey);
+                if (idx !== -1 && Array.isArray(names) && names[idx]) return names[idx];
+                return drinkKey;
+            };
+
             loadCateringDrinkNames();
             window.cateringDrinkNames = cateringDrinkNames;
             window.saveCateringDrinkNames = saveCateringDrinkNames;
@@ -4783,18 +4792,35 @@
             var originalRenderCateringPage = renderCateringPage;
             renderCateringPage = function() {
                 loadCateringDrinkNames();
-                window.cateringDrinkNames = cateringDrinkNames;
-                originalRenderCateringPage();
 
+                // WICHTIG: Die globale/lokale Namensliste wird VOR dem eigentlichen
+                // Rendern festgelegt. Dadurch verwendet auch die originale
+                // "Erfasstes Catering"-Anzeige sofort die neuen Namen.
                 if (Array.isArray(bands)) {
-                    for (var i = 0; i < bands.length; i++) {
-                        ensureDietDefaults(bands[i]);
-                        if (bands[i].cateringDrinkNames && Array.isArray(bands[i].cateringDrinkNames) && bands[i].cateringDrinkNames.length === DEFAULT_CATERING_DRINK_NAMES.length) {
-                            cateringDrinkNames = bands[i].cateringDrinkNames.slice();
-                            break;
+                    var hasSavedGlobalNames = false;
+                    try {
+                        var storedNames = localStorage.getItem('cmoa_catering_drink_names_v1');
+                        if (storedNames) {
+                            var parsedStoredNames = JSON.parse(storedNames);
+                            hasSavedGlobalNames = Array.isArray(parsedStoredNames) && parsedStoredNames.length === DEFAULT_CATERING_DRINK_NAMES.length;
+                        }
+                    } catch(e) {}
+
+                    // Nur wenn keine gültige globale Liste gespeichert ist, darf eine
+                    // bandbezogene Liste als Fallback verwendet werden.
+                    if (!hasSavedGlobalNames) {
+                        for (var i = 0; i < bands.length; i++) {
+                            ensureDietDefaults(bands[i]);
+                            if (bands[i].cateringDrinkNames && Array.isArray(bands[i].cateringDrinkNames) && bands[i].cateringDrinkNames.length === DEFAULT_CATERING_DRINK_NAMES.length) {
+                                cateringDrinkNames = bands[i].cateringDrinkNames.slice();
+                                break;
+                            }
                         }
                     }
                 }
+
+                window.cateringDrinkNames = cateringDrinkNames;
+                originalRenderCateringPage();
 
                 buildGlobalDrinkEditor();
                 if (Array.isArray(bands)) {
