@@ -992,6 +992,12 @@
         line-height: 1.4;
     }
 
+    #bands-list-container .badge {
+        white-space: normal;
+        line-height: 1.25;
+        text-align: left;
+    }
+
     #bands-list-container .list-item > div:last-child > div:last-child {
         display: grid !important;
         grid-template-columns: 1fr 1fr 52px;
@@ -1593,12 +1599,70 @@
             </div>
 
             <div class="card">
-                <h3>Dokumente</h3>
-                <div class="checkbox-group"><input type="checkbox" id="band-contract-received"><label for="band-contract-received">Vertrag erhalten</label></div>
-                <div class="checkbox-group"><input type="checkbox" id="band-contract-signed"><label for="band-contract-signed">Vertrag unterzeichnet</label></div>
-                <hr style="margin: 8px 0; border-color: var(--border);">
-                <div class="checkbox-group"><input type="checkbox" id="band-rider-received"><label for="band-rider-received">Rider erhalten</label></div>
-                <div class="checkbox-group"><input type="checkbox" id="band-rider-checked"><label for="band-rider-checked">Rider geprüft</label></div>
+                <h3>📄 Dokumente</h3>
+                <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:12px;">
+                    PDFs können im GitHub-Repository liegen. Hier wird nur der Link bzw. relative Dateipfad gespeichert, z. B. <strong>documents/vertraege/bandname-vertrag.pdf</strong>.
+                </p>
+
+                <div class="pay-mode-box" style="margin-bottom:12px;">
+                    <div class="pay-mode-title">📑 Vertrag</div>
+                    <div class="form-group">
+                        <label>Status:</label>
+                        <select id="band-contract-doc-status" onchange="toggleBandDocumentFields()">
+                            <option value="offen">Offen / noch zu klären</option>
+                            <option value="vorhanden">PDF vorhanden</option>
+                            <option value="nicht_vorhanden">Kein Vertrag vorhanden</option>
+                            <option value="nicht_noetig">Kein Vertrag notwendig</option>
+                        </select>
+                    </div>
+                    <div id="band-contract-doc-fields" style="display:none;">
+                        <div class="form-group">
+                            <label>PDF-Link / GitHub-Pfad:</label>
+                            <input type="text" id="band-contract-doc-url" placeholder="documents/vertraege/bandname-vertrag.pdf">
+                        </div>
+                        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:8px;">
+                            <button type="button" class="btn-sm" style="flex:1 1 180px;" onclick="openBandDocument('contract')">📄 Vertrag öffnen</button>
+                        </div>
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="band-contract-received">
+                            <label for="band-contract-received">Vertrag erhalten</label>
+                        </div>
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="band-contract-signed">
+                            <label for="band-contract-signed">Vertrag unterzeichnet</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pay-mode-box">
+                    <div class="pay-mode-title">🎛️ Rider</div>
+                    <div class="form-group">
+                        <label>Status:</label>
+                        <select id="band-rider-doc-status" onchange="toggleBandDocumentFields()">
+                            <option value="offen">Offen / noch zu klären</option>
+                            <option value="vorhanden">PDF vorhanden</option>
+                            <option value="nicht_vorhanden">Kein Rider vorhanden</option>
+                            <option value="nicht_noetig">Kein Rider notwendig</option>
+                        </select>
+                    </div>
+                    <div id="band-rider-doc-fields" style="display:none;">
+                        <div class="form-group">
+                            <label>PDF-Link / GitHub-Pfad:</label>
+                            <input type="text" id="band-rider-doc-url" placeholder="documents/rider/bandname-rider.pdf">
+                        </div>
+                        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:8px;">
+                            <button type="button" class="btn-sm" style="flex:1 1 180px;" onclick="openBandDocument('rider')">🎛️ Rider öffnen</button>
+                        </div>
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="band-rider-received">
+                            <label for="band-rider-received">Rider erhalten</label>
+                        </div>
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="band-rider-checked">
+                            <label for="band-rider-checked">Rider geprüft</label>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <div class="card">
@@ -2682,6 +2746,13 @@ function loadFromLocalStorage() {
                     if (b.dealDone) tagHtml += '<span class="badge" style="background: var(--accent-green); margin-left: 6px;">Deal</span>';
 
                     var pCount = parseInt(b.paxCount) || 0;
+                    var contractStatus = b.contractDocStatus || ((b.contractReceived || b.contractSigned) ? 'vorhanden' : 'offen');
+                    var riderStatus = b.riderDocStatus || ((b.riderReceived || b.riderChecked) ? 'vorhanden' : 'offen');
+                    var docStatusHtml =
+                        '<div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:6px;">' +
+                            '<span class="badge" style="background:var(--card-bg); color:var(--text-main); border:1px solid var(--border);">📑 ' + getBandDocumentStatusLabel(contractStatus, 'contract') + '</span>' +
+                            '<span class="badge" style="background:var(--card-bg); color:var(--text-main); border:1px solid var(--border);">🎛️ ' + getBandDocumentStatusLabel(riderStatus, 'rider') + '</span>' +
+                        '</div>';
 
                     item.innerHTML = 
                         '<div style="text-align:left; border-bottom:1px dashed var(--border); padding-bottom:6px;">' +
@@ -2690,6 +2761,7 @@ function loadFromLocalStorage() {
                         '<div style="display:flex; justify-content:space-between; align-items:center;">' +
                             '<div style="font-size: 0.82rem; color: var(--text-muted);">' + 
                                 (b.gage ? Number(b.gage).toLocaleString('de-DE', {style:'currency', currency:'EUR'}) : '0,00 €') + ' Netto | ' + pCount + ' Mitglieder' +
+                                docStatusHtml +
                             '</div>' +
                             '<div style="display: flex; gap: 6px;">' +
                                 '<button class="btn-sm btn-view">👁️ View</button>' +
@@ -2721,7 +2793,9 @@ function loadFromLocalStorage() {
             bands.push({
                 id: newId, name: name.trim().toUpperCase(), dealDone: false, gage: 0, taxRate: 0, showday: '', notesList: [], paymentTermsMainMode: 'full', paymentTermsType: '1a', paymentTermsLocked: false,
                 shuttleNeeded: 'offen', hotelNeeded: 'offen', paxCount: 5, nightsCount: 0, vipGuests: 0, extraFood: [], extraSpecials: [{ text: '', comment: '' }], drinks: {},
-                statusAdvPaid: false, statusRestPaid: false, statusFullPaid: false
+                statusAdvPaid: false, statusRestPaid: false, statusFullPaid: false,
+                contractDocStatus: 'offen', contractDocUrl: '',
+                riderDocStatus: 'offen', riderDocUrl: ''
             });
 
             saveToStorage();
@@ -2737,6 +2811,41 @@ function loadFromLocalStorage() {
                 saveToStorage();
                 renderBandsList();
             }
+        }
+
+        function getBandDocumentStatusLabel(status, type) {
+            if (status === 'vorhanden') return '✅ ' + (type === 'contract' ? 'Vertrag' : 'Rider') + ' PDF';
+            if (status === 'nicht_noetig') return '➖ Nicht notwendig';
+            if (status === 'nicht_vorhanden') return '⚪ Nicht vorhanden';
+            return '🟡 Offen';
+        }
+
+        function toggleBandDocumentFields() {
+            var contractStatusEl = document.getElementById('band-contract-doc-status');
+            var riderStatusEl = document.getElementById('band-rider-doc-status');
+            var contractFields = document.getElementById('band-contract-doc-fields');
+            var riderFields = document.getElementById('band-rider-doc-fields');
+
+            if (contractFields) contractFields.style.display = contractStatusEl && contractStatusEl.value === 'vorhanden' ? 'block' : 'none';
+            if (riderFields) riderFields.style.display = riderStatusEl && riderStatusEl.value === 'vorhanden' ? 'block' : 'none';
+        }
+
+        function normalizeDocumentUrl(value) {
+            var url = (value || '').trim();
+            if (!url) return '';
+            if (/^(https?:)?\/\//i.test(url) || url.indexOf('data:') === 0 || url.indexOf('blob:') === 0) return url;
+            return url.replace(/^\.?\//, '');
+        }
+
+        function openBandDocument(type) {
+            var id = type === 'contract' ? 'band-contract-doc-url' : 'band-rider-doc-url';
+            var el = document.getElementById(id);
+            var url = normalizeDocumentUrl(el ? el.value : '');
+            if (!url) {
+                alert('Bitte zuerst einen PDF-Link oder GitHub-Dateipfad eintragen.');
+                return;
+            }
+            window.open(url, '_blank', 'noopener');
         }
 
         function openBandDetail(id) {
@@ -2772,8 +2881,16 @@ function loadFromLocalStorage() {
             setVal('band-hotel-name', b.hotelName); setVal('band-hotel-from', b.hotelFrom); setVal('band-hotel-to', b.hotelTo);
             setVal('band-hotel-persons', b.hotelPersons); setVal('band-hotel-ez-count', b.hotelEzCount); setVal('band-hotel-dz-count', b.hotelDzCount);
 
+            var contractDocStatus = b.contractDocStatus || ((b.contractReceived || b.contractSigned) ? 'vorhanden' : 'offen');
+            var riderDocStatus = b.riderDocStatus || ((b.riderReceived || b.riderChecked) ? 'vorhanden' : 'offen');
+            setVal('band-contract-doc-status', contractDocStatus);
+            setVal('band-contract-doc-url', b.contractDocUrl || '');
             setChk('band-contract-received', b.contractReceived); setChk('band-contract-signed', b.contractSigned);
+
+            setVal('band-rider-doc-status', riderDocStatus);
+            setVal('band-rider-doc-url', b.riderDocUrl || '');
             setChk('band-rider-received', b.riderReceived); setChk('band-rider-checked', b.riderChecked);
+            toggleBandDocumentFields();
 
             setVal('band-contact-name', b.contactName); setVal('band-contact-phone', b.contactPhone); setVal('band-contact-email', b.contactEmail); setVal('band-contact-org', b.contactOrg);
 
@@ -2823,7 +2940,12 @@ function loadFromLocalStorage() {
             b.hotelNeeded = getVal('band-hotel-needed'); b.hotelName = getVal('band-hotel-name'); b.hotelFrom = getVal('band-hotel-from'); b.hotelTo = getVal('band-hotel-to');
             b.hotelPersons = parseInt(getVal('band-hotel-persons')) || 0; b.hotelEzCount = parseInt(getVal('band-hotel-ez-count')) || 0; b.hotelDzCount = parseInt(getVal('band-hotel-dz-count')) || 0;
 
+            b.contractDocStatus = getVal('band-contract-doc-status') || 'offen';
+            b.contractDocUrl = normalizeDocumentUrl(getVal('band-contract-doc-url'));
             b.contractReceived = getChk('band-contract-received'); b.contractSigned = getChk('band-contract-signed');
+
+            b.riderDocStatus = getVal('band-rider-doc-status') || 'offen';
+            b.riderDocUrl = normalizeDocumentUrl(getVal('band-rider-doc-url'));
             b.riderReceived = getChk('band-rider-received'); b.riderChecked = getChk('band-rider-checked');
 
             b.contactName = getVal('band-contact-name'); b.contactPhone = getVal('band-contact-phone'); b.contactEmail = getVal('band-contact-email'); b.contactOrg = getVal('band-contact-org');
@@ -4611,9 +4733,13 @@ function loadFromLocalStorage() {
             var contentEl = document.getElementById('view-band-content');
             if (contentEl) {
                 contentEl.innerHTML =
-                    '<div class="view-section"><h4>🤝 Deal & Vertrag</h4>' +
+                    '<div class="view-section"><h4>🤝 Deal & Dokumente</h4>' +
                     '<div class="view-row"><span class="view-label">Deal-Status:</span> <span class="view-value">' + (b.dealDone ? '✅ Abgelegt' : '❌ Offen') + '</span></div>' +
-                    '<div class="view-row"><span class="view-label">Vertrag:</span> <span class="view-value">' + (b.contractSigned ? '✅ Unterschrieben' : '❌ Offen') + '</span></div></div>' +
+                    '<div class="view-row"><span class="view-label">Vertrag:</span> <span class="view-value">' + getBandDocumentStatusLabel(b.contractDocStatus || ((b.contractReceived || b.contractSigned) ? 'vorhanden' : 'offen'), 'contract') + (b.contractSigned ? ' · ✅ unterschrieben' : '') + '</span></div>' +
+                    ((b.contractDocStatus === 'vorhanden' || (!b.contractDocStatus && (b.contractReceived || b.contractSigned))) && b.contractDocUrl ? '<div class="view-row"><span class="view-label">Vertrag PDF:</span> <span class="view-value"><a href="' + normalizeDocumentUrl(b.contractDocUrl) + '" target="_blank" rel="noopener" style="color:var(--accent-blue);">📄 Öffnen</a></span></div>' : '') +
+                    '<div class="view-row"><span class="view-label">Rider:</span> <span class="view-value">' + getBandDocumentStatusLabel(b.riderDocStatus || ((b.riderReceived || b.riderChecked) ? 'vorhanden' : 'offen'), 'rider') + (b.riderChecked ? ' · ✅ geprüft' : '') + '</span></div>' +
+                    ((b.riderDocStatus === 'vorhanden' || (!b.riderDocStatus && (b.riderReceived || b.riderChecked))) && b.riderDocUrl ? '<div class="view-row"><span class="view-label">Rider PDF:</span> <span class="view-value"><a href="' + normalizeDocumentUrl(b.riderDocUrl) + '" target="_blank" rel="noopener" style="color:var(--accent-blue);">🎛️ Öffnen</a></span></div>' : '') +
+                    '</div>' +
 
                     '<div class="view-section"><h4>💶 Gage & Abrechnung</h4>' +
                     '<div class="view-row"><span class="view-label">Netto:</span> <span class="view-value">' + gage.toFixed(2) + ' €</span></div>' +
