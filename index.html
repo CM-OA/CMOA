@@ -1694,10 +1694,16 @@
 
                     if (!error && data && data.data) {
                         var parsed = typeof data.data === 'string' ? JSON.parse(data.data) : data.data;
-                        bands = parsed.bands || [];
-                        manualTodos = parsed.manualTodos || [];
-                        hotelCostsList = parsed.hotelCostsList || [];
-                        akkDb = parsed.akkDb || [];
+                        // Cloud-Daten nur übernehmen, wenn tatsächlich Bands vorhanden sind.
+                        // So kann ein leerer/alter Cloud-State nicht die lokal vorhandenen Bands überschreiben.
+                        if (Array.isArray(parsed.bands) && parsed.bands.length > 0) {
+                            bands = parsed.bands;
+                            manualTodos = parsed.manualTodos || [];
+                            hotelCostsList = parsed.hotelCostsList || [];
+                            akkDb = parsed.akkDb || [];
+                        } else {
+                            loadFromLocalStorage();
+                        }
                     } else {
                         loadFromLocalStorage();
                     }
@@ -1714,12 +1720,16 @@
                             console.log('Daten wurden extern aktualisiert, lade neu...');
                             if (payload.new && payload.new.data) {
                                 var parsed = typeof payload.new.data === 'string' ? JSON.parse(payload.new.data) : payload.new.data;
-                                bands = parsed.bands || [];
-                                manualTodos = parsed.manualTodos || [];
-                                hotelCostsList = parsed.hotelCostsList || [];
-                                akkDb = parsed.akkDb || [];
-                                updateMainProgress();
-                                renderBandsList();
+                                // Ein leerer Realtime-State darf vorhandene Bands nicht ausblenden.
+                                if (Array.isArray(parsed.bands) && parsed.bands.length > 0) {
+                                    bands = parsed.bands;
+                                    manualTodos = parsed.manualTodos || [];
+                                    hotelCostsList = parsed.hotelCostsList || [];
+                                    akkDb = parsed.akkDb || [];
+                                    updateMainProgress();
+                                    renderBandsList();
+                                    if (typeof renderCateringPage === 'function') renderCateringPage();
+                                }
                             }
                         })
                         .subscribe();
@@ -2474,6 +2484,7 @@
             if (!container) return;
             container.innerHTML = '';
 
+            if (!Array.isArray(bands)) bands = [];
             populateCatExportDropdowns();
 
             var frPax = 0, frMeals = 0;
