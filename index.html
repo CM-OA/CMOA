@@ -557,6 +557,11 @@
             color: var(--text-main);
         }
 
+        .catering-special-text {
+            color: #dc2626 !important;
+            font-weight: 700;
+        }
+
         /* STAMMBAUM STYLE FOR DRINKS */
         .drinks-tree-container {
             margin-top: 10px;
@@ -2325,7 +2330,7 @@
             if (!Array.isArray(bands)) bands = [];
             bands.push({
                 id: newId, name: name, dealDone: false, gage: 0, taxRate: 0, showday: '', notesList: [], paymentTermsMainMode: 'full', paymentTermsType: '1a', paymentTermsLocked: false,
-                shuttleNeeded: 'offen', hotelNeeded: 'offen', paxCount: 5, nightsCount: 0, vipGuests: 0, extraFood: [], drinks: {},
+                shuttleNeeded: 'offen', hotelNeeded: 'offen', paxCount: 5, nightsCount: 0, vipGuests: 0, extraFood: [], extraSpecials: [], drinks: {},
                 statusAdvPaid: false, statusRestPaid: false, statusFullPaid: false
             });
 
@@ -2521,6 +2526,7 @@
 
                     if (!b.drinks) b.drinks = {};
                     if (!Array.isArray(b.extraFood)) b.extraFood = [];
+                    if (!Array.isArray(b.extraSpecials)) b.extraSpecials = [];
 
                     var isBothDays = days > 1;
                     var isOpen = !!openCateringBands[b.id];
@@ -2578,13 +2584,22 @@
                         }
                     }
 
+                    var specialArray = [];
+                    for (var s = 0; s < b.extraSpecials.length; s++) {
+                        var special = b.extraSpecials[s];
+                        if (special.text && special.text.trim()) {
+                            specialArray.push('• ' + special.text + (special.comment ? ' <em>(' + special.comment + ')</em>' : ''));
+                        }
+                    }
+
                     var filledSummary = '';
-                    if (treeItems.length > 0 || foodArray.length > 0) {
+                    if (treeItems.length > 0 || foodArray.length > 0 || specialArray.length > 0) {
                         filledSummary = '<div class="catering-preview-box">' +
                             '<div class="catering-preview-title">Erfasstes Catering:</div>' +
                             '<div class="catering-preview-list">' +
                                 (treeItems.length > 0 ? drinksTreeHtml : '') +
                                 (foodArray.length > 0 ? '<div style="margin-top:6px;">🍕 <strong>Food/Snacks:</strong> ' + foodArray.join(', ') + '</div>' : '') +
+                                (specialArray.length > 0 ? '<div style="margin-top:6px; color:#dc2626;">⚠️ <strong>Besonderheiten:</strong> ' + specialArray.join(', ') + '</div>' : '') +
                             '</div>' +
                         '</div>';
                     }
@@ -2676,6 +2691,17 @@
 
                     bodyHtml += '<button class="btn-primary" style="margin-top:6px; margin-bottom:14px;" onclick="addExtraFood(\'' + b.id + '\')">+ Extra Food Hinzufügen</button>';
 
+                    bodyHtml += '<h4 style="font-size:0.88rem; color:#dc2626; margin-bottom:8px;">⚠️ Besonderheiten</h4>';
+                    for (var s = 0; s < b.extraSpecials.length; s++) {
+                        var special = b.extraSpecials[s];
+                        bodyHtml += '<div class="catering-item-row">' +
+                            '<div style="flex:2;"><input type="text" id="cat-special-text-' + b.id + '-' + s + '" value="' + (special.text || '') + '" placeholder="Besonderheit / Sonderwunsch"></div>' +
+                            '<div style="flex:2;"><input type="text" id="cat-special-cmt-' + b.id + '-' + s + '" value="' + (special.comment || '') + '" placeholder="Notiz"></div>' +
+                            '<button class="btn-danger" style="padding:4px 8px;" onclick="removeSpecialCatering(\'' + b.id + '\', ' + s + ')">🗑️</button>' +
+                        '</div>';
+                    }
+                    bodyHtml += '<button class="btn-primary" style="margin-top:6px; margin-bottom:14px; border-color:#dc2626; color:#dc2626;" onclick="addSpecialCatering(\'' + b.id + '\')">+ Besonderheit Hinzufügen</button>';
+
                     bodyHtml += '<div style="border-top:1px dashed var(--border); padding-top:12px; margin-top:10px;">' +
                         '<button class="btn-primary btn-save-cat" style="width:100%; padding:12px; background:linear-gradient(135deg, #10b981 0%, #059669 100%); color:#fff; border:none;" onclick="saveSingleBandCatering(\'' + b.id + '\')">💾 Catering für ' + b.name + ' Speichern</button>' +
                     '</div>';
@@ -2737,6 +2763,12 @@
                 }
             }
 
+            if (!Array.isArray(b.extraSpecials)) b.extraSpecials = [];
+            for (var s = 0; s < b.extraSpecials.length; s++) {
+                b.extraSpecials[s].text = getVal('cat-special-text-' + bandId + '-' + s);
+                b.extraSpecials[s].comment = getVal('cat-special-cmt-' + bandId + '-' + s);
+            }
+
             saveToStorage();
             openCateringBands[bandId] = false;
             renderCateringPage();
@@ -2781,6 +2813,25 @@
             var b = getBandById(bandId);
             if (!b || !b.extraFood) return;
             b.extraFood.splice(index, 1);
+            saveToStorage();
+            openCateringBands[bandId] = true;
+            renderCateringPage();
+        }
+
+        function addSpecialCatering(bandId) {
+            var b = getBandById(bandId);
+            if (!b) return;
+            if (!Array.isArray(b.extraSpecials)) b.extraSpecials = [];
+            b.extraSpecials.push({ text: '', comment: '' });
+            saveToStorage();
+            openCateringBands[bandId] = true;
+            renderCateringPage();
+        }
+
+        function removeSpecialCatering(bandId, index) {
+            var b = getBandById(bandId);
+            if (!b || !b.extraSpecials) return;
+            b.extraSpecials.splice(index, 1);
             saveToStorage();
             openCateringBands[bandId] = true;
             renderCateringPage();
@@ -2844,6 +2895,29 @@
                 for (var j = 0; j < foodTotals.length; j++) {
                     var item = foodTotals[j];
                     html += '<div class="stat-row"><span><strong>' + item.band + ':</strong> ' + item.name + ' ' + (item.comment ? '(' + item.comment + ')' : '') + '</span><strong>' + item.count + ' Stk.</strong></div>';
+                }
+            }
+            html += '</div>';
+
+            var specialTotals = [];
+            for (var si = 0; si < bands.length; si++) {
+                var sb = bands[si];
+                if (!Array.isArray(sb.extraSpecials)) continue;
+                for (var sj = 0; sj < sb.extraSpecials.length; sj++) {
+                    var sp = sb.extraSpecials[sj];
+                    if (sp.text && sp.text.trim()) {
+                        specialTotals.push({ band: sb.name, text: sp.text, comment: sp.comment || '' });
+                    }
+                }
+            }
+
+            html += '<strong style="color:#dc2626;">⚠️ Besonderheiten Gesamtliste:</strong><div style="margin-top:6px;">';
+            if (specialTotals.length === 0) {
+                html += '<p style="color:var(--text-muted); font-size:0.82rem;">Keine Besonderheiten erfasst.</p>';
+            } else {
+                for (var sk = 0; sk < specialTotals.length; sk++) {
+                    var spItem = specialTotals[sk];
+                    html += '<div class="stat-row" style="color:#dc2626;"><span><strong>' + spItem.band + ':</strong> ' + spItem.text + (spItem.comment ? ' (' + spItem.comment + ')' : '') + '</span></div>';
                 }
             }
             html += '</div>';
@@ -2949,6 +3023,7 @@
                 var totalPax = 0, totalMeals = 0, totalVips = 0;
                 var drinkTotals = {};
                 var foodTotals = [];
+                var specialTotals = [];
 
                 for (var i = 0; i < targetBands.length; i++) {
                     var b = targetBands[i];
@@ -2993,6 +3068,18 @@
                             }
                         }
                     }
+                    if (Array.isArray(b.extraSpecials)) {
+                        for (var s = 0; s < b.extraSpecials.length; s++) {
+                            var special = b.extraSpecials[s];
+                            if (special.text && special.text.trim()) {
+                                specialTotals.push({
+                                    band: b.name,
+                                    text: special.text,
+                                    comment: special.comment || ''
+                                });
+                            }
+                        }
+                    }
                 }
 
                 html += 
@@ -3027,6 +3114,16 @@
                     for (var ft = 0; ft < foodTotals.length; ft++) {
                         var fItem = foodTotals[ft];
                         html += '<tr><td><strong>' + fItem.band + '</strong></td><td>' + fItem.name + (fItem.comment ? ' <em>(' + fItem.comment + ')</em>' : '') + '</td><td><strong style="color:#059669;">' + fItem.count + ' Stk.</strong></td></tr>';
+                    }
+                    html += '</tbody></table>';
+                }
+
+                if (specialTotals.length > 0) {
+                    html += '<h4 style="font-size:0.9rem; text-transform:uppercase; color:#dc2626; margin-top:16px; margin-bottom:6px;">⚠️ Besonderheiten</h4>' +
+                        '<table class="pdf-table"><thead><tr><th>Band</th><th>Besonderheit</th><th>Notiz</th></tr></thead><tbody>';
+                    for (var st = 0; st < specialTotals.length; st++) {
+                        var sItem = specialTotals[st];
+                        html += '<tr><td><strong>' + sItem.band + '</strong></td><td><strong style="color:#dc2626;">' + sItem.text + '</strong></td><td style="color:#dc2626;">' + (sItem.comment || '-') + '</td></tr>';
                     }
                     html += '</tbody></table>';
                 }
@@ -3105,6 +3202,25 @@
                         html += '<h4 style="font-size:0.85rem; text-transform:uppercase; color:#334155; margin-top:12px; margin-bottom:4px;">🍕 Extra Food & Sonderwünsche</h4>' +
                             '<table class="pdf-table"><thead><tr><th>Speise / Snack</th><th>Menge</th><th>Notiz</th></tr></thead><tbody>' +
                             bFoodRows + '</tbody></table>';
+                    }
+
+                    var bSpecialRows = '';
+                    if (Array.isArray(band.extraSpecials)) {
+                        for (var bS = 0; bS < band.extraSpecials.length; bS++) {
+                            var bSpecial = band.extraSpecials[bS];
+                            if (bSpecial.text && bSpecial.text.trim()) {
+                                bSpecialRows += '<tr>' +
+                                    '<td><strong style="color:#dc2626;">' + bSpecial.text + '</strong></td>' +
+                                    '<td style="color:#dc2626;">' + (bSpecial.comment || '-') + '</td>' +
+                                '</tr>';
+                            }
+                        }
+                    }
+
+                    if (bSpecialRows !== '') {
+                        html += '<h4 style="font-size:0.85rem; text-transform:uppercase; color:#dc2626; margin-top:12px; margin-bottom:4px;">⚠️ Besonderheiten</h4>' +
+                            '<table class="pdf-table"><thead><tr><th>Besonderheit</th><th>Notiz</th></tr></thead><tbody>' +
+                            bSpecialRows + '</tbody></table>';
                     }
 
                     html += '</div>';
