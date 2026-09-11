@@ -998,6 +998,12 @@
         text-align: left;
     }
 
+    #bands-list-container .doc-quick-open {
+        min-height: 38px !important;
+        font-size: 0.82rem !important;
+        touch-action: manipulation;
+    }
+
     #bands-list-container .list-item > div:last-child > div:last-child {
         display: grid !important;
         grid-template-columns: 1fr 1fr 52px;
@@ -2746,12 +2752,10 @@ function loadFromLocalStorage() {
                     if (b.dealDone) tagHtml += '<span class="badge" style="background: var(--accent-green); margin-left: 6px;">Deal</span>';
 
                     var pCount = parseInt(b.paxCount) || 0;
-                    var contractStatus = b.contractDocStatus || ((b.contractReceived || b.contractSigned) ? 'vorhanden' : 'offen');
-                    var riderStatus = b.riderDocStatus || ((b.riderReceived || b.riderChecked) ? 'vorhanden' : 'offen');
                     var docStatusHtml =
                         '<div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:6px;">' +
-                            '<span class="badge" style="background:var(--card-bg); color:var(--text-main); border:1px solid var(--border);">📑 ' + getBandDocumentStatusLabel(contractStatus, 'contract') + '</span>' +
-                            '<span class="badge" style="background:var(--card-bg); color:var(--text-main); border:1px solid var(--border);">🎛️ ' + getBandDocumentStatusLabel(riderStatus, 'rider') + '</span>' +
+                            getBandDocumentOverviewHtml(b, 'contract') +
+                            getBandDocumentOverviewHtml(b, 'rider') +
                         '</div>';
 
                     item.innerHTML = 
@@ -2818,6 +2822,38 @@ function loadFromLocalStorage() {
             if (status === 'nicht_noetig') return '➖ Nicht notwendig';
             if (status === 'nicht_vorhanden') return '⚪ Nicht vorhanden';
             return '🟡 Offen';
+        }
+
+        function getBandDocumentOverviewHtml(b, type) {
+            var isContract = type === 'contract';
+            var status = isContract
+                ? (b.contractDocStatus || ((b.contractReceived || b.contractSigned) ? 'vorhanden' : 'offen'))
+                : (b.riderDocStatus || ((b.riderReceived || b.riderChecked) ? 'vorhanden' : 'offen'));
+            var url = normalizeDocumentUrl(isContract ? b.contractDocUrl : b.riderDocUrl);
+            var label = getBandDocumentStatusLabel(status, type);
+            var icon = isContract ? '📑 ' : '🎛️ ';
+
+            if (status === 'vorhanden' && url) {
+                return '<button type="button" class="badge doc-quick-open" ' +
+                    'style="background:var(--card-bg); color:var(--text-main); border:1px solid var(--accent-green); cursor:pointer; padding:5px 8px;" ' +
+                    'title="' + (isContract ? 'Vertrag' : 'Rider') + ' direkt öffnen" ' +
+                    'onclick="event.stopPropagation(); openStoredBandDocument(\'' + b.id + '\', \'' + type + '\')">' +
+                    icon + label + '</button>';
+            }
+
+            return '<span class="badge" style="background:var(--card-bg); color:var(--text-main); border:1px solid var(--border);">' +
+                icon + label + '</span>';
+        }
+
+        function openStoredBandDocument(bandId, type) {
+            var b = getBandById(bandId);
+            if (!b) return;
+            var url = normalizeDocumentUrl(type === 'contract' ? b.contractDocUrl : b.riderDocUrl);
+            if (!url) {
+                alert('Für dieses Dokument ist noch kein PDF-Link oder GitHub-Pfad hinterlegt.');
+                return;
+            }
+            window.open(url, '_blank', 'noopener');
         }
 
         function toggleBandDocumentFields() {
