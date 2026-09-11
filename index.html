@@ -2330,7 +2330,7 @@
             if (!Array.isArray(bands)) bands = [];
             bands.push({
                 id: newId, name: name, dealDone: false, gage: 0, taxRate: 0, showday: '', notesList: [], paymentTermsMainMode: 'full', paymentTermsType: '1a', paymentTermsLocked: false,
-                shuttleNeeded: 'offen', hotelNeeded: 'offen', paxCount: 5, nightsCount: 0, vipGuests: 0, extraFood: [], extraSpecials: [], drinks: {},
+                shuttleNeeded: 'offen', hotelNeeded: 'offen', paxCount: 5, nightsCount: 0, vipGuests: 0, extraFood: [], extraSpecials: [{ text: '', comment: '' }], drinks: {},
                 statusAdvPaid: false, statusRestPaid: false, statusFullPaid: false
             });
 
@@ -2526,7 +2526,7 @@
 
                     if (!b.drinks) b.drinks = {};
                     if (!Array.isArray(b.extraFood)) b.extraFood = [];
-                    if (!Array.isArray(b.extraSpecials)) b.extraSpecials = [];
+                    if (!Array.isArray(b.extraSpecials)) b.extraSpecials = [{ text: '', comment: '' }];
 
                     var isBothDays = days > 1;
                     var isOpen = !!openCateringBands[b.id];
@@ -2588,7 +2588,7 @@
                     for (var s = 0; s < b.extraSpecials.length; s++) {
                         var special = b.extraSpecials[s];
                         if (special.text && special.text.trim()) {
-                            specialArray.push('• ' + special.text + (special.comment ? ' <em>(' + special.comment + ')</em>' : ''));
+                            specialArray.push('• ' + escapeHtml(special.text) + (special.comment ? ' <em>(' + escapeHtml(special.comment) + ')</em>' : ''));
                         }
                     }
 
@@ -2695,8 +2695,8 @@
                     for (var s = 0; s < b.extraSpecials.length; s++) {
                         var special = b.extraSpecials[s];
                         bodyHtml += '<div class="catering-item-row">' +
-                            '<div style="flex:2;"><input type="text" id="cat-special-text-' + b.id + '-' + s + '" value="' + (special.text || '') + '" placeholder="Besonderheit / Sonderwunsch"></div>' +
-                            '<div style="flex:2;"><input type="text" id="cat-special-cmt-' + b.id + '-' + s + '" value="' + (special.comment || '') + '" placeholder="Notiz"></div>' +
+                            '<div style="flex:2;"><input type="text" class="catering-special-text" id="cat-special-text-' + b.id + '-' + s + '" value="' + escapeHtml(special.text || '') + '" placeholder="Besonderheit / Sonderwunsch"></div>' +
+                            '<div style="flex:2;"><input type="text" id="cat-special-cmt-' + b.id + '-' + s + '" value="' + escapeHtml(special.comment || '') + '" placeholder="Notiz"></div>' +
                             '<button class="btn-danger" style="padding:4px 8px;" onclick="removeSpecialCatering(\'' + b.id + '\', ' + s + ')">🗑️</button>' +
                         '</div>';
                     }
@@ -2763,7 +2763,8 @@
                 }
             }
 
-            if (!Array.isArray(b.extraSpecials)) b.extraSpecials = [];
+            if (!Array.isArray(b.extraSpecials)) b.extraSpecials = [{ text: '', comment: '' }];
+            if (b.extraSpecials.length === 0) b.extraSpecials.push({ text: '', comment: '' });
             for (var s = 0; s < b.extraSpecials.length; s++) {
                 b.extraSpecials[s].text = getVal('cat-special-text-' + bandId + '-' + s);
                 b.extraSpecials[s].comment = getVal('cat-special-cmt-' + bandId + '-' + s);
@@ -2821,7 +2822,7 @@
         function addSpecialCatering(bandId) {
             var b = getBandById(bandId);
             if (!b) return;
-            if (!Array.isArray(b.extraSpecials)) b.extraSpecials = [];
+            if (!Array.isArray(b.extraSpecials)) b.extraSpecials = [{ text: '', comment: '' }];
             b.extraSpecials.push({ text: '', comment: '' });
             saveToStorage();
             openCateringBands[bandId] = true;
