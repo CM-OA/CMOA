@@ -850,7 +850,293 @@
         }
 
         .print-header { display: none; }
-    </style>
+    
+
+/* ===== Mobile Optimierung ===== */
+@media (max-width: 768px) {
+    html, body {
+        max-width: 100%;
+        overflow-x: hidden;
+    }
+
+    body {
+        font-size: 15px;
+    }
+
+    .container,
+    .page,
+    .content,
+    main {
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box;
+    }
+
+    .page {
+        padding-left: 8px !important;
+        padding-right: 8px !important;
+    }
+
+    .card,
+    .catering-summary-card,
+    .list-item,
+    .pay-mode-box {
+        box-sizing: border-box;
+        width: 100% !important;
+        max-width: 100% !important;
+        padding: 12px !important;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+    }
+
+    h1, h2, h3, h4 {
+        overflow-wrap: anywhere;
+        word-break: normal;
+    }
+
+    h1 { font-size: 1.45rem !important; }
+    h2 { font-size: 1.25rem !important; }
+    h3 { font-size: 1.05rem !important; }
+    h4 { font-size: 0.98rem !important; }
+
+    input,
+    select,
+    textarea,
+    button {
+        min-height: 44px;
+        font-size: 16px !important;
+        box-sizing: border-box;
+    }
+
+    input[type="checkbox"],
+    input[type="radio"] {
+        min-height: 0;
+        width: 22px;
+        height: 22px;
+    }
+
+    input[type="text"],
+    input[type="number"],
+    input[type="date"],
+    input[type="email"],
+    input[type="tel"],
+    select,
+    textarea {
+        width: 100% !important;
+        max-width: 100% !important;
+    }
+
+    textarea {
+        min-height: 90px;
+    }
+
+    .btn-primary,
+    .btn-danger,
+    .btn-sm,
+    .theme-toggle-btn {
+        min-height: 44px;
+        padding: 10px 12px !important;
+        white-space: normal;
+        line-height: 1.2;
+    }
+
+    .form-group {
+        margin-bottom: 12px !important;
+    }
+
+    /* Header / Navigation mobil */
+    header,
+    .header,
+    .topbar {
+        box-sizing: border-box;
+        max-width: 100%;
+    }
+
+    nav,
+    .nav,
+    .navigation,
+    .menu-buttons,
+    .header-actions {
+        display: flex !important;
+        flex-wrap: wrap !important;
+        gap: 6px !important;
+    }
+
+    nav button,
+    .nav button,
+    .navigation button,
+    .menu-buttons button,
+    .header-actions button {
+        flex: 1 1 calc(50% - 6px);
+        min-width: 0;
+    }
+
+    /* Bandübersicht */
+    #bands-list-container .list-item {
+        gap: 10px !important;
+    }
+
+    #bands-list-container .list-item > div:first-child {
+        text-align: left !important;
+    }
+
+    #bands-list-container .list-item > div:last-child {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 10px !important;
+    }
+
+    #bands-list-container .list-item > div:last-child > div:first-child {
+        width: 100%;
+        line-height: 1.4;
+    }
+
+    #bands-list-container .list-item > div:last-child > div:last-child {
+        display: grid !important;
+        grid-template-columns: 1fr 1fr 52px;
+        width: 100%;
+        gap: 6px !important;
+    }
+
+    #bands-list-container .list-item > div:last-child > div:last-child button {
+        width: 100%;
+        margin: 0 !important;
+    }
+
+    /* Zahlungsziele */
+    #payment-terms-list .card > div:first-child,
+    #payment-countdown-card > div,
+    #pt-main-config-card > div {
+        max-width: 100%;
+    }
+
+    #payment-terms-list .card button[onclick^="togglePaymentBand"] {
+        width: 100% !important;
+    }
+
+    #payment-terms-list .card button[onclick^="togglePaymentBand"] > div {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 4px !important;
+        text-align: left !important;
+    }
+
+    #payment-terms-list .card button[onclick^="togglePaymentBand"] .cost-val,
+    #payment-terms-list .cost-val {
+        font-size: 0.92rem !important;
+    }
+
+    #payment-terms-list [id^="pt-body-"] {
+        width: 100%;
+        max-width: 100%;
+        overflow: hidden;
+    }
+
+    #payment-terms-list .pay-mode-box {
+        padding: 10px !important;
+    }
+
+    /* Catering */
+    #catering-page .catering-item-row {
+        display: grid !important;
+        grid-template-columns: minmax(0, 1fr) !important;
+        gap: 6px !important;
+        align-items: stretch !important;
+    }
+
+    #catering-page .catering-item-row > * {
+        width: 100% !important;
+        max-width: 100% !important;
+    }
+
+    #catering-drink-names-editor button {
+        width: 100%;
+    }
+
+    #catering-drink-name-fields .catering-item-row {
+        grid-template-columns: 28px minmax(0, 1fr) !important;
+        align-items: center !important;
+    }
+
+    /* Tabellen mobil scrollbar statt abgeschnitten */
+    .table-wrapper,
+    .table-responsive,
+    table {
+        max-width: 100%;
+    }
+
+    table {
+        display: block;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        white-space: nowrap;
+    }
+
+    th, td {
+        padding: 8px !important;
+    }
+
+    /* Inline Flexboxen dürfen umbrechen */
+    [style*="display:flex"],
+    [style*="display: flex"] {
+        max-width: 100%;
+    }
+
+    /* Modale / Dialoge */
+    .modal-content,
+    .dialog,
+    .popup {
+        width: calc(100vw - 20px) !important;
+        max-width: calc(100vw - 20px) !important;
+        max-height: 90vh;
+        overflow-y: auto;
+        box-sizing: border-box;
+    }
+}
+
+@media (max-width: 430px) {
+    body {
+        font-size: 14px;
+    }
+
+    .page {
+        padding-left: 6px !important;
+        padding-right: 6px !important;
+    }
+
+    .card,
+    .catering-summary-card,
+    .list-item,
+    .pay-mode-box {
+        padding: 10px !important;
+        border-radius: 10px !important;
+    }
+
+    nav button,
+    .nav button,
+    .navigation button,
+    .menu-buttons button,
+    .header-actions button {
+        flex: 1 1 100%;
+    }
+
+    #bands-list-container .list-item > div:last-child > div:last-child {
+        grid-template-columns: 1fr 1fr !important;
+    }
+
+    #bands-list-container .btn-del-band {
+        grid-column: 1 / -1;
+    }
+
+    .badge {
+        margin-top: 4px;
+        margin-bottom: 2px;
+    }
+}
+
+</style>
     <link rel="manifest" href="manifest.json">
 </head>
 
@@ -2388,7 +2674,7 @@ function loadFromLocalStorage() {
                 (function(b) {
                     var item = document.createElement('div');
                     item.className = 'list-item';
-                    item.style.cssText = 'display:flex; flex-direction:column; gap:8px; padding:12px;';
+                    item.style.cssText = 'display:flex; flex-direction:column; gap:8px; padding:12px; width:100%; box-sizing:border-box;';
 
                     var tagHtml = '';
                     if (b.showday === 'Fr') tagHtml += '<span class="badge" style="background: var(--accent-blue); margin-left: 6px;">Fr</span>';
