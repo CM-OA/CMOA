@@ -2526,7 +2526,7 @@
 
                     if (!b.drinks) b.drinks = {};
                     if (!Array.isArray(b.extraFood)) b.extraFood = [];
-                    if (!Array.isArray(b.extraSpecials)) b.extraSpecials = [{ text: '', comment: '' }];
+                    if (!Array.isArray(b.extraSpecials)) b.extraSpecials = [];
 
                     var isBothDays = days > 1;
                     var isOpen = !!openCateringBands[b.id];
@@ -2588,7 +2588,7 @@
                     for (var s = 0; s < b.extraSpecials.length; s++) {
                         var special = b.extraSpecials[s];
                         if (special.text && special.text.trim()) {
-                            specialArray.push('• ' + escapeHtml(special.text) + (special.comment ? ' <em>(' + escapeHtml(special.comment) + ')</em>' : ''));
+                            specialArray.push('• ' + special.text + (special.comment ? ' <em>(' + special.comment + ')</em>' : ''));
                         }
                     }
 
@@ -2695,8 +2695,8 @@
                     for (var s = 0; s < b.extraSpecials.length; s++) {
                         var special = b.extraSpecials[s];
                         bodyHtml += '<div class="catering-item-row">' +
-                            '<div style="flex:2;"><input type="text" class="catering-special-text" id="cat-special-text-' + b.id + '-' + s + '" value="' + escapeHtml(special.text || '') + '" placeholder="Besonderheit / Sonderwunsch"></div>' +
-                            '<div style="flex:2;"><input type="text" id="cat-special-cmt-' + b.id + '-' + s + '" value="' + escapeHtml(special.comment || '') + '" placeholder="Notiz"></div>' +
+                            '<div style="flex:2;"><input type="text" id="cat-special-text-' + b.id + '-' + s + '" value="' + (special.text || '') + '" placeholder="Besonderheit / Sonderwunsch"></div>' +
+                            '<div style="flex:2;"><input type="text" id="cat-special-cmt-' + b.id + '-' + s + '" value="' + (special.comment || '') + '" placeholder="Notiz"></div>' +
                             '<button class="btn-danger" style="padding:4px 8px;" onclick="removeSpecialCatering(\'' + b.id + '\', ' + s + ')">🗑️</button>' +
                         '</div>';
                     }
