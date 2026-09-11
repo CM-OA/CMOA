@@ -1965,6 +1965,13 @@ function loadFromLocalStorage() {
             if (sub) sub.innerText = bands.length + ' Band(s) angelegt (' + filled + '/' + total + ' Felder)';
         }
 
+        function toggleTheme() {
+            var isNight = document.body.classList.toggle('night-mode');
+            try { localStorage.setItem('cmoa_theme_v1', isNight ? 'night' : 'day'); } catch(e) {}
+            var btn = document.getElementById('theme-toggle-btn');
+            if (btn) btn.innerText = isNight ? '☀️ Daymode' : '🌙 Nightmode';
+        }
+
         function showPage(pageId) {
             normalizeAllBandNames();
             var pages = document.querySelectorAll('.page');
@@ -2391,7 +2398,7 @@ function loadFromLocalStorage() {
                     var pCount = parseInt(b.paxCount) || 0;
 
                     item.innerHTML = 
-                        '<div style="text-align:center; border-bottom:1px dashed var(--border); padding-bottom:6px;">' +
+                        '<div style="text-align:left; border-bottom:1px dashed var(--border); padding-bottom:6px;">' +
                             '<strong style="font-size: 1.15rem; color:var(--text-main); text-transform: uppercase; font-weight: normal;">' + b.name + '</strong> ' + tagHtml +
                         '</div>' +
                         '<div style="display:flex; justify-content:space-between; align-items:center;">' +
@@ -2426,7 +2433,7 @@ function loadFromLocalStorage() {
             var newId = 'band_' + new Date().getTime();
             if (!Array.isArray(bands)) bands = [];
             bands.push({
-                id: newId, name: name, dealDone: false, gage: 0, taxRate: 0, showday: '', notesList: [], paymentTermsMainMode: 'full', paymentTermsType: '1a', paymentTermsLocked: false,
+                id: newId, name: name.trim().toUpperCase(), dealDone: false, gage: 0, taxRate: 0, showday: '', notesList: [], paymentTermsMainMode: 'full', paymentTermsType: '1a', paymentTermsLocked: false,
                 shuttleNeeded: 'offen', hotelNeeded: 'offen', paxCount: 5, nightsCount: 0, vipGuests: 0, extraFood: [], extraSpecials: [{ text: '', comment: '' }], drinks: {},
                 statusAdvPaid: false, statusRestPaid: false, statusFullPaid: false
             });
@@ -3490,10 +3497,13 @@ function loadFromLocalStorage() {
                     var card = document.createElement('div'); card.className = 'card';
 
                     card.innerHTML = 
-                        '<div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding-bottom:6px; margin-bottom:10px;">' +
-                            '<h4 style="margin:0; font-size:1.1rem; color:var(--text-main); text-transform: uppercase;">' + b.name + '</h4>' +
-                            '<span class="cost-val" style="font-size:1rem;">Gesamtbrutto: ' + totalBrutto.toFixed(2) + ' €</span>' +
-                        '</div>' +
+                        '<button type="button" onclick="togglePaymentBand(\'' + b.id + '\')" style="width:100%; border:0; background:transparent; color:var(--text-main); cursor:pointer; padding:0; text-align:left;">' +
+                            '<div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding-bottom:8px; margin-bottom:10px; gap:12px;">' +
+                                '<h4 style="margin:0; font-size:1.1rem; color:var(--text-main); text-transform:uppercase; text-align:left;">' + b.name + '</h4>' +
+                                '<span class="cost-val" style="font-size:1rem; white-space:nowrap;">Gesamtbrutto: ' + totalBrutto.toFixed(2) + ' € <span class="pt-toggle-arrow">▼</span></span>' +
+                            '</div>' +
+                        '</button>' +
+                        '<div id="pt-body-' + b.id + '" style="display:none;">' +
                         '<div style="font-size:0.78rem; color:var(--text-muted); margin-bottom:12px;">' +
                             'Gage Netto: ' + gageNetto.toFixed(2) + ' € | USt (' + taxRate + '%): ' + taxVal.toFixed(2) + ' €' +
                         '</div>' +
@@ -3519,7 +3529,7 @@ function loadFromLocalStorage() {
                             '<div class="pay-mode-box">' +
                                 '<div class="pay-mode-title">🟡 Anzahlung</div>' +
                                 '<div style="font-size:0.8rem; color:var(--text-muted);">Anzahlung erfolgt vorab per Überweisung.</div>' +
-                                '<div class="form-group" style="margin-top:10px; margin-bottom:0;">' +
+                                '<div id="pt-adv-due-box-' + b.id + '" class="form-group" style="margin-top:10px; margin-bottom:0; display:' + (advDone ? 'none' : 'block') + ';">' +
                                     '<label>📅 Geplantes Zahlungsdatum Anzahlung:</label>' +
                                     '<input type="date" id="pt-adv-due-' + b.id + '" value="' + formatPaymentDateInput(b.advDueDate) + '">' +
                                 '</div>' +
@@ -3532,7 +3542,7 @@ function loadFromLocalStorage() {
                                     '<label><input type="radio" name="rad_rest_' + b.id + '" value="rest_bar_rec" ' + (b.paymentTermsType === 'rest_bar_rec' || b.paymentTermsType === '2c' ? 'checked' : '') + '> Restzahlung auf dem Festival in bar gegen Vorlage Rechnung</label>' +
                                     '<label><input type="radio" name="rad_rest_' + b.id + '" value="rest_bar_norec" ' + (b.paymentTermsType === 'rest_bar_norec' || b.paymentTermsType === '2d' ? 'checked' : '') + '> Restzahlung auf dem Festival in bar ohne Rechnung</label>' +
                                 '</div>' +
-                                '<div class="form-group" style="margin-top:10px; margin-bottom:0;">' +
+                                '<div id="pt-rest-due-box-' + b.id + '" class="form-group" style="margin-top:10px; margin-bottom:0; display:' + (restDone ? 'none' : 'block') + ';">' +
                                     '<label>📅 Geplantes Zahlungsdatum Restzahlung:</label>' +
                                     '<input type="date" id="pt-rest-due-' + b.id + '" value="' + formatPaymentDateInput(b.restDueDate) + '">' +
                                 '</div>' +
@@ -3544,7 +3554,7 @@ function loadFromLocalStorage() {
                                 '<div class="form-group"><label>Restbetrag (€ Brutto)</label><input type="number" id="pt-rest-val-' + b.id + '" value="' + (totalBrutto - (b.invAdvAmount ? (b.invAdvAmount * (1 + (b.invAdvTaxRate||19)/100)) : (totalBrutto * ((b.ptSplitPct||50)/100)))).toFixed(2) + '"></div>' +
                             '</div>' +
                         '</div>' +
-                        '<div class="pay-mode-box" style="margin-top:10px;">' +
+                        '<div id="pt-full-due-box-' + b.id + '" class="pay-mode-box" style="margin-top:10px; display:' + (fullDone ? 'none' : 'block') + ';">' +
                             '<div class="pay-mode-title">📅 Geplantes Zahlungsdatum Gesamtzahlung</div>' +
                             '<div class="form-group" style="margin-bottom:0;">' +
                                 '<input type="date" id="pt-full-due-' + b.id + '" value="' + formatPaymentDateInput(b.fullDueDate) + '">' +
@@ -3553,7 +3563,8 @@ function loadFromLocalStorage() {
 
                         configStatusHtml +
 
-                        '<button class="btn-primary" style="width:100%; margin-top:12px;" onclick="savePtData(\'' + b.id + '\')">💾 Zahlungsziele Speichern</button>';
+                        '<button class="btn-primary" style="width:100%; margin-top:12px;" onclick="savePtData(\'' + b.id + '\')">💾 Zahlungsziele Speichern</button>' +
+                        '</div>';
 
                     container.appendChild(card);
                     
@@ -3561,6 +3572,16 @@ function loadFromLocalStorage() {
 
                 })(bands[i]);
             }
+        }
+
+        function togglePaymentBand(bandId) {
+            var body = document.getElementById('pt-body-' + bandId);
+            if (!body) return;
+            var isOpen = body.style.display !== 'none';
+            body.style.display = isOpen ? 'none' : 'block';
+            var card = body.parentElement;
+            var arrow = card ? card.querySelector('.pt-toggle-arrow') : null;
+            if (arrow) arrow.innerText = isOpen ? '▼' : '▲';
         }
 
         function togglePtUI(bandId) {
@@ -5008,6 +5029,15 @@ function loadFromLocalStorage() {
                     .replace(/'/g, '&#039;');
             }
 
+            function toggleGlobalDrinkEditor() {
+                var body = document.getElementById('catering-drink-name-body');
+                var arrow = document.getElementById('global-drink-toggle-arrow');
+                if (!body) return;
+                var isOpen = body.style.display !== 'none';
+                body.style.display = isOpen ? 'none' : 'block';
+                if (arrow) arrow.innerText = isOpen ? '▼' : '▲';
+            }
+
             function buildGlobalDrinkEditor() {
                 var page = document.getElementById('catering-page');
                 if (!page) return;
@@ -5021,10 +5051,17 @@ function loadFromLocalStorage() {
                     editor.className = 'catering-summary-card';
                     editor.style.marginBottom = '12px';
                     editor.innerHTML =
-                        '<h4 style="color:var(--accent-blue); font-size:0.9rem; text-transform:uppercase; margin-bottom:8px;">🥤 Vorgegebene Getränke – Namen bearbeiten</h4>' +
-                        '<p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:10px;">Diese Getränkenamen gelten für alle Bands. Bereits erfasste Mengen bleiben beim Umbenennen erhalten.</p>' +
-                        '<div id="catering-drink-name-fields"></div>' +
-                        '<button class="btn-primary" style="width:100%; margin-top:8px;" onclick="saveCateringDrinkNames()">💾 Getränkenamen speichern</button>';
+                        '<button type="button" onclick="toggleGlobalDrinkEditor()" style="width:100%; border:0; background:transparent; color:var(--text-main); cursor:pointer; padding:0; text-align:left;">' +
+                            '<div style="display:flex; justify-content:space-between; align-items:center; gap:12px;">' +
+                                '<h4 style="color:var(--accent-blue); font-size:0.9rem; text-transform:uppercase; margin:0;">🥤 Vorgegebene Getränke – Namen bearbeiten</h4>' +
+                                '<span id="global-drink-toggle-arrow">▼</span>' +
+                            '</div>' +
+                        '</button>' +
+                        '<div id="catering-drink-name-body" style="display:none; margin-top:10px;">' +
+                            '<p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:10px;">Diese Getränkenamen gelten für alle Bands. Bereits erfasste Mengen bleiben beim Umbenennen erhalten.</p>' +
+                            '<div id="catering-drink-name-fields"></div>' +
+                            '<button class="btn-primary" style="width:100%; margin-top:8px;" onclick="saveCateringDrinkNames()">💾 Getränkenamen speichern</button>' +
+                        '</div>';
                     firstCard.insertBefore(editor, firstCard.querySelector('.catering-summary-card') || firstCard.children[0]);
                 }
 
