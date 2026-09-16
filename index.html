@@ -1149,11 +1149,73 @@
     }
 }
 
+
+
+/* =========================================================
+   CMOA DESIGNWAHL – 4 FARBWELTEN × DAY/NIGHT = 8 DESIGNS
+   ========================================================= */
+body[data-design="steel"] {
+  --bg-color:#eef1f4; --bg-gradient:linear-gradient(135deg,#f7f8fa 0%,#e5e9ee 100%);
+  --card-bg:#ffffff; --text-main:#20252b; --text-muted:#66717d; --border:#cbd2d9;
+  --accent-red:#c83a3a; --accent-yellow:#b77b18; --accent-blue:#356f9f; --accent-green:#25866b;
+  --input-bg:#f1f3f5; --header-bg:linear-gradient(135deg,#ffffff,#e6eaee); --header-text:#20252b;
+  --btn-bg:linear-gradient(145deg,#ffffff,#e9edf1); --btn-hover-bg:linear-gradient(145deg,#eef1f4,#d9dfe5); --btn-border:#bfc7cf;
+}
+body[data-design="steel"].night-mode {
+  --bg-gradient:linear-gradient(135deg,#20242a,#111419); --card-bg:#292e35; --text-main:#f2f4f6; --text-muted:#adb6c0; --border:#48515b;
+  --input-bg:#1e2329; --header-bg:linear-gradient(135deg,#2d333a,#171b20); --header-text:#fff;
+  --btn-bg:linear-gradient(145deg,#343b43,#22272d); --btn-hover-bg:linear-gradient(145deg,#424b55,#2d343c); --btn-border:#56616d;
+}
+body[data-design="ember"] {
+  --bg-gradient:linear-gradient(135deg,#fff9f6,#f2e7e1); --card-bg:#fffdfb; --text-main:#2b2421; --text-muted:#75655e; --border:#dccbc2;
+  --accent-red:#b83232; --accent-yellow:#b66a22; --accent-blue:#586f8d; --accent-green:#397a61; --input-bg:#f8f0eb;
+  --header-bg:linear-gradient(135deg,#fffaf7,#eadbd2); --header-text:#2b2421;
+  --btn-bg:linear-gradient(145deg,#fffdfb,#f0e3dc); --btn-hover-bg:linear-gradient(145deg,#f5e9e2,#e3d2c8); --btn-border:#d3beb3;
+}
+body[data-design="ember"].night-mode {
+  --bg-gradient:linear-gradient(135deg,#241b19,#100d0c); --card-bg:#302522; --text-main:#f7efeb; --text-muted:#c1aaa0; --border:#59453e;
+  --input-bg:#211917; --header-bg:linear-gradient(135deg,#352824,#17110f); --header-text:#fff;
+  --btn-bg:linear-gradient(145deg,#3b2e2a,#261d1a); --btn-hover-bg:linear-gradient(145deg,#4a3934,#312521); --btn-border:#654e46;
+}
+body[data-design="forest"] {
+  --bg-gradient:linear-gradient(135deg,#f5f8f5,#e4ebe5); --card-bg:#fcfdfc; --text-main:#202923; --text-muted:#647168; --border:#c8d3ca;
+  --accent-red:#b74444; --accent-yellow:#a97a27; --accent-blue:#49717a; --accent-green:#347354; --input-bg:#eef3ef;
+  --header-bg:linear-gradient(135deg,#fbfdfb,#dfe8e1); --header-text:#202923;
+  --btn-bg:linear-gradient(145deg,#ffffff,#e7eee8); --btn-hover-bg:linear-gradient(145deg,#edf3ee,#d7e2d9); --btn-border:#bdcbbf;
+}
+body[data-design="forest"].night-mode {
+  --bg-gradient:linear-gradient(135deg,#1c2620,#0d120f); --card-bg:#26332b; --text-main:#f0f5f1; --text-muted:#a9baae; --border:#43594a;
+  --input-bg:#19221c; --header-bg:linear-gradient(135deg,#2b3a31,#131a16); --header-text:#fff;
+  --btn-bg:linear-gradient(145deg,#314137,#202b24); --btn-hover-bg:linear-gradient(145deg,#3d5144,#29372e); --btn-border:#506957;
+}
+body[data-design="ocean"] {
+  --bg-gradient:linear-gradient(135deg,#f4f8fb,#e3edf4); --card-bg:#fcfdff; --text-main:#1e2933; --text-muted:#607181; --border:#c4d2dd;
+  --accent-red:#bd3f4b; --accent-yellow:#ad7b27; --accent-blue:#2f6f9b; --accent-green:#2e7d72; --input-bg:#edf4f8;
+  --header-bg:linear-gradient(135deg,#fbfdff,#dce9f1); --header-text:#1e2933;
+  --btn-bg:linear-gradient(145deg,#ffffff,#e5eff5); --btn-hover-bg:linear-gradient(145deg,#edf5f9,#d5e4ed); --btn-border:#b9cbd7;
+}
+body[data-design="ocean"].night-mode {
+  --bg-gradient:linear-gradient(135deg,#18242d,#0b1116); --card-bg:#22313c; --text-main:#f0f5f8; --text-muted:#a5b7c3; --border:#3d5667;
+  --input-bg:#16222a; --header-bg:linear-gradient(135deg,#273946,#10181e); --header-text:#fff;
+  --btn-bg:linear-gradient(145deg,#2d414f,#1d2b35); --btn-hover-bg:linear-gradient(145deg,#395363,#263945); --btn-border:#496779;
+}
+/* sanfter, aber klarerer Kontrast für alle Varianten */
+.card,.progress-card,.akk-card,.catering-summary-card { box-shadow:0 4px 14px rgba(0,0,0,.07); }
+.menu-btn,.btn-subtle,.btn-back,input,select,textarea { border-color:var(--border); }
+body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card { box-shadow:0 5px 18px rgba(0,0,0,.24); }
+.design-picker { margin-top:16px; padding:13px; border:1px solid var(--border); border-radius:14px; background:var(--card-bg); box-shadow:0 3px 12px rgba(0,0,0,.05); }
+.design-picker-title { font-size:.76rem; font-weight:800; text-transform:uppercase; letter-spacing:.7px; color:var(--text-muted); text-align:center; margin-bottom:9px; }
+.design-picker-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:7px; }
+.design-choice { border:1px solid var(--border); border-radius:10px; padding:9px 5px; background:var(--btn-bg); color:var(--text-main); font-size:.76rem; font-weight:700; cursor:pointer; }
+.design-choice.active { outline:2px solid var(--accent-blue); outline-offset:1px; }
+.design-dot { width:10px;height:10px;border-radius:50%;display:inline-block;margin-right:5px;vertical-align:-1px;background:var(--dot); }
+@media(max-width:520px){.design-picker-grid{grid-template-columns:1fr 1fr}.design-choice{padding:10px 6px}}
+
 </style>
     <link rel="manifest" href="manifest.json">
 </head>
 
-<body>
+<body data-design="steel">
     <header>
         <div style="width: 80px;"></div>
         <h1>CMOA 2027</h1>
@@ -1203,6 +1265,16 @@
                     <input type="file" id="backup-file-input" style="display:none;" accept=".json" onchange="handleFileImport(event)">
                 </div>
             </div>
+            <div class="design-picker">
+                <div class="design-picker-title">🎨 Design auswählen · Darkmode funktioniert mit jedem Design</div>
+                <div class="design-picker-grid">
+                    <button type="button" class="design-choice" data-design-choice="steel" onclick="setDesign('steel')"><span class="design-dot" style="--dot:#7b8793"></span>Steel</button>
+                    <button type="button" class="design-choice" data-design-choice="ember" onclick="setDesign('ember')"><span class="design-dot" style="--dot:#a84a3f"></span>Ember</button>
+                    <button type="button" class="design-choice" data-design-choice="forest" onclick="setDesign('forest')"><span class="design-dot" style="--dot:#4f785e"></span>Forest</button>
+                    <button type="button" class="design-choice" data-design-choice="ocean" onclick="setDesign('ocean')"><span class="design-dot" style="--dot:#477b9c"></span>Ocean</button>
+                </div>
+            </div>
+
         </div>
 
         <!-- CATERING SEITE -->
@@ -2122,8 +2194,11 @@
                 loadFromLocalStorage();
             }
 
-            // Theme laden
+            // Design + Theme laden
             try {
+                var designSaved = localStorage.getItem('cmoa_design_v1') || 'steel';
+                document.body.setAttribute('data-design', designSaved);
+                updateDesignButtons();
                 var themeSaved = localStorage.getItem('cmoa_theme_v1');
                 if (themeSaved === 'night') {
                     document.body.classList.add('night-mode');
@@ -2323,6 +2398,21 @@ function loadFromLocalStorage() {
             fill.style.width = pct + '%';
             text.innerText = pct + '%';
             if (sub) sub.innerText = bands.length + ' Band(s) angelegt (' + filled + '/' + total + ' Felder)';
+        }
+
+        function updateDesignButtons() {
+            var current = document.body.getAttribute('data-design') || 'steel';
+            document.querySelectorAll('[data-design-choice]').forEach(function(btn){
+                btn.classList.toggle('active', btn.getAttribute('data-design-choice') === current);
+            });
+        }
+
+        function setDesign(design) {
+            var allowed = ['steel','ember','forest','ocean'];
+            if (allowed.indexOf(design) === -1) design = 'steel';
+            document.body.setAttribute('data-design', design);
+            try { localStorage.setItem('cmoa_design_v1', design); } catch(e) {}
+            updateDesignButtons();
         }
 
         function toggleTheme() {
