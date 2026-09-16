@@ -1387,7 +1387,10 @@
             <!-- ÜBERSICHT -->
             <div id="sec-akk-uebersicht" class="akk-section">
                 <div class="akk-card">
-                    <input type="text" id="src-overview" placeholder="Suchen in Übersicht...">
+                    <input type="text" id="src-overview" placeholder="Suchen in Übersicht..." style="margin-bottom:8px;">
+                    <select id="filter-org-overview" style="width:100%;">
+                        <option value="">Alle Organisationen</option>
+                    </select>
                 </div>
                 <div id="list-overview"></div>
             </div>
@@ -2522,6 +2525,8 @@ function loadFromLocalStorage() {
             var srcOv = document.getElementById('src-overview');
             var srcCh = document.getElementById('src-checkin');
             if (srcOv) srcOv.oninput = renderAkk;
+            var filterOrgOv = document.getElementById('filter-org-overview');
+            if (filterOrgOv) filterOrgOv.onchange = renderAkk;
             if (srcCh) srcCh.oninput = renderAkk;
 
             document.addEventListener('click', function(e) {
@@ -2569,9 +2574,27 @@ function loadFromLocalStorage() {
 
             var srcOv = document.getElementById('src-overview');
             var qO = srcOv ? srcOv.value.toLowerCase() : "";
+            var filterOrgOv = document.getElementById('filter-org-overview');
+            var selectedOrg = filterOrgOv ? filterOrgOv.value : "";
+            if (filterOrgOv) {
+                var currentOrg = selectedOrg;
+                var orgMap = {};
+                akkDb.forEach(function(r) { var o = String(r.org || '—').trim(); if (o) orgMap[o.toLowerCase()] = o; });
+                var orgs = Object.keys(orgMap).map(function(k){ return orgMap[k]; }).sort(function(a,b){ return a.localeCompare(b,'de',{sensitivity:'base'}); });
+                filterOrgOv.innerHTML = '<option value="">Alle Organisationen</option>' + orgs.map(function(o){
+                    var safe = o.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+                    return '<option value="'+safe+'">'+safe+'</option>';
+                }).join('');
+                filterOrgOv.value = currentOrg;
+                selectedOrg = filterOrgOv.value;
+            }
             var listO = document.getElementById('list-overview');
             if(listO) {
-                var fO = akkDb.filter(function(r){ return r.name.toLowerCase().indexOf(qO) > -1 || r.org.toLowerCase().indexOf(qO) > -1 || r.id.toLowerCase().indexOf(qO) > -1; });
+                var fO = akkDb.filter(function(r){
+                    var matchesSearch = String(r.name||'').toLowerCase().indexOf(qO) > -1 || String(r.org||'').toLowerCase().indexOf(qO) > -1 || String(r.id||'').toLowerCase().indexOf(qO) > -1;
+                    var matchesOrg = !selectedOrg || String(r.org||'') === selectedOrg;
+                    return matchesSearch && matchesOrg;
+                });
                 
                 if(fO.length === 0) listO.innerHTML = '<div class="akk-empty">Keine Personen vorhanden</div>';
                 else {
@@ -2648,7 +2671,13 @@ function loadFromLocalStorage() {
             for(var r=0;r<rows.length;r++){
                 doc.setFillColor(r%2===0?248:255,r%2===0?248:255,r%2===0?248:255); doc.roundedRect(infoX,y,infoW,18,1.5,1.5,'F');
                 doc.setTextColor(105,105,105); doc.setFont('helvetica','bold'); doc.setFontSize(7.2); doc.text(rows[r][0],infoX+6,y+6.5);
-                doc.setTextColor(dark[0],dark[1],dark[2]); doc.setFontSize(r===0?13:11.5);
+                if (rows[r][0] === 'BETRAG') {
+                    if (Number(rec.amt || 0) === 0) doc.setTextColor(22,163,74); // Eintritt frei = grün
+                    else doc.setTextColor(red[0],red[1],red[2]); // Betrag = rot
+                } else {
+                    doc.setTextColor(dark[0],dark[1],dark[2]);
+                }
+                doc.setFontSize(r===0?13:11.5);
                 var valLines=doc.splitTextToSize(rows[r][1],infoW-12); doc.text(valLines,infoX+6,y+13.5); y+=rowH;
             }
 
