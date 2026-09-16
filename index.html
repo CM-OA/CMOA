@@ -9,7 +9,7 @@
   function initSupabaseClient() {
       if (window.supabase && !_supabase) {
           const SUPABASE_URL = 'https://yxsjfktrxjtljbcxovio.supabase.co';
-          const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl4c2pma3RyeGp0bGpiY3hvdmlvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg5OTczNDQsImV4cCI6MjEwNDU3MzM0NH0.wGwbsieKlzSGwy1B5tc1Yfyw8a2t6Dn6nKFd2uQFwEc';
+          const SUPABASE_ANON_KEY = 'sb_publishable_G4sZ1dFc8LMALE5ULB_HSg_qltBZhVM';
           _supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
       }
   }
@@ -1211,6 +1211,17 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
 .design-dot { width:10px;height:10px;border-radius:50%;display:inline-block;margin-right:5px;vertical-align:-1px;background:var(--dot); }
 @media(max-width:520px){.design-picker-grid{grid-template-columns:1fr 1fr}.design-choice{padding:10px 6px}}
 
+
+        /* ===== CMOA LOGIN & RECHTESYSTEM ===== */
+        #auth-gate{position:fixed;inset:0;z-index:99999;background:var(--bg-gradient);display:flex;align-items:center;justify-content:center;padding:20px}
+        .auth-card{width:min(430px,100%);background:var(--card-bg);border:1px solid var(--border);border-radius:18px;padding:24px;box-shadow:0 18px 55px rgba(15,23,42,.16)}
+        .auth-card h2{margin:0 0 6px}.auth-card p{color:var(--text-muted);font-size:.86rem;margin:0 0 18px}.auth-card input{margin-bottom:10px}
+        .auth-error{min-height:20px;color:var(--accent-red);font-size:.82rem;font-weight:700;margin:6px 0}.auth-userbar{display:flex;gap:8px;align-items:center;justify-content:flex-end;flex-wrap:wrap;margin:0 0 12px;font-size:.78rem;color:var(--text-muted)}
+        .permission-hidden{display:none!important}.rights-banner{display:none;background:rgba(217,119,6,.10);border:1px solid rgba(217,119,6,.35);padding:8px 10px;border-radius:9px;margin-bottom:10px;font-size:.78rem;font-weight:700;color:var(--accent-yellow)}
+        .rights-banner.show{display:block}.admin-perm-row{display:grid;grid-template-columns:minmax(120px,1fr) 150px;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)}
+        .admin-user-card{background:var(--card-bg);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:10px}.admin-user-email{font-weight:800;word-break:break-word}.admin-user-meta{font-size:.76rem;color:var(--text-muted);margin:3px 0 10px}
+        @media(max-width:520px){.admin-perm-row{grid-template-columns:1fr 125px}.auth-card{padding:18px}}
+
 </style>
     <link rel="manifest" href="manifest.json">
 </head>
@@ -1222,6 +1233,18 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
         <button class="theme-toggle-btn" onclick="toggleTheme()" id="theme-toggle-btn">🌙 Nightmode</button>
     </header>
 
+    
+    <div id="auth-gate">
+      <div class="auth-card">
+        <h2>🔐 CMOA 2027 Login</h2>
+        <p>Bitte mit deinem freigeschalteten Benutzerkonto anmelden.</p>
+        <input type="email" id="auth-email" placeholder="E-Mail-Adresse" autocomplete="username">
+        <input type="password" id="auth-password" placeholder="Passwort" autocomplete="current-password">
+        <div id="auth-error" class="auth-error"></div>
+        <button type="button" class="btn-primary" style="width:100%" onclick="cmoaLogin()">ANMELDEN</button>
+      </div>
+    </div>
+
     <div class="container">
 
         <div class="print-header">
@@ -1231,17 +1254,20 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
 
         <!-- HAUPTMENÜ -->
         <div id="main-page" class="page active">
+            <div class="auth-userbar"><span id="auth-user-label"></span><button type="button" class="btn-subtle" onclick="cmoaLogout()">Abmelden</button></div>
+            <div id="rights-banner" class="rights-banner"></div>
             <div class="menu-grid">
-                <button class="menu-btn menu-btn-overview" onclick="showPage('overview-page')">Übersicht</button>
-                <button class="menu-btn menu-btn-bands" onclick="showPage('bands-page')">Bands</button>
-                <button class="menu-btn menu-btn-yellow" onclick="showPage('hotel-page')">Hotel</button>
-                <button class="menu-btn menu-btn-yellow" onclick="showPage('shuttle-page')">Shuttle</button>
-                <button class="menu-btn" onclick="showPage('ro-page')">Running Order</button>
-                <button class="menu-btn" onclick="showPage('payment-terms-page')">Zahlungsziel / Zahlungsweise</button>
-                <button class="menu-btn" onclick="showPage('fees-page')">Gagen</button>
-                <button class="menu-btn" onclick="showPage('misc-page')">To-Do</button>
-                <button class="menu-btn menu-btn-blue" onclick="showPage('catering-page')">Catering</button>
-                <button class="menu-btn menu-btn-blue" onclick="showPage('akkreditierung-page')">Akkreditierung</button>
+                <button class="menu-btn menu-btn-overview" data-module="overview" onclick="showPage('overview-page')">Übersicht</button>
+                <button class="menu-btn menu-btn-bands" data-module="bands" onclick="showPage('bands-page')">Bands</button>
+                <button class="menu-btn menu-btn-yellow" data-module="hotel" onclick="showPage('hotel-page')">Hotel</button>
+                <button class="menu-btn menu-btn-yellow" data-module="shuttle" onclick="showPage('shuttle-page')">Shuttle</button>
+                <button class="menu-btn" data-module="running_order" onclick="showPage('ro-page')">Running Order</button>
+                <button class="menu-btn" data-module="payments" onclick="showPage('payment-terms-page')">Zahlungsziel / Zahlungsweise</button>
+                <button class="menu-btn" data-module="fees" onclick="showPage('fees-page')">Gagen</button>
+                <button class="menu-btn" data-module="todos" onclick="showPage('misc-page')">To-Do</button>
+                <button class="menu-btn menu-btn-blue" data-module="catering" onclick="showPage('catering-page')">Catering</button>
+                <button class="menu-btn menu-btn-blue" data-module="accreditation" onclick="showPage('akkreditierung-page')">Akkreditierung</button>
+                <button id="admin-menu-btn" class="menu-btn permission-hidden" data-module="admin" onclick="showPage('admin-page')">⚙️ Benutzer & Rechte</button>
             </div>
 
             <div class="progress-card">
@@ -1257,9 +1283,9 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
                 </div>
 
                 <div class="backup-section">
-                    <button class="btn-subtle" onclick="showPage('payment-terms-page')">💳 Zahlungsziele / Zahlungsweisen</button>
-                    <button class="btn-subtle" onclick="showPage('band-notes-page')">📝 Notizen / Zusatzvereinbarungen</button>
-                    <button class="btn-subtle" onclick="showPage('export-page')">📤 Daten Exportieren</button>
+                    <button class="btn-subtle" data-module="payments" onclick="showPage('payment-terms-page')">💳 Zahlungsziele / Zahlungsweisen</button>
+                    <button class="btn-subtle" data-module="documents" onclick="showPage('band-notes-page')">📝 Notizen / Zusatzvereinbarungen</button>
+                    <button class="btn-subtle" data-module="export" onclick="showPage('export-page')">📤 Daten Exportieren</button>
                     <button class="btn-subtle" onclick="exportBackup()">💾 Backup Exportieren</button>
                     <button class="btn-subtle" onclick="importBackup()">📥 Backup Laden</button>
                     <input type="file" id="backup-file-input" style="display:none;" accept=".json" onchange="handleFileImport(event)">
@@ -1275,6 +1301,18 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
                 </div>
             </div>
 
+        </div>
+
+
+        <!-- BENUTZER & RECHTE -->
+        <div id="admin-page" class="page">
+            <button class="btn-back" onclick="showPage('main-page')">← Hauptmenü</button>
+            <div class="card">
+                <h3>⚙️ Benutzer & Rechte</h3>
+                <p style="font-size:.82rem;color:var(--text-muted);">Benutzerkonten werden in Supabase Auth angelegt. Hier legst du Rolle und Rechte der bereits vorhandenen Konten fest.</p>
+                <button type="button" class="btn-primary" onclick="loadAdminUsers()">↻ Benutzer laden</button>
+            </div>
+            <div id="admin-users-list"></div>
         </div>
 
         <!-- CATERING SEITE -->
@@ -1537,7 +1575,7 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
 
         <!-- DETAILANSICHT (VIEW) -->
         <div id="band-view-page" class="page">
-            <button class="btn-back" onclick="showPage('bands-page')">← Zurück zur Liste</button>
+            <button class="btn-back" data-module="bands" onclick="showPage('bands-page')">← Zurück zur Liste</button>
             <div class="card">
                 <h2 id="view-band-title" style="margin-bottom:14px; text-align:center; color:var(--accent-yellow); text-transform:uppercase;"></h2>
                 <div id="view-band-content"></div>
@@ -1547,7 +1585,7 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
 
         <!-- BAND EDIT / DETAIL MASKE -->
         <div id="band-detail-page" class="page">
-            <button class="btn-back" onclick="showPage('bands-page')">← Zurück</button>
+            <button class="btn-back" data-module="bands" onclick="showPage('bands-page')">← Zurück</button>
             <h2 id="detail-band-title" style="margin-bottom: 12px; text-align: center; text-transform: uppercase;"></h2>
 
             <div class="card">
@@ -1898,7 +1936,7 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
 
         <!-- UNTERMENÜ NOTIZEN JE BAND -->
         <div id="single-note-page" class="page">
-            <button class="btn-back" onclick="showPage('band-notes-page')">← Zurück zur Notizübersicht</button>
+            <button class="btn-back" data-module="documents" onclick="showPage('band-notes-page')">← Zurück zur Notizübersicht</button>
             
             <div class="card">
                 <h3 id="note-band-title">Notizen verwalten</h3>
@@ -2133,95 +2171,99 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
             "Weißwein", "Rum", "Whisky", "Wodka"
         ];
 
+        // =============================================================
+        // PHASE 2: GETRENNTE SUPABASE-MODULE + SERVERSEITIGE RLS
+        // =============================================================
+        var CMOA_DATA_MODULES = ['bands','fees','payments','hotel','shuttle','running_order','catering','documents','todos','accreditation'];
+        var CMOA_FIELD_GROUPS = {
+            bands:['id','name','showday','contactName','contactEmail','contactPhone','contactOrg','dealDone'],
+            fees:['id','gage','taxRate','invAdvAmount','invAdvTaxRate','noInvoice','paid'],
+            payments:['id','paymentTermsMainMode','paymentTermsType','ptSplitPct','advDate','advDueDate','restDueDate','fullDueDate','fullPaidDate','statusAdvPaid','statusRestPaid','statusFullPaid'],
+            hotel:['id','hotelNeeded','hotelName','hotelFrom','hotelTo','hotelEzCount','hotelDzCount','hotelPersons','nightsCount'],
+            shuttle:['id','shuttleNeeded','shuttleDate','shuttleTime','shuttleAirport','shuttleFlightNum','shuttlePax','shuttleDriver','shuttleVehicle','shuttleRetDate','shuttleRetTime','shuttleRetAirport','shuttleRetFlightNum'],
+            running_order:['id','roStart','roEnd','roChangeover'],
+            catering:['id','paxCount','vipGuests','cateringDays','drinks','extraFood','extraSpecials','cateringDrinkNames','meatCount','vegetarianCount','veganCount'],
+            documents:['id','contractDocStatus','contractDocUrl','contractReceived','contractSigned','riderDocStatus','riderDocUrl','riderReceived','riderChecked','bandNotes','notesList','dealText'],
+            todos:['id']
+        };
+        function bandSlice(b, module){
+            var o={}; (CMOA_FIELD_GROUPS[module]||[]).forEach(function(k){ if(b && b[k] !== undefined) o[k]=b[k]; });
+            return o;
+        }
+        function payloadForDataModule(module){
+            if(module==='accreditation') return {akkDb:Array.isArray(akkDb)?akkDb:[]};
+            if(module==='todos') return {manualTodos:Array.isArray(manualTodos)?manualTodos:[]};
+            if(module==='hotel') return {bands:(bands||[]).map(function(b){return bandSlice(b,module);}),hotelCostsList:Array.isArray(hotelCostsList)?hotelCostsList:[]};
+            return {bands:(bands||[]).map(function(b){return bandSlice(b,module);})};
+        }
+        function mergeBandPart(part){
+            if(!part || !part.id) return;
+            var target=null;
+            for(var i=0;i<bands.length;i++){if(bands[i].id===part.id){target=bands[i];break;}}
+            if(!target){target={id:part.id};bands.push(target);}
+            Object.keys(part).forEach(function(k){target[k]=part[k];});
+        }
+        function applyDataModule(module,data){
+            data=data||{};
+            if(module==='accreditation'){akkDb=Array.isArray(data.akkDb)?data.akkDb:[];return;}
+            if(module==='todos'){manualTodos=Array.isArray(data.manualTodos)?data.manualTodos:[];return;}
+            if(module==='hotel' && Array.isArray(data.hotelCostsList)) hotelCostsList=data.hotelCostsList;
+            if(Array.isArray(data.bands)) data.bands.forEach(mergeBandPart);
+        }
+        async function writeDataModule(module){
+            if(!_supabase || !hasDataModuleWrite(module)) return;
+            var row={module:module,data:payloadForDataModule(module),updated_at:new Date().toISOString(),updated_by:currentAuthUser?currentAuthUser.id:null};
+            var r=await _supabase.from('cmoa_module_state').upsert(row,{onConflict:'module'});
+            if(r.error) throw new Error(module+': '+r.error.message);
+        }
+        function hasDataModuleWrite(module){
+            if(currentUserProfile && currentUserProfile.role==='admin') return true;
+            if(module==='accreditation') return hasModuleRight('accreditation','write')||hasModuleRight('checkin','write');
+            return hasModuleRight(module,'write');
+        }
+        async function migrateLegacyStateIfNeeded(){
+            if(!currentUserProfile || currentUserProfile.role!=='admin') return false;
+            var chk=await _supabase.from('cmoa_module_state').select('module').limit(1);
+            if(chk.error || (chk.data&&chk.data.length)) return false;
+            var old=await _supabase.from('app_state').select('*').eq('key','cmoa_main_state').maybeSingle();
+            if(old.error || !old.data || !old.data.data) return false;
+            var parsed=typeof old.data.data==='string'?JSON.parse(old.data.data):old.data.data;
+            bands=Array.isArray(parsed.bands)?parsed.bands:[]; manualTodos=parsed.manualTodos||[]; hotelCostsList=parsed.hotelCostsList||[]; akkDb=parsed.akkDb||[];
+            normalizeAllBandNames();
+            for(var i=0;i<CMOA_DATA_MODULES.length;i++) await writeDataModule(CMOA_DATA_MODULES[i]);
+            return true;
+        }
+        async function loadPhase2CloudData(){
+            bands=[];manualTodos=[];hotelCostsList=[];akkDb=[];
+            await migrateLegacyStateIfNeeded();
+            var r=await _supabase.from('cmoa_module_state').select('module,data');
+            if(r.error) throw new Error(r.error.message);
+            (r.data||[]).forEach(function(row){applyDataModule(row.module,row.data);});
+            normalizeAllBandNames();
+            // Fach-Daten werden in Phase 2 nicht mehr im Browser-LocalStorage gehalten.
+            ['cmoa_bands_v4','cmoa_manual_todos_v1','cmoa_hotel_costs_v1','cmoa_akkreditierung_v1'].forEach(function(k){try{localStorage.removeItem(k);}catch(e){}});
+        }
+        function startPhase2Realtime(){
+            try{
+                _supabase.channel('cmoa-phase2-realtime').on('postgres_changes',{event:'*',schema:'public',table:'cmoa_module_state'},async function(){
+                    try{await loadPhase2CloudData();updateMainProgress();renderBandsList();if(typeof renderCateringPage==='function')renderCateringPage();if(typeof renderAkk==='function')renderAkk();}catch(e){console.error(e);}
+                }).subscribe();
+            }catch(e){console.log('Realtime nicht verfügbar:',e);}
+        }
         window.onload = async function() {
             initSupabaseClient();
-
-            if (_supabase) {
-                try {
-                    // Versuche, Daten aus der Supabase-Cloud zu laden
-                    const { data, error } = await _supabase
-                        .from('app_state')
-                        .select('*')
-                        .eq('key', 'cmoa_main_state')
-                        .maybeSingle();
-
-                    if (!error && data && data.data) {
-                        var parsed = typeof data.data === 'string' ? JSON.parse(data.data) : data.data;
-                        // Cloud-Daten nur übernehmen, wenn tatsächlich Bands vorhanden sind.
-                        // So kann ein leerer/alter Cloud-State nicht die lokal vorhandenen Bands überschreiben.
-                        if (Array.isArray(parsed.bands) && parsed.bands.length > 0) {
-                            bands = parsed.bands;
-                            normalizeAllBandNames();
-                            manualTodos = parsed.manualTodos || [];
-                            hotelCostsList = parsed.hotelCostsList || [];
-                            akkDb = parsed.akkDb || [];
-                        } else {
-                            loadFromLocalStorage();
-                        }
-                    } else {
-                        loadFromLocalStorage();
-                    }
-                } catch(e) {
-                    console.log("Cloud-Laden fehlgeschlagen, nutze Lokalspeicher:", e);
-                    loadFromLocalStorage();
-                }
-
-                // Supabase Realtime Listener für automatische Updates
-                try {
-                    _supabase
-                        .channel('cmoa-realtime-channel')
-                        .on('postgres_changes', { event: '*', schema: 'public', table: 'app_state' }, payload => {
-                            console.log('Daten wurden extern aktualisiert, lade neu...');
-                            if (payload.new && payload.new.data) {
-                                var parsed = typeof payload.new.data === 'string' ? JSON.parse(payload.new.data) : payload.new.data;
-                                // Ein leerer Realtime-State darf vorhandene Bands nicht ausblenden.
-                                if (Array.isArray(parsed.bands) && parsed.bands.length > 0) {
-                                    bands = parsed.bands;
-                                    manualTodos = parsed.manualTodos || [];
-                                    hotelCostsList = parsed.hotelCostsList || [];
-                                    akkDb = parsed.akkDb || [];
-                                    updateMainProgress();
-                                    renderBandsList();
-                                    if (typeof renderCateringPage === 'function') renderCateringPage();
-                                }
-                            }
-                        })
-                        .subscribe();
-                } catch(err) {
-                    console.log("Realtime konnte nicht gestartet werden:", err);
-                }
-            } else {
-                loadFromLocalStorage();
-            }
-
-            // Design + Theme laden
+            if (!_supabase) { showAuthError('Supabase konnte nicht geladen werden.'); return; }
+            var authOk = await initCmoaAuth(); if (!authOk) return;
+            try { await loadPhase2CloudData(); startPhase2Realtime(); }
+            catch(e){ showAuthError('Phase-2-Daten konnten nicht geladen werden: '+e.message); console.error(e); return; }
             try {
-                var designSaved = localStorage.getItem('cmoa_design_v1') || 'steel';
-                document.body.setAttribute('data-design', designSaved);
-                updateDesignButtons();
-                var themeSaved = localStorage.getItem('cmoa_theme_v1');
-                if (themeSaved === 'night') {
-                    document.body.classList.add('night-mode');
-                    var btn = document.getElementById('theme-toggle-btn');
-                    if (btn) btn.innerText = '☀️ Daymode';
-                }
+                var designSaved=localStorage.getItem('cmoa_design_v1')||'steel';document.body.setAttribute('data-design',designSaved);updateDesignButtons();
+                var themeSaved=localStorage.getItem('cmoa_theme_v1');if(themeSaved==='night'){document.body.classList.add('night-mode');var btn=document.getElementById('theme-toggle-btn');if(btn)btn.innerText='☀️ Daymode';}
             } catch(e) {}
-
-            if (!Array.isArray(bands)) bands = [];
-            if (!Array.isArray(manualTodos)) manualTodos = [];
-            if (!Array.isArray(hotelCostsList)) hotelCostsList = [];
-            if (!Array.isArray(akkDb)) akkDb = [];
-
-            try {
-                updateMainProgress();
-                renderBandsList();
-                initAkkreditierung();
-            } catch(err) {
-                console.error("Init error:", err);
-            }
+            if(!Array.isArray(bands))bands=[];if(!Array.isArray(manualTodos))manualTodos=[];if(!Array.isArray(hotelCostsList))hotelCostsList=[];if(!Array.isArray(akkDb))akkDb=[];
+            try{updateMainProgress();renderBandsList();initAkkreditierung();}catch(err){console.error('Init error:',err);}
         };
 
-        
         // =============================================================
         // EINHEITLICHE BANDNAMEN & ZAHLUNGSFRISTEN
         // =============================================================
@@ -2297,40 +2339,19 @@ function loadFromLocalStorage() {
         }
 
         async function saveToStorage() {
-            try {
-                normalizeAllBandNames();
-                if (Array.isArray(bands)) {
-                    bands.sort(function(a, b) { return (a.name || '').localeCompare(b.name || '', 'de', { sensitivity: 'base' }); });
-                }
-
-                var statePayload = {
-                    bands: bands,
-                    manualTodos: manualTodos,
-                    hotelCostsList: hotelCostsList,
-                    akkDb: akkDb
-                };
-
-                if (_supabase) {
-                    // Speichern in Supabase (Cloud)
-                    const { error } = await _supabase
-                        .from('app_state')
-                        .upsert({ key: 'cmoa_main_state', data: statePayload });
-
-                    if (error) {
-                        console.error('Fehler beim Cloud-Speichern:', error);
-                    }
-                }
-
-                // Zusätzlich als Backup lokal speichern
-                localStorage.setItem('cmoa_bands_v4', JSON.stringify(bands));
-                localStorage.setItem('cmoa_manual_todos_v1', JSON.stringify(manualTodos));
-                localStorage.setItem('cmoa_hotel_costs_v1', JSON.stringify(hotelCostsList));
-                localStorage.setItem('cmoa_akkreditierung_v1', JSON.stringify(akkDb));
-
-                updateMainProgress();
-            } catch(e) {
-                console.error('Speicherfehler:', e);
+            var activePage=document.querySelector('.page.active');
+            var activeModule=activePage?(CMOA_PAGE_MODULES[activePage.id]||null):null;
+            if(activeModule && activeModule!=='main' && !hasModuleRight(activeModule,'write')){
+                alert('Du hast für diesen Bereich nur Leserechte. Änderungen werden nicht gespeichert.');return false;
             }
+            try{
+                normalizeAllBandNames();
+                if(Array.isArray(bands))bands.sort(function(a,b){return (a.name||'').localeCompare(b.name||'','de',{sensitivity:'base'});});
+                // Sicherheit: Es werden ausschließlich Module geschrieben, für die der angemeldete Benutzer Schreibrecht besitzt.
+                // Dadurch kann ein manipuliertes Browser-UI keine fremden/sensiblen Module überschreiben.
+                for(var i=0;i<CMOA_DATA_MODULES.length;i++) if(hasDataModuleWrite(CMOA_DATA_MODULES[i])) await writeDataModule(CMOA_DATA_MODULES[i]);
+                updateMainProgress(); return true;
+            }catch(e){console.error('Speicherfehler:',e);alert('Cloud-Speichern fehlgeschlagen: '+e.message);return false;}
         }
 
         function exportBackup() {
@@ -2423,6 +2444,8 @@ function loadFromLocalStorage() {
         }
 
         function showPage(pageId) {
+            var mod = CMOA_PAGE_MODULES[pageId] || null;
+            if (mod && !hasModuleRight(mod, 'read')) { alert('Für diesen Bereich hast du keine Leseberechtigung.'); return; }
             normalizeAllBandNames();
             var pages = document.querySelectorAll('.page');
             for (var i = 0; i < pages.length; i++) { pages[i].classList.remove('active'); }
@@ -2441,6 +2464,8 @@ function loadFromLocalStorage() {
             if (pageId === 'ro-page') renderRO();
             if (pageId === 'misc-page') renderTodos();
             if (pageId === 'akkreditierung-page') renderAkk();
+            if (pageId === 'admin-page') loadAdminUsers();
+            updateRightsBanner(pageId);
             window.scrollTo(0, 0);
         }
 
@@ -5946,6 +5971,100 @@ function loadFromLocalStorage() {
             // ursprüngliche showPage-Funktion bereits vorhanden und ruft renderCateringPage auf.
             // Die Wrapper-Funktion greift daher automatisch auch dort.
         })();
-    </script>
+    
+        // =============================================================
+        // CMOA AUTH + ROLLEN / RECHTE (Supabase)
+        // =============================================================
+        var currentAuthUser = null;
+        var currentUserProfile = null;
+        var CMOA_MODULES = [
+          ['overview','Übersicht'],['bands','Bands'],['hotel','Hotel'],['shuttle','Shuttle'],
+          ['running_order','Running Order'],['payments','Zahlungsziele / Zahlungsweise'],['fees','Gagen / Finanzen'],
+          ['todos','To-Do'],['catering','Catering'],['accreditation','Akkreditierungen'],['checkin','Check-in'],
+          ['accreditation_pdf','Akkreditierungs-PDF'],['documents','Verträge / Rider / Notizen'],['export','Export / Backup'],['admin','Benutzerverwaltung']
+        ];
+        var CMOA_PAGE_MODULES = {
+          'overview-page':'overview','bands-page':'bands','band-view-page':'bands','band-detail-page':'bands',
+          'hotel-page':'hotel','shuttle-page':'shuttle','ro-page':'running_order','payment-terms-page':'payments',
+          'fees-page':'fees','misc-page':'todos','catering-page':'catering','akkreditierung-page':'accreditation',
+          'band-notes-page':'documents','export-page':'export','admin-page':'admin'
+        };
+        var ROLE_PRESETS = {
+          admin:{label:'Administrator', rights:'all'},
+          management:{label:'Festivalleitung', defaults:'write'},
+          bandcare:{label:'Bandbetreuung', modules:['overview','bands','hotel','shuttle','running_order','todos','catering','documents'], level:'write'},
+          catering:{label:'Catering', modules:['overview','bands','catering'], level:'write'},
+          shuttle:{label:'Shuttle', modules:['overview','bands','shuttle','hotel'], level:'write'},
+          entrance:{label:'Einlass / Akkreditierung', modules:['accreditation','checkin','accreditation_pdf'], level:'write'},
+          viewer:{label:'Nur Lesen', defaults:'read'}
+        };
+        function defaultPermissionsForRole(role){
+          var out={}; CMOA_MODULES.forEach(function(m){out[m[0]]='none';});
+          var p=ROLE_PRESETS[role]||ROLE_PRESETS.viewer;
+          if(p.rights==='all'){CMOA_MODULES.forEach(function(m){out[m[0]]='delete';});return out;}
+          if(p.defaults){CMOA_MODULES.forEach(function(m){out[m[0]]=p.defaults;}); out.admin='none'; return out;}
+          (p.modules||[]).forEach(function(m){out[m]=p.level||'read';}); return out;
+        }
+        function effectivePermissions(profile){
+          var base=defaultPermissionsForRole(profile&&profile.role||'viewer');
+          var custom=(profile&&profile.permissions)||{};
+          Object.keys(custom).forEach(function(k){base[k]=custom[k];}); return base;
+        }
+        function rightRank(v){return {none:0,read:1,write:2,delete:3}[v]||0;}
+        function hasModuleRight(module,need){
+          if(!currentUserProfile)return false;
+          if(currentUserProfile.role==='admin')return true;
+          var p=effectivePermissions(currentUserProfile); return rightRank(p[module])>=rightRank(need||'read');
+        }
+        function showAuthError(msg){var e=document.getElementById('auth-error');if(e)e.textContent=msg||'';}
+        async function initCmoaAuth(){
+          try{
+            var r=await _supabase.auth.getSession(); var session=r.data&&r.data.session;
+            if(!session){document.getElementById('auth-gate').style.display='flex';return false;}
+            currentAuthUser=session.user;
+            var pr=await _supabase.from('profiles').select('*').eq('id',currentAuthUser.id).maybeSingle();
+            if(pr.error){showAuthError('Profil konnte nicht geladen werden: '+pr.error.message);return false;}
+            currentUserProfile=pr.data||{id:currentAuthUser.id,email:currentAuthUser.email,role:'viewer',permissions:{}};
+            document.getElementById('auth-gate').style.display='none'; applyCurrentUserRights(); return true;
+          }catch(e){showAuthError('Anmeldung konnte nicht geprüft werden.');return false;}
+        }
+        async function cmoaLogin(){
+          showAuthError(''); var email=(document.getElementById('auth-email').value||'').trim(); var pw=document.getElementById('auth-password').value||'';
+          if(!email||!pw){showAuthError('Bitte E-Mail und Passwort eingeben.');return;}
+          var r=await _supabase.auth.signInWithPassword({email:email,password:pw});
+          if(r.error){showAuthError('Login fehlgeschlagen: '+r.error.message);return;} location.reload();
+        }
+        async function cmoaLogout(){if(_supabase)await _supabase.auth.signOut();location.reload();}
+        function applyCurrentUserRights(){
+          var label=document.getElementById('auth-user-label'); if(label)label.textContent=(currentAuthUser&&currentAuthUser.email?currentAuthUser.email:'')+' · '+((ROLE_PRESETS[currentUserProfile.role]||{}).label||currentUserProfile.role);
+          document.querySelectorAll('[data-module]').forEach(function(el){var m=el.getAttribute('data-module');el.classList.toggle('permission-hidden',!hasModuleRight(m,'read'));});
+          var ab=document.getElementById('admin-menu-btn');if(ab)ab.classList.toggle('permission-hidden',!hasModuleRight('admin','read'));
+        }
+        function updateRightsBanner(pageId){
+          var b=document.getElementById('rights-banner'); if(!b)return; var m=CMOA_PAGE_MODULES[pageId];
+          if(m&&hasModuleRight(m,'read')&&!hasModuleRight(m,'write')){b.textContent='👁 Nur Leseberechtigung für diesen Bereich';b.classList.add('show');}else b.classList.remove('show');
+        }
+        async function loadAdminUsers(){
+          if(!hasModuleRight('admin','read'))return; var c=document.getElementById('admin-users-list'); if(!c)return; c.innerHTML='<div class="card">Lade Benutzer…</div>';
+          var r=await _supabase.from('profiles').select('*').order('email'); if(r.error){c.innerHTML='<div class="card">Fehler: '+escapeHtmlAuth(r.error.message)+'</div>';return;}
+          c.innerHTML=''; (r.data||[]).forEach(function(u){c.insertAdjacentHTML('beforeend',renderAdminUser(u));});
+        }
+        function escapeHtmlAuth(v){return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+        function renderAdminUser(u){
+          var perms=effectivePermissions(u), roleOpts=''; Object.keys(ROLE_PRESETS).forEach(function(k){roleOpts+='<option value="'+k+'" '+(u.role===k?'selected':'')+'>'+ROLE_PRESETS[k].label+'</option>';});
+          var rows=''; CMOA_MODULES.forEach(function(m){var v=perms[m[0]]||'none';rows+='<div class="admin-perm-row"><strong>'+m[1]+'</strong><select data-perm-user="'+u.id+'" data-perm-module="'+m[0]+'"><option value="none" '+(v==='none'?'selected':'')+'>Unsichtbar</option><option value="read" '+(v==='read'?'selected':'')+'>Nur lesen</option><option value="write" '+(v==='write'?'selected':'')+'>Bearbeiten</option><option value="delete" '+(v==='delete'?'selected':'')+'>Bearbeiten + Löschen</option></select></div>';});
+          return '<div class="admin-user-card"><div class="admin-user-email">'+escapeHtmlAuth(u.email||u.id)+'</div><div class="admin-user-meta">Benutzer-ID: '+escapeHtmlAuth(u.id)+'</div><label>Rolle</label><select id="role-'+u.id+'">'+roleOpts+'</select><div style="margin-top:10px">'+rows+'</div><button class="btn-primary" style="width:100%;margin-top:10px" onclick="saveAdminUserRights(\''+u.id+'\')">💾 Rechte speichern</button></div>';
+        }
+        async function saveAdminUserRights(uid){
+          if(!hasModuleRight('admin','write')){alert('Keine Schreibberechtigung für Benutzerverwaltung.');return;}
+          var role=document.getElementById('role-'+uid).value, custom={};
+          document.querySelectorAll('[data-perm-user="'+uid+'"]').forEach(function(el){custom[el.getAttribute('data-perm-module')]=el.value;});
+          var r=await _supabase.from('profiles').update({role:role,permissions:custom}).eq('id',uid); if(r.error){alert('Fehler: '+r.error.message);return;} alert('✅ Rechte gespeichert.');
+          if(currentAuthUser&&uid===currentAuthUser.id){currentUserProfile.role=role;currentUserProfile.permissions=custom;applyCurrentUserRights();}
+        }
+
+
+
+</script>
 </body>
 </html>
