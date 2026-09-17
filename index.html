@@ -728,8 +728,9 @@
         .akk-rec-status.da { background: rgba(16, 185, 129, 0.1); color: var(--accent-green); }
         .akk-rec-sub { font-size: 12px; color: var(--text-muted); margin-top: 6px; line-height: 1.4; }
 
-        .akk-rec-actions { display: flex; gap: 6px; margin-top: 10px; }
-        .akk-action-btn { flex: 1; height: 36px; border-radius: 6px; border: 1px solid var(--border); font-weight: 800; background: var(--input-bg); color: var(--text-main); font-size: 12px; cursor: pointer; }
+        .akk-rec-actions { display: flex; gap: 5px; margin-top: 9px; align-items: center; flex-wrap: wrap; }
+        .akk-action-btn { flex: 0 0 auto; min-width: 38px; height: 32px; padding: 0 9px; border-radius: 6px; border: 1px solid var(--border); font-weight: 800; background: var(--input-bg); color: var(--text-main); font-size: 11px; cursor: pointer; }
+        .akk-action-btn.icon-only { width: 34px; min-width: 34px; padding: 0; font-size: 16px; line-height: 1; }
         .akk-action-btn.check { border-color: var(--accent-green); background: rgba(16, 185, 129, 0.08); color: var(--accent-green); }
         .akk-action-btn.del { border-color: var(--accent-red); background: rgba(239, 68, 68, 0.08); color: var(--accent-red); }
 
@@ -2916,9 +2917,9 @@ function loadFromLocalStorage() {
                             (r.email ? '<br>📧 <b>' + r.email + '</b> · ' + (r.emailSent ? '<span style="color:var(--accent-green);font-weight:700;">✅ versendet' + (r.emailSentAt ? ' am ' + new Date(r.emailSentAt).toLocaleString('de-DE') : '') + '</span>' : '<span style="color:var(--accent-yellow);font-weight:700;">⏳ noch nicht versendet</span>') : '<br><span style="color:var(--text-muted);">📧 Keine E-Mail-Adresse hinterlegt</span>') + '</div>' +
                             '<div class="akk-rec-actions">' +
                             '<button type="button" class="akk-action-btn" data-akk-act="pdf" data-akk-id="'+r.id+'">📄 PDF</button>' +
-                            (r.email ? '<button type="button" class="akk-action-btn" data-akk-act="mail" data-akk-id="'+r.id+'">📧 E-Mail vorbereiten</button>' : '') +
+                            (r.email ? '<button type="button" class="akk-action-btn icon-only" title="E-Mail vorbereiten" aria-label="E-Mail vorbereiten" data-akk-act="mail" data-akk-id="'+r.id+'">✉️</button>' : '') +
                             '<button type="button" class="akk-action-btn check" data-akk-act="chk" data-akk-id="'+r.id+'">' + (r.chk ? 'Stornieren' : 'Einchecken') + '</button>' +
-                            '<button type="button" class="akk-action-btn del" data-akk-act="del" data-akk-id="'+r.id+'">Löschen</button>' +
+                            '<button type="button" class="akk-action-btn del icon-only" title="Löschen" aria-label="Löschen" data-akk-act="del" data-akk-id="'+r.id+'">🗑️</button>' +
                             '</div></div>';
                     });
                     listO.innerHTML = htmlO;
