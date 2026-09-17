@@ -1223,6 +1223,16 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
         .admin-user-card{background:var(--card-bg);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:10px}.admin-user-email{font-weight:800;word-break:break-word}.admin-user-meta{font-size:.76rem;color:var(--text-muted);margin:3px 0 10px}
         @media(max-width:520px){.admin-perm-row{grid-template-columns:1fr 125px}.auth-card{padding:18px}}
 
+
+        /* ===== VERANSTALTUNGSVERWALTUNG ===== */
+        .event-switcher{margin:0 0 12px;padding:12px;border:1px solid var(--border);border-radius:12px;background:var(--card-bg);display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+        .event-switcher label{font-size:.75rem;font-weight:800;color:var(--text-muted);text-transform:uppercase}
+        .event-switcher select{flex:1;min-width:180px}
+        .event-admin-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+        .event-user-row{display:flex;align-items:center;gap:9px;padding:8px 0;border-bottom:1px solid var(--border);font-size:.84rem}
+        .event-user-row input{width:20px;height:20px}
+        @media(max-width:520px){.event-admin-grid{grid-template-columns:1fr}.event-switcher{align-items:stretch}.event-switcher select{width:100%}}
+
 </style>
     <link rel="manifest" href="manifest.json">
 </head>
@@ -1230,14 +1240,14 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
 <body data-design="steel">
     <header>
         <div style="width: 80px;"></div>
-        <h1>CMOA 2027</h1>
+        <h1 id="app-event-title">CMOA 2027</h1>
         <button class="theme-toggle-btn" onclick="toggleTheme()" id="theme-toggle-btn">🌙 Nightmode</button>
     </header>
 
     
     <div id="auth-gate">
       <div class="auth-card">
-        <h2>🔐 CMOA 2027 Login</h2>
+        <h2>🔐 CMOA Login</h2>
         <p>Bitte mit deinem freigeschalteten Benutzerkonto anmelden.</p>
         <input type="email" id="auth-email" placeholder="E-Mail-Adresse" autocomplete="username">
         <input type="password" id="auth-password" placeholder="Passwort" autocomplete="current-password">
@@ -1255,6 +1265,11 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
 
         <!-- HAUPTMENÜ -->
         <div id="main-page" class="page active">
+            <div class="event-switcher">
+                <label for="event-selector">Veranstaltung</label>
+                <select id="event-selector" onchange="switchCmoaEvent(this.value)"></select>
+                <button id="event-admin-btn" type="button" class="btn-subtle permission-hidden" onclick="showPage('events-admin-page')">⚙️ Veranstaltungen</button>
+            </div>
             <div class="auth-userbar"><span id="auth-user-label"></span><button type="button" class="btn-subtle" onclick="cmoaLogout()">Abmelden</button></div>
             <div id="rights-banner" class="rights-banner"></div>
             <div class="menu-grid">
@@ -1310,10 +1325,33 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
             <button class="btn-back" onclick="showPage('main-page')">← Hauptmenü</button>
             <div class="card">
                 <h3>⚙️ Benutzer & Rechte</h3>
+                <button type="button" class="btn-subtle" style="margin-bottom:10px" onclick="showPage('events-admin-page')">🎪 Veranstaltungen verwalten</button>
                 <p style="font-size:.82rem;color:var(--text-muted);">Benutzerkonten werden in Supabase Auth angelegt. Hier legst du Rolle und Rechte der bereits vorhandenen Konten fest.</p>
                 <button type="button" class="btn-primary" onclick="loadAdminUsers()">↻ Benutzer laden</button>
             </div>
             <div id="admin-users-list"></div>
+        </div>
+
+        <!-- VERANSTALTUNGEN -->
+        <div id="events-admin-page" class="page">
+            <button class="btn-back" onclick="showPage('main-page')">← Hauptmenü</button>
+            <div class="card">
+                <h3>🎪 Veranstaltungen verwalten</h3>
+                <p style="font-size:.82rem;color:var(--text-muted);margin-bottom:12px">Nur Administratoren können Veranstaltungen anlegen, duplizieren oder löschen. Sichtbarkeit wird pro Benutzer und Veranstaltung vergeben.</p>
+                <div class="event-admin-grid">
+                    <div class="form-group"><label>Name</label><input id="event-new-name" type="text" placeholder="z. B. Chronical Moshers Open Air 2028"></div>
+                    <div class="form-group"><label>Kurzname</label><input id="event-new-short" type="text" placeholder="z. B. CMOA 2028"></div>
+                    <div class="form-group"><label>Beginn</label><input id="event-new-start" type="date"></div>
+                    <div class="form-group"><label>Ende</label><input id="event-new-end" type="date"></div>
+                </div>
+                <div class="form-group"><label>Ort</label><input id="event-new-location" type="text"></div>
+                <div class="form-group"><label>Wer darf die neue Veranstaltung sehen?</label><div id="event-new-users"></div></div>
+                <button class="btn-primary" style="width:100%" onclick="createCmoaEvent()">＋ Veranstaltung anlegen</button>
+            </div>
+            <div class="card">
+                <h3>📋 Vorhandene Veranstaltungen</h3>
+                <div id="events-admin-list">Lade Veranstaltungen…</div>
+            </div>
         </div>
 
         <!-- CATERING SEITE -->
@@ -2239,6 +2277,10 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
         // =============================================================
         // PHASE 2: GETRENNTE SUPABASE-MODULE + SERVERSEITIGE RLS
         // =============================================================
+        var currentEventId = null;
+        var currentEvent = null;
+        var availableEvents = [];
+        var phase2Channel = null;
         var CMOA_DATA_MODULES = ['bands','fees','payments','hotel','shuttle','running_order','catering','documents','todos','accreditation'];
         var CMOA_FIELD_GROUPS = {
             bands:['id','name','showday','contactName','contactEmail','contactPhone','contactOrg','dealDone'],
@@ -2277,8 +2319,9 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
         }
         async function writeDataModule(module){
             if(!_supabase || !hasDataModuleWrite(module)) return;
-            var row={module:module,data:payloadForDataModule(module),updated_at:new Date().toISOString(),updated_by:currentAuthUser?currentAuthUser.id:null};
-            var r=await _supabase.from('cmoa_module_state').upsert(row,{onConflict:'module'});
+            if(!currentEventId) return;
+            var row={module:module,event_id:currentEventId,data:payloadForDataModule(module),updated_at:new Date().toISOString(),updated_by:currentAuthUser?currentAuthUser.id:null};
+            var r=await _supabase.from('cmoa_module_state').upsert(row,{onConflict:'module,event_id'});
             if(r.error) throw new Error(module+': '+r.error.message);
         }
         function hasDataModuleWrite(module){
@@ -2286,22 +2329,12 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
             if(module==='accreditation') return hasModuleRight('accreditation','write')||hasModuleRight('checkin','write');
             return hasModuleRight(module,'write');
         }
-        async function migrateLegacyStateIfNeeded(){
-            if(!currentUserProfile || currentUserProfile.role!=='admin') return false;
-            var chk=await _supabase.from('cmoa_module_state').select('module').limit(1);
-            if(chk.error || (chk.data&&chk.data.length)) return false;
-            var old=await _supabase.from('app_state').select('*').eq('key','cmoa_main_state').maybeSingle();
-            if(old.error || !old.data || !old.data.data) return false;
-            var parsed=typeof old.data.data==='string'?JSON.parse(old.data.data):old.data.data;
-            bands=Array.isArray(parsed.bands)?parsed.bands:[]; manualTodos=parsed.manualTodos||[]; hotelCostsList=parsed.hotelCostsList||[]; akkDb=parsed.akkDb||[];
-            normalizeAllBandNames();
-            for(var i=0;i<CMOA_DATA_MODULES.length;i++) await writeDataModule(CMOA_DATA_MODULES[i]);
-            return true;
-        }
+        async function migrateLegacyStateIfNeeded(){ return false; }
         async function loadPhase2CloudData(){
             bands=[];manualTodos=[];hotelCostsList=[];akkDb=[];
             await migrateLegacyStateIfNeeded();
-            var r=await _supabase.from('cmoa_module_state').select('module,data');
+            if(!currentEventId) return;
+            var r=await _supabase.from('cmoa_module_state').select('module,data').eq('event_id',currentEventId);
             if(r.error) throw new Error(r.error.message);
             (r.data||[]).forEach(function(row){applyDataModule(row.module,row.data);});
             normalizeAllBandNames();
@@ -2310,7 +2343,9 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
         }
         function startPhase2Realtime(){
             try{
-                _supabase.channel('cmoa-phase2-realtime').on('postgres_changes',{event:'*',schema:'public',table:'cmoa_module_state'},async function(){
+                if(phase2Channel){try{_supabase.removeChannel(phase2Channel);}catch(e){}}
+                if(!currentEventId)return;
+                phase2Channel=_supabase.channel('cmoa-event-'+currentEventId).on('postgres_changes',{event:'*',schema:'public',table:'cmoa_module_state',filter:'event_id=eq.'+currentEventId},async function(){
                     try{await loadPhase2CloudData();updateMainProgress();renderBandsList();if(typeof renderCateringPage==='function')renderCateringPage();if(typeof renderAkk==='function')renderAkk();}catch(e){console.error(e);}
                 }).subscribe();
             }catch(e){console.log('Realtime nicht verfügbar:',e);}
@@ -2319,7 +2354,7 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
             initSupabaseClient();
             if (!_supabase) { showAuthError('Supabase konnte nicht geladen werden.'); return; }
             var authOk = await initCmoaAuth(); if (!authOk) return;
-            try { await loadPhase2CloudData(); startPhase2Realtime(); }
+            try { var eventOk=await loadAccessibleEvents(); if(!eventOk)return; await loadPhase2CloudData(); startPhase2Realtime(); }
             catch(e){ showAuthError('Phase-2-Daten konnten nicht geladen werden: '+e.message); console.error(e); return; }
             try {
                 var designSaved=localStorage.getItem('cmoa_design_v1')||'steel';document.body.setAttribute('data-design',designSaved);updateDesignButtons();
@@ -2530,6 +2565,7 @@ function loadFromLocalStorage() {
             if (pageId === 'misc-page') renderTodos();
             if (pageId === 'akkreditierung-page') renderAkk();
             if (pageId === 'admin-page') loadAdminUsers();
+            if (pageId === 'events-admin-page') loadEventsAdminPage();
             updateRightsBanner(pageId);
             window.scrollTo(0, 0);
         }
@@ -5511,11 +5547,33 @@ function loadFromLocalStorage() {
             }
         }
 
-        function saveHotelCostEntry() {
+        function applyHotelWriteRights() {
+            var canWrite = hasModuleRight('hotel', 'write');
+            var ids = ['hotel-cost-name', 'hotel-cost-ez', 'hotel-cost-dz', 'hotel-cost-note'];
+            for (var i = 0; i < ids.length; i++) {
+                var el = document.getElementById(ids[i]);
+                if (el) el.disabled = !canWrite;
+            }
+            var saveBtn = document.querySelector('#hotel-page button[onclick="saveHotelCostEntry()"]');
+            if (saveBtn) {
+                saveBtn.disabled = !canWrite;
+                saveBtn.style.opacity = canWrite ? '' : '0.55';
+                saveBtn.style.cursor = canWrite ? '' : 'not-allowed';
+                saveBtn.title = canWrite ? '' : 'Nur Leseberechtigung – Speichern nicht erlaubt';
+            }
+        }
+
+        async function saveHotelCostEntry() {
+            if (!hasModuleRight('hotel', 'write')) {
+                alert('Du hast für diesen Bereich nur Leserechte. Änderungen werden nicht gespeichert.');
+                return;
+            }
+
             var hName = document.getElementById('hotel-cost-name').value;
             var ezCost = parseFloat(document.getElementById('hotel-cost-ez').value) || 0;
             var dzCost = parseFloat(document.getElementById('hotel-cost-dz').value) || 0;
             var note = document.getElementById('hotel-cost-note').value.trim();
+            var previousHotelCosts = JSON.parse(JSON.stringify(Array.isArray(hotelCostsList) ? hotelCostsList : []));
 
             if (!Array.isArray(hotelCostsList)) hotelCostsList = [];
 
@@ -5540,16 +5598,29 @@ function loadFromLocalStorage() {
                 });
             }
 
-            saveToStorage();
+            var saved = await saveToStorage();
+            if (!saved) {
+                hotelCostsList = previousHotelCosts;
+                renderHotelCostsList();
+                renderHotel();
+                return;
+            }
+
             alert('✅ Hotelkosten für "' + hName + '" erfolgreich gespeichert!');
             renderHotelCostsList();
             renderHotel();
         }
 
-        function deleteHotelCost(id) {
+        async function deleteHotelCost(id) {
+            if (!hasModuleRight('hotel', 'write')) {
+                alert('Du hast für diesen Bereich nur Leserechte. Löschen ist nicht erlaubt.');
+                return;
+            }
             if (confirm('Möchtest du diesen Hotelkosten-Eintrag wirklich löschen?')) {
+                var previousHotelCosts = JSON.parse(JSON.stringify(Array.isArray(hotelCostsList) ? hotelCostsList : []));
                 hotelCostsList = hotelCostsList.filter(function(x) { return x.id !== id; });
-                saveToStorage();
+                var saved = await saveToStorage();
+                if (!saved) hotelCostsList = previousHotelCosts;
                 renderHotelCostsList();
                 renderHotel();
             }
@@ -5559,9 +5630,11 @@ function loadFromLocalStorage() {
             var container = document.getElementById('hotel-costs-list-container');
             if (!container) return;
             container.innerHTML = '';
+            var canWrite = hasModuleRight('hotel', 'write');
 
             if (!Array.isArray(hotelCostsList) || hotelCostsList.length === 0) {
                 container.innerHTML = '<p style="color:var(--text-muted); text-align:center; font-size:0.85rem; padding:10px;">Noch keine Hotel-Kosten erfasst.</p>';
+                applyHotelWriteRights();
                 return;
             }
 
@@ -5578,16 +5651,20 @@ function loadFromLocalStorage() {
 
             for (var i = 0; i < hotelCostsList.length; i++) {
                 var item = hotelCostsList[i];
+                var actionHtml = canWrite
+                    ? '<button class="btn-danger" style="padding:4px 8px; font-size:0.75rem;" onclick="deleteHotelCost(\'' + item.id + '\')">🗑️</button>'
+                    : '<span style="color:var(--text-muted);font-size:.75rem;">Nur Lesen</span>';
                 tableHtml += '<tr>' +
                     '<td><strong style="text-transform: uppercase;">' + item.hotelName + '</strong>' + (item.note ? '<br><span style="font-size:0.75rem; color:var(--text-muted);">' + item.note + '</span>' : '') + '</td>' +
                     '<td><strong class="cost-val">' + item.ezCost.toFixed(2) + ' €</strong></td>' +
                     '<td><strong class="cost-val">' + item.dzCost.toFixed(2) + ' €</strong></td>' +
-                    '<td style="text-align: right;"><button class="btn-danger" style="padding:4px 8px; font-size:0.75rem;" onclick="deleteHotelCost(\'' + item.id + '\')">🗑️</button></td>' +
+                    '<td style="text-align: right;">' + actionHtml + '</td>' +
                 '</tr>';
             }
 
             tableHtml += '</tbody></table>';
             container.innerHTML = tableHtml;
+            applyHotelWriteRights();
         }
 
         function renderHotel() {
@@ -5596,6 +5673,7 @@ function loadFromLocalStorage() {
             if (!c || !statsC) return; 
             c.innerHTML = '';
             statsC.innerHTML = '';
+            applyHotelWriteRights();
 
             var hotelBands = [];
             var hotelCounts = {
@@ -6448,7 +6526,7 @@ function loadFromLocalStorage() {
           'overview-page':'overview','bands-page':'bands','band-view-page':'bands','band-detail-page':'bands',
           'hotel-page':'hotel','shuttle-page':'shuttle','ro-page':'running_order','payment-terms-page':'payments',
           'fees-page':'fees','misc-page':'todos','catering-page':'catering','akkreditierung-page':'accreditation',
-          'band-notes-page':'documents','export-page':'export','admin-page':'admin'
+          'band-notes-page':'documents','export-page':'export','admin-page':'admin','events-admin-page':'admin'
         };
         var ROLE_PRESETS = {
           admin:{label:'Administrator', rights:'all'},
@@ -6499,11 +6577,59 @@ function loadFromLocalStorage() {
         function applyCurrentUserRights(){
           var label=document.getElementById('auth-user-label'); if(label)label.textContent=(currentAuthUser&&currentAuthUser.email?currentAuthUser.email:'')+' · '+((ROLE_PRESETS[currentUserProfile.role]||{}).label||currentUserProfile.role);
           document.querySelectorAll('[data-module]').forEach(function(el){var m=el.getAttribute('data-module');el.classList.toggle('permission-hidden',!hasModuleRight(m,'read'));});
-          var ab=document.getElementById('admin-menu-btn');if(ab)ab.classList.toggle('permission-hidden',!hasModuleRight('admin','read'));
+          var ab=document.getElementById('admin-menu-btn');if(ab)ab.classList.toggle('permission-hidden',!hasModuleRight('admin','read')); var eb=document.getElementById('event-admin-btn');if(eb)eb.classList.toggle('permission-hidden',currentUserProfile.role!=='admin');
         }
         function updateRightsBanner(pageId){
           var b=document.getElementById('rights-banner'); if(!b)return; var m=CMOA_PAGE_MODULES[pageId];
           if(m&&hasModuleRight(m,'read')&&!hasModuleRight(m,'write')){b.textContent='👁 Nur Leseberechtigung für diesen Bereich';b.classList.add('show');}else b.classList.remove('show');
+        }
+        async function loadAccessibleEvents(){
+          var r=await _supabase.from('events').select('*').order('start_date',{ascending:false});
+          if(r.error){showAuthError('Veranstaltungen konnten nicht geladen werden: '+r.error.message);return false;}
+          availableEvents=r.data||[];
+          if(!availableEvents.length){showAuthError('Für dieses Benutzerkonto ist noch keine Veranstaltung freigeschaltet.');return false;}
+          var saved=localStorage.getItem('cmoa_current_event_id');
+          currentEvent=availableEvents.find(function(e){return e.id===saved;})||availableEvents[0]; currentEventId=currentEvent.id;
+          localStorage.setItem('cmoa_current_event_id',currentEventId); renderEventSelector(); return true;
+        }
+        function renderEventSelector(){
+          var sel=document.getElementById('event-selector'); if(sel){sel.innerHTML=availableEvents.map(function(e){return '<option value="'+escapeHtmlAuth(e.id)+'" '+(e.id===currentEventId?'selected':'')+'>'+escapeHtmlAuth(e.short_name||e.name)+'</option>';}).join('');}
+          var title=(currentEvent&&(currentEvent.short_name||currentEvent.name))||'CMOA'; var h=document.getElementById('app-event-title');if(h)h.textContent=title; document.title=title+' Planning';
+        }
+        async function switchCmoaEvent(id){
+          if(!id||id===currentEventId)return; var ev=availableEvents.find(function(e){return e.id===id;});if(!ev)return;
+          currentEventId=id;currentEvent=ev;localStorage.setItem('cmoa_current_event_id',id);renderEventSelector();
+          try{await loadPhase2CloudData();startPhase2Realtime();updateMainProgress();renderBandsList();if(typeof renderCateringPage==='function')renderCateringPage();if(typeof renderAkk==='function')renderAkk();showPage('main-page');}catch(e){alert('Veranstaltung konnte nicht geladen werden: '+e.message);}
+        }
+        async function loadEventsAdminPage(){
+          if(!currentUserProfile||currentUserProfile.role!=='admin')return;
+          var pr=await _supabase.from('profiles').select('id,email,role').order('email'); var users=pr.data||[];
+          var box=document.getElementById('event-new-users'); if(box)box.innerHTML=users.map(function(u){return '<label class="event-user-row"><input type="checkbox" data-new-event-user="'+u.id+'" '+(u.id===currentAuthUser.id?'checked':'')+'><span>'+escapeHtmlAuth(u.email||u.id)+(u.role==='admin'?' · Admin':'')+'</span></label>';}).join('');
+          var er=await _supabase.from('events').select('*').order('start_date',{ascending:false}); if(er.error){document.getElementById('events-admin-list').textContent='Fehler: '+er.error.message;return;}
+          availableEvents=er.data||[]; renderEventSelector(); var list=document.getElementById('events-admin-list'); list.innerHTML='';
+          for(var i=0;i<availableEvents.length;i++){var e=availableEvents[i], ar=await _supabase.from('event_users').select('user_id').eq('event_id',e.id), assigned=(ar.data||[]).map(function(x){return x.user_id;});
+            var checks=users.map(function(u){return '<label class="event-user-row"><input type="checkbox" data-event-user-event="'+e.id+'" value="'+u.id+'" '+(assigned.indexOf(u.id)>=0?'checked':'')+'><span>'+escapeHtmlAuth(u.email||u.id)+'</span></label>';}).join('');
+            list.insertAdjacentHTML('beforeend','<div class="admin-user-card"><div class="admin-user-email">'+escapeHtmlAuth(e.short_name||e.name)+'</div><div class="admin-user-meta">'+escapeHtmlAuth(e.name)+' · '+escapeHtmlAuth(e.start_date||'')+' bis '+escapeHtmlAuth(e.end_date||'')+'</div><details><summary style="cursor:pointer;font-weight:700;margin:8px 0">Benutzerzugriff</summary>'+checks+'<button class="btn-primary" style="width:100%;margin-top:8px" onclick="saveEventUsers(\''+e.id+'\')">💾 Zugriffe speichern</button></details><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px"><button class="btn-subtle" onclick="duplicateCmoaEvent(\''+e.id+'\')">⧉ Duplizieren</button><button class="btn-danger btn-sm" onclick="deleteCmoaEvent(\''+e.id+'\')">🗑 Löschen</button></div></div>');
+          }
+        }
+        async function createCmoaEvent(){
+          if(currentUserProfile.role!=='admin')return; var name=(document.getElementById('event-new-name').value||'').trim(), shortName=(document.getElementById('event-new-short').value||'').trim(); if(!name||!shortName){alert('Bitte Name und Kurzname eingeben.');return;}
+          var row={name:name,short_name:shortName,start_date:document.getElementById('event-new-start').value||null,end_date:document.getElementById('event-new-end').value||null,location:(document.getElementById('event-new-location').value||'').trim()||null,status:'active',created_by:currentAuthUser.id};
+          var r=await _supabase.from('events').insert(row).select().single(); if(r.error){alert('Fehler: '+r.error.message);return;} var ids=[];document.querySelectorAll('[data-new-event-user]:checked').forEach(function(x){ids.push(x.getAttribute('data-new-event-user'));}); if(ids.indexOf(currentAuthUser.id)<0)ids.push(currentAuthUser.id); if(ids.length){var ur=await _supabase.from('event_users').insert(ids.map(function(uid){return {event_id:r.data.id,user_id:uid};}));if(ur.error){alert('Veranstaltung angelegt, aber Benutzerzuweisung fehlgeschlagen: '+ur.error.message);}}
+          alert('✅ Veranstaltung angelegt.'); await loadAccessibleEvents(); await loadEventsAdminPage();
+        }
+        async function saveEventUsers(eventId){
+          if(currentUserProfile.role!=='admin')return; var ids=[];document.querySelectorAll('[data-event-user-event="'+eventId+'"]:checked').forEach(function(x){ids.push(x.value);}); var d=await _supabase.from('event_users').delete().eq('event_id',eventId);if(d.error){alert('Fehler: '+d.error.message);return;} if(ids.length){var ins=await _supabase.from('event_users').insert(ids.map(function(uid){return {event_id:eventId,user_id:uid};}));if(ins.error){alert('Fehler: '+ins.error.message);return;}} alert('✅ Veranstaltungszugriffe gespeichert.');
+        }
+        async function duplicateCmoaEvent(sourceId){
+          if(currentUserProfile.role!=='admin')return; var src=availableEvents.find(function(e){return e.id===sourceId;});if(!src)return; var shortName=prompt('Kurzname der Kopie:',(src.short_name||src.name)+' KOPIE');if(!shortName)return;var name=prompt('Name der Kopie:',src.name+' – Kopie');if(!name)return;
+          var er=await _supabase.from('events').insert({name:name,short_name:shortName,start_date:src.start_date,end_date:src.end_date,location:src.location,status:'active',created_by:currentAuthUser.id}).select().single();if(er.error){alert('Fehler: '+er.error.message);return;} var target=er.data;
+          var ur=await _supabase.from('event_users').select('user_id').eq('event_id',sourceId);if(ur.data&&ur.data.length)await _supabase.from('event_users').insert(ur.data.map(function(x){return {event_id:target.id,user_id:x.user_id};}));
+          var copy=confirm('Sollen auch alle Fachdaten (Bands, Hotel, Shuttle, Catering usw.) kopiert werden?\nOK = komplette Kopie\nAbbrechen = leere Veranstaltung'); if(copy){var mr=await _supabase.from('cmoa_module_state').select('module,data').eq('event_id',sourceId);if(mr.data&&mr.data.length){var rows=mr.data.map(function(x){return {event_id:target.id,module:x.module,data:x.data,updated_at:new Date().toISOString(),updated_by:currentAuthUser.id};});var ir=await _supabase.from('cmoa_module_state').insert(rows);if(ir.error){alert('Veranstaltung erstellt, Fachdaten konnten aber nicht kopiert werden: '+ir.error.message);}}}
+          alert('✅ Veranstaltung dupliziert.');await loadAccessibleEvents();await loadEventsAdminPage();
+        }
+        async function deleteCmoaEvent(eventId){
+          if(currentUserProfile.role!=='admin')return;var e=availableEvents.find(function(x){return x.id===eventId;});if(!e)return;if(!confirm('ACHTUNG: Veranstaltung "'+(e.short_name||e.name)+'" wirklich löschen?\nAlle zugehörigen Veranstaltungsdaten werden gelöscht.'))return;var typed=prompt('Zur Bestätigung bitte LÖSCHEN eingeben:');if(typed!=='LÖSCHEN')return;var r=await _supabase.from('events').delete().eq('id',eventId);if(r.error){alert('Fehler: '+r.error.message);return;}localStorage.removeItem('cmoa_current_event_id');alert('✅ Veranstaltung gelöscht.');await loadAccessibleEvents();await loadPhase2CloudData();startPhase2Realtime();await loadEventsAdminPage();
         }
         async function loadAdminUsers(){
           if(!hasModuleRight('admin','read'))return; var c=document.getElementById('admin-users-list'); if(!c)return; c.innerHTML='<div class="card">Lade Benutzer…</div>';
