@@ -2780,20 +2780,53 @@ function loadFromLocalStorage() {
             doc.text('Zutrittsbestätigung • Chronical Moshers Open Air 2027',16,65);
 
             // Linke Informationsspalte
-            var infoX=16, infoW=93, y=76, rowH=21;
+            var infoX=16, infoW=93, y=76;
             var amount = Number(rec.amt || 0) === 0 ? 'EINTRITT FREI' : Number(rec.amt || 0).toFixed(2).replace('.', ',') + ' EUR';
             var rows=[['AKKREDITIERUNGS-ID',String(rec.id)],['NAME',String(rec.name||'—')],['ORGANISATION',String(rec.org||'—')],['BERECHTIGUNG',String(rec.perm||'—').toUpperCase()],['BETRAG',amount]];
+            var idBlue = [45,115,190]; // mittleres Blau für die letzten 3 Ziffern
+
             for(var r=0;r<rows.length;r++){
-                doc.setFillColor(r%2===0?248:255,r%2===0?248:255,r%2===0?248:255); doc.roundedRect(infoX,y,infoW,18,1.5,1.5,'F');
-                doc.setTextColor(105,105,105); doc.setFont('helvetica','bold'); doc.setFontSize(7.2); doc.text(rows[r][0],infoX+6,y+6.5);
-                if (rows[r][0] === 'BETRAG') {
-                    if (Number(rec.amt || 0) === 0) doc.setTextColor(22,163,74); // Eintritt frei = grün
-                    else doc.setTextColor(red[0],red[1],red[2]); // Betrag = rot
-                } else {
+                var isIdRow = (r === 0);
+                var boxH = isIdRow ? 27 : 17;
+                var stepH = isIdRow ? 29 : 19;
+
+                doc.setFillColor(r%2===0?248:255,r%2===0?248:255,r%2===0?248:255);
+                doc.roundedRect(infoX,y,infoW,boxH,1.5,1.5,'F');
+                doc.setTextColor(105,105,105); doc.setFont('helvetica','bold'); doc.setFontSize(7.2);
+                doc.text(rows[r][0],infoX+6,y+6.5);
+
+                if (isIdRow) {
+                    // ID deutlich größer: AK27. schwarz, die zufälligen letzten 3 Ziffern mittelblau.
+                    var fullId = String(rows[r][1] || '');
+                    var idMatch = fullId.match(/^(.*?)(\d{3})$/);
+                    var idPrefix = idMatch ? idMatch[1] : fullId;
+                    var idLast3 = idMatch ? idMatch[2] : '';
+                    var idTextX = infoX + 6;
+                    var idTextY = y + 15.2;
+
+                    doc.setFont('helvetica','bold'); doc.setFontSize(18);
                     doc.setTextColor(dark[0],dark[1],dark[2]);
+                    doc.text(idPrefix,idTextX,idTextY);
+                    var prefixWidth = doc.getTextWidth(idPrefix);
+                    doc.setTextColor(idBlue[0],idBlue[1],idBlue[2]);
+                    doc.text(idLast3,idTextX+prefixWidth,idTextY);
+
+                    // Auffälliger Einlass-Hinweis direkt unter der ID.
+                    doc.setTextColor(idBlue[0],idBlue[1],idBlue[2]);
+                    doc.setFont('helvetica','bold'); doc.setFontSize(6.8);
+                    doc.text('WICHTIG: Letzte 3 Ziffern am Einlass mitteilen!',infoX+6,y+22.5);
+                } else {
+                    if (rows[r][0] === 'BETRAG') {
+                        if (Number(rec.amt || 0) === 0) doc.setTextColor(22,163,74); // Eintritt frei = grün
+                        else doc.setTextColor(red[0],red[1],red[2]); // Betrag = rot
+                    } else {
+                        doc.setTextColor(dark[0],dark[1],dark[2]);
+                    }
+                    doc.setFont('helvetica','normal'); doc.setFontSize(11.5);
+                    var valLines=doc.splitTextToSize(rows[r][1],infoW-12);
+                    doc.text(valLines,infoX+6,y+12.8);
                 }
-                doc.setFontSize(r===0?13:11.5);
-                var valLines=doc.splitTextToSize(rows[r][1],infoW-12); doc.text(valLines,infoX+6,y+13.5); y+=rowH;
+                y += stepH;
             }
 
             // Frisch geliefertes Logo: schwarz auf weiß, groß im freien Bereich rechts neben den Infos.
