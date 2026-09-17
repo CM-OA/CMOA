@@ -2767,6 +2767,8 @@ function loadFromLocalStorage() {
 
                 if (act === 'pdf' && id) {
                     generateAkkPdf(id);
+                } else if (act === 'mail' && id) {
+                    prepareAkkEmail(id);
                 } else if (act === 'chk' && id) {
                     akkDb.forEach(function(r){ if(r.id === id) r.chk = !r.chk; });
                     saveToStorage();
@@ -2914,6 +2916,7 @@ function loadFromLocalStorage() {
                             (r.email ? '<br>📧 <b>' + r.email + '</b> · ' + (r.emailSent ? '<span style="color:var(--accent-green);font-weight:700;">✅ versendet' + (r.emailSentAt ? ' am ' + new Date(r.emailSentAt).toLocaleString('de-DE') : '') + '</span>' : '<span style="color:var(--accent-yellow);font-weight:700;">⏳ noch nicht versendet</span>') : '<br><span style="color:var(--text-muted);">📧 Keine E-Mail-Adresse hinterlegt</span>') + '</div>' +
                             '<div class="akk-rec-actions">' +
                             '<button type="button" class="akk-action-btn" data-akk-act="pdf" data-akk-id="'+r.id+'">📄 PDF</button>' +
+                            (r.email ? '<button type="button" class="akk-action-btn" data-akk-act="mail" data-akk-id="'+r.id+'">📧 E-Mail vorbereiten</button>' : '') +
                             '<button type="button" class="akk-action-btn check" data-akk-act="chk" data-akk-id="'+r.id+'">' + (r.chk ? 'Stornieren' : 'Einchecken') + '</button>' +
                             '<button type="button" class="akk-action-btn del" data-akk-act="del" data-akk-id="'+r.id+'">Löschen</button>' +
                             '</div></div>';
@@ -2944,6 +2947,31 @@ function loadFromLocalStorage() {
                     listC.innerHTML = htmlC;
                 }
             }
+        }
+
+        function prepareAkkEmail(id) {
+            var rec = null;
+            for (var i = 0; i < akkDb.length; i++) { if (akkDb[i].id === id) { rec = akkDb[i]; break; } }
+            if (!rec) { alert('Akkreditierung nicht gefunden.'); return; }
+            var to = String(rec.email || '').trim();
+            if (!to) { alert('Für diese Akkreditierung ist keine E-Mail-Adresse hinterlegt.'); return; }
+
+            var eventName = (currentEvent && (currentEvent.short_name || currentEvent.name)) || 'CMOA 2027';
+            var subject = 'Akkreditierung – ' + eventName;
+            var body = 'Hallo ' + String(rec.name || '') + ',\n\n' +
+                'anbei erhältst du deine Akkreditierung für ' + eventName + '.\n\n' +
+                'Bitte bringe die Akkreditierung digital oder ausgedruckt zur Veranstaltung mit.\n\n' +
+                'Wichtig: Die letzten drei Ziffern deiner Akkreditierungs-ID (' + String(rec.id || '') + ') müssen am Einlass mitgeteilt werden.\n\n' +
+                'Die PDF-Akkreditierung bitte ich als Anhang dieser E-Mail zu beachten.\n\n' +
+                'Bei Rückfragen kannst du dich gerne an uns wenden.\n\n' +
+                'Viele Grüße\nCMOA-Team';
+
+            // Öffnet das Standard-Mailprogramm. PDF-Anhänge können Browser per mailto: nicht automatisch hinzufügen.
+            var mailto = 'mailto:' + encodeURIComponent(to) +
+                '?cc=' + encodeURIComponent('cmoa@gmx.de') +
+                '&subject=' + encodeURIComponent(subject) +
+                '&body=' + encodeURIComponent(body);
+            window.location.href = mailto;
         }
 
         // =============================================================
