@@ -1887,7 +1887,7 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
                 <div class="form-group">
                     <label>Format:</label>
                     <select id="pt-export-format">
-                        <option value="pdf">📄 PDF / Druckansicht (Einheitliches Design)</option>
+                        <option value="pdf">📄 PDF</option>
                         <option value="csv">📊 CSV / Excel</option>
                     </select>
                 </div>
@@ -4652,126 +4652,117 @@ function loadFromLocalStorage() {
         }
 
         function renderPaymentTermsPDF(targetBands) {
-            var container = document.getElementById('pt-export-preview-area');
-            if (!container) return;
-            container.innerHTML = '';
-
-            var now = new Date();
-            var dateSub = document.getElementById('print-date-sub');
-            if (dateSub) dateSub.innerText = 'Zahlungs- & Abrechnungsübersicht | Erstellt am ' + now.toLocaleDateString('de-DE') + ' um ' + now.toLocaleTimeString('de-DE') + ' Uhr';
-
-            var html = '<div style="margin-top:0; padding-top:0;">';
-
-            for (var i = 0; i < targetBands.length; i++) {
-                var b = targetBands[i];
-                var gageNetto = Number(b.gage) || 0;
-                var taxRate = Number(b.taxRate) || 0;
-                var taxVal = gageNetto * (taxRate / 100);
-                var totalBrutto = gageNetto + taxVal;
-
-                var isSplit = b.paymentTermsMainMode === 'split';
-                var advBrutto = isSplit ? (b.invAdvAmount ? (b.invAdvAmount * (1 + ((b.invAdvTaxRate||19)/100))) : totalBrutto * ((b.ptSplitPct||50)/100)) : 0;
-                var restBrutto = isSplit ? (totalBrutto - advBrutto) : totalBrutto;
-
-                var modeLabel = isSplit ? 'Anzahlung & Restzahlung' : 'Gesamtzahlung';
-
-                var statusBadgeHtml = '';
-                if (isSplit) {
-                    var advDone = !!b.statusAdvPaid;
-                    var restDone = !!b.statusRestPaid;
-                    statusBadgeHtml = '<div style="margin-top:8px; font-size:0.8rem; font-weight:700;">Zahlungsstatus: ' + 
-                        '<span style="color:' + (advDone ? '#059669' : '#64748b') + ';">Anzahlung ' + (advDone ? '✓ Bezahlt (' + formatDateDE(b.advDate) + ')' : 'offen') + '</span> | ' +
-                        '<span style="color:' + (restDone ? '#059669' : '#64748b') + ';">Restzahlung ' + (restDone ? '✓ Bezahlt (' + formatDateDE(b.fullPaidDate) + ')' : 'offen') + '</span>' +
-                        '</div>';
-                } else {
-                    var fullDone = !!b.statusFullPaid;
-                    statusBadgeHtml = '<div style="margin-top:8px; font-size:0.8rem; font-weight:700;">Zahlungsstatus: ' + 
-                        '<span style="color:' + (fullDone ? '#059669' : '#64748b') + ';">Gesamtzahlung ' + (fullDone ? '✓ Bezahlt (' + formatDateDE(b.fullPaidDate) + ')' : 'offen') + '</span>' +
-                        '</div>';
-                }
-
-                html += 
-                    '<div class="export-unified-card">' +
-                        '<div class="export-band-header">' +
-                            '<div>' +
-                                '<span class="export-band-name-title">' + b.name + '</span>' +
-                                '<div style="display:flex; gap:6px; align-items:center; margin-top:4px;">' +
-                                    '<span class="export-meta-badge">' + modeLabel + '</span>' +
-                                    '<span style="font-size:0.82rem; color:#64748b; font-weight:600;">Contact: ' + (b.contactName || 'Kein Ansprechpartner') + '</span>' +
-                                '</div>' +
-                                statusBadgeHtml +
-                            '</div>' +
-                            '<div>' +
-                                '<div class="export-highlight-amount">€ ' + totalBrutto.toFixed(2) + '</div>' +
-                                '<div style="font-size:0.72rem; color:#64748b; text-align:right; margin-top:2px; font-weight:700;">GESAMTBRUTTO</div>' +
-                            '</div>' +
-                        '</div>' +
-
-                        '<div class="export-payment-summary-box">' +
-                            '<div class="export-summary-item">' +
-                                '<span class="export-summary-label">Zahlungsweise</span>' +
-                                '<span class="export-summary-val" style="color:#0f172a;">' + getPtText(b.paymentTermsType) + '</span>' +
-                            '</div>' +
-                            '<div class="export-summary-item">' +
-                                '<span class="export-summary-label">Gage Netto</span>' +
-                                '<span class="export-summary-val">' + gageNetto.toFixed(2) + ' €</span>' +
-                            '</div>' +
-                            '<div class="export-summary-item">' +
-                                '<span class="export-summary-label">USt. (' + taxRate + '%)</span>' +
-                                '<span class="export-summary-val">' + taxVal.toFixed(2) + ' €</span>' +
-                            '</div>' +
-                        '</div>' +
-
-                        '<table class="pdf-table">' +
-                            '<thead>' +
-                                '<tr>' +
-                                    '<th>Zahlungsschritt</th>' +
-                                    '<th>Netto Betrag</th>' +
-                                    '<th>MwSt. / USt.</th>' +
-                                    '<th>Brutto Betrag</th>' +
-                                    '<th>Fälligkeit / Zahldatum</th>' +
-                                '</tr>' +
-                            '</thead>' +
-                            '<tbody>';
-
-                if (isSplit) {
-                    var advNet = advBrutto / (1 + (taxRate / 100));
-                    var advTax = advBrutto - advNet;
-                    var restNet = restBrutto / (1 + (taxRate / 100));
-                    var restTax = restBrutto - restNet;
-
-                    html += '<tr>' +
-                                '<td><strong>🟡 Anzahlung</strong></td>' +
-                                '<td>' + advNet.toFixed(2) + ' €</td>' +
-                                '<td>' + advTax.toFixed(2) + ' €</td>' +
-                                '<td><strong style="color:#0f172a;">' + advBrutto.toFixed(2) + ' €</strong></td>' +
-                                '<td>' + formatDateDE(b.advDate) + '</td>' +
-                            '</tr>' +
-                            '<tr>' +
-                                '<td><strong>🟢 Restzahlung</strong></td>' +
-                                '<td>' + restNet.toFixed(2) + ' €</td>' +
-                                '<td>' + restTax.toFixed(2) + ' €</td>' +
-                                '<td><strong style="color:#0f172a;">' + restBrutto.toFixed(2) + ' €</strong></td>' +
-                                '<td>' + formatDateDE(b.fullPaidDate) + '</td>' +
-                            '</tr>';
-                } else {
-                    html += '<tr>' +
-                                '<td><strong>💳 Gesamtzahlung</strong></td>' +
-                                '<td>' + gageNetto.toFixed(2) + ' €</td>' +
-                                '<td>' + taxVal.toFixed(2) + ' €</td>' +
-                                '<td><strong style="color:#0f172a;">' + totalBrutto.toFixed(2) + ' €</strong></td>' +
-                                '<td>' + formatDateDE(b.fullPaidDate) + '</td>' +
-                            '</tr>';
-                }
-
-                html += '</tbody></table>' +
-                    '</div>';
+            if (!window.jspdf || !window.jspdf.jsPDF) {
+                alert('PDF-Modul konnte nicht geladen werden. Bitte Internetverbindung prüfen.');
+                return;
             }
 
-            html += '</div>';
-            container.innerHTML = html;
+            var jsPDF = window.jspdf.jsPDF;
+            var doc = new jsPDF({ orientation:'landscape', unit:'mm', format:'a4' });
+            var W = 297, H = 210, M = 12;
+            var navy=[15,23,42], blue=[37,99,235], midBlue=[59,130,246], green=[5,150,105], amber=[217,119,6], red=[190,28,34], gray=[100,116,139], light=[248,250,252], border=[226,232,240];
 
-            setTimeout(function() { window.print(); }, 300);
+            function money(v){ return (Number(v)||0).toFixed(2).replace('.', ',') + ' €'; }
+            function dateOrDash(v){ var x=formatDateDE(v); return x && x !== 'Invalid Date' ? x : '—'; }
+            function txt(v){ return (v===undefined || v===null || v==='') ? '—' : String(v); }
+            function paidLabel(done, date){ return done ? ('BEZAHLT' + (date ? ' · ' + dateOrDash(date) : '')) : 'OFFEN'; }
+            function safeName(v){ return String(v||'Zahlungsziele').replace(/[^a-zA-Z0-9äöüÄÖÜß_-]+/g,'_'); }
+
+            function header(title, subtitle, pageNo){
+                doc.setFillColor(navy[0],navy[1],navy[2]); doc.rect(0,0,W,25,'F');
+                doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(15); doc.text('CHRONICAL MOSHERS OPEN AIR 2027',M,10);
+                doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.text('ZAHLUNGSZIELE & ZAHLUNGSWEISEN',M,17);
+                doc.setTextColor(210,220,235); doc.setFontSize(7.5); doc.text('11.–12. JUNI 2027',W-M,10,{align:'right'}); doc.text('Seite '+pageNo,W-M,17,{align:'right'});
+                doc.setFillColor(blue[0],blue[1],blue[2]); doc.rect(0,25,W,2,'F');
+                doc.setTextColor(navy[0],navy[1],navy[2]); doc.setFont('helvetica','bold'); doc.setFontSize(16); doc.text(title,M,37);
+                doc.setTextColor(gray[0],gray[1],gray[2]); doc.setFont('helvetica','normal'); doc.setFontSize(7.8); doc.text(subtitle,M,43);
+            }
+
+            function box(x,y,w,h,label,value,accent){
+                doc.setFillColor(light[0],light[1],light[2]); doc.setDrawColor(border[0],border[1],border[2]); doc.roundedRect(x,y,w,h,2,2,'FD');
+                doc.setTextColor(gray[0],gray[1],gray[2]); doc.setFont('helvetica','bold'); doc.setFontSize(6.5); doc.text(label.toUpperCase(),x+4,y+5.5);
+                var c=accent||navy; doc.setTextColor(c[0],c[1],c[2]); doc.setFont('helvetica','bold'); doc.setFontSize(10.5);
+                var lines=doc.splitTextToSize(txt(value),w-8); doc.text(lines.slice(0,2),x+4,y+12);
+            }
+
+            function statusPill(x,y,text,done){
+                var c=done?green:amber; doc.setFillColor(c[0],c[1],c[2]); doc.roundedRect(x,y,36,7,3.5,3.5,'F');
+                doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(6.5); doc.text(text,x+18,y+4.7,{align:'center'});
+            }
+
+            function tableHeader(y){
+                doc.setFillColor(navy[0],navy[1],navy[2]); doc.rect(M,y,W-2*M,9,'F');
+                doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(6.8);
+                var xs=[M+3,M+50,M+82,M+113,M+145,M+178,M+212,M+246];
+                ['ZAHLUNG','ANTEIL','NETTO','STEUER','BRUTTO','FÄLLIG AM','BEZAHLT AM','STATUS'].forEach(function(t,i){doc.text(t,xs[i],y+5.8);});
+            }
+
+            function paymentRow(y, vals, alt){
+                if(alt){doc.setFillColor(248,250,252);doc.rect(M,y,W-2*M,13,'F');}
+                doc.setDrawColor(border[0],border[1],border[2]); doc.line(M,y+13,W-M,y+13);
+                var xs=[M+3,M+50,M+82,M+113,M+145,M+178,M+212,M+246];
+                doc.setFont('helvetica','normal'); doc.setFontSize(7.3); doc.setTextColor(navy[0],navy[1],navy[2]);
+                for(var i=0;i<7;i++){ doc.text(txt(vals[i]),xs[i],y+8); }
+                var done=!!vals[8]; var c=done?green:amber; doc.setTextColor(c[0],c[1],c[2]); doc.setFont('helvetica','bold'); doc.text(done?'BEZAHLT':'OFFEN',xs[7],y+8);
+            }
+
+            function drawBandPage(b, pageNo){
+                var gageNetto=Number(b.gage)||0, taxRate=Number(b.taxRate)||0, taxVal=gageNetto*(taxRate/100), totalBrutto=gageNetto+taxVal;
+                var isSplit=b.paymentTermsMainMode==='split';
+                var splitPct=Number(b.ptSplitPct||50);
+                var advTaxRate=Number(b.invAdvTaxRate!==undefined && b.invAdvTaxRate!=='' ? b.invAdvTaxRate : taxRate);
+                var advNet = isSplit ? (Number(b.invAdvAmount)|| (gageNetto*(splitPct/100))) : 0;
+                var advTax = advNet*(advTaxRate/100), advGross=advNet+advTax;
+                var restGross=isSplit ? Math.max(0,totalBrutto-advGross) : totalBrutto;
+                var restNet=isSplit ? (restGross/(1+(taxRate/100))) : gageNetto;
+                var restTax=restGross-restNet;
+                var modeLabel=isSplit?'Anzahlung + Restzahlung':'Gesamtzahlung';
+                var contact=[b.contactName,b.contactEmail,b.contactPhone].filter(Boolean).join(' · ') || 'Kein Ansprechpartner hinterlegt';
+                header(String(b.name||'BAND').toUpperCase(), contact, pageNo);
+
+                box(M,49,50,22,'Zahlungsmodell',modeLabel,blue);
+                box(M+54,49,65,22,'Zahlungsweise',getPtText(b.paymentTermsType),navy);
+                box(M+123,49,45,22,'Gage netto',money(gageNetto),navy);
+                box(M+172,49,39,22,'Steuer',taxRate.toFixed(2).replace('.',',')+' %',navy);
+                box(M+215,49,58,22,'Gesamt brutto',money(totalBrutto),blue);
+
+                doc.setTextColor(navy[0],navy[1],navy[2]); doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.text('ZAHLUNGSPLAN',M,81);
+                tableHeader(85);
+                if(isSplit){
+                    paymentRow(94,['Anzahlung',splitPct.toFixed(0)+' %',money(advNet),money(advTax),money(advGross),dateOrDash(b.advDueDate),dateOrDash(b.advDate),'',!!b.statusAdvPaid],false);
+                    paymentRow(107,['Restzahlung',(100-splitPct).toFixed(0)+' %',money(restNet),money(restTax),money(restGross),dateOrDash(b.restDueDate),dateOrDash(b.fullPaidDate),'',!!b.statusRestPaid],true);
+                } else {
+                    paymentRow(94,['Gesamtzahlung','100 %',money(gageNetto),money(taxVal),money(totalBrutto),dateOrDash(b.fullDueDate),dateOrDash(b.fullPaidDate),'',!!b.statusFullPaid],false);
+                }
+
+                var sy=isSplit?126:113;
+                doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(navy[0],navy[1],navy[2]); doc.text('STATUS & ABRECHNUNG',M,sy);
+                sy+=5;
+                doc.setFillColor(255,255,255); doc.setDrawColor(border[0],border[1],border[2]); doc.roundedRect(M,sy,W-2*M,30,2,2,'D');
+                if(isSplit){ statusPill(M+5,sy+5,b.statusAdvPaid?'ANZAHLUNG BEZAHLT':'ANZAHLUNG OFFEN',!!b.statusAdvPaid); statusPill(M+44,sy+5,b.statusRestPaid?'REST BEZAHLT':'REST OFFEN',!!b.statusRestPaid); }
+                else { statusPill(M+5,sy+5,b.statusFullPaid?'GESAMT BEZAHLT':'GESAMT OFFEN',!!b.statusFullPaid); }
+                doc.setTextColor(gray[0],gray[1],gray[2]); doc.setFont('helvetica','bold'); doc.setFontSize(6.5); doc.text('RECHNUNG',M+5,sy+20);
+                doc.setTextColor(navy[0],navy[1],navy[2]); doc.setFont('helvetica','normal'); doc.setFontSize(7.5);
+                doc.text(b.noInvoice?'Keine Rechnung vorgesehen':'Rechnung vorgesehen / erforderlich',M+5,sy+25);
+                doc.setTextColor(gray[0],gray[1],gray[2]); doc.setFont('helvetica','bold'); doc.setFontSize(6.5); doc.text('ZAHLUNGSWEISE / DETAILS',M+90,sy+20);
+                doc.setTextColor(navy[0],navy[1],navy[2]); doc.setFont('helvetica','normal'); doc.setFontSize(7.5);
+                doc.text(doc.splitTextToSize(getPtText(b.paymentTermsType),95),M+90,sy+25);
+                doc.setTextColor(gray[0],gray[1],gray[2]); doc.setFont('helvetica','bold'); doc.setFontSize(6.5); doc.text('ANSPRECHPARTNER',M+190,sy+20);
+                doc.setTextColor(navy[0],navy[1],navy[2]); doc.setFont('helvetica','normal'); doc.setFontSize(7.2);
+                doc.text(doc.splitTextToSize(contact,78).slice(0,2),M+190,sy+25);
+
+                var fy=H-10; doc.setDrawColor(border[0],border[1],border[2]); doc.line(M,fy-5,W-M,fy-5);
+                doc.setTextColor(gray[0],gray[1],gray[2]); doc.setFont('helvetica','normal'); doc.setFontSize(6.5);
+                doc.text('Erstellt am '+new Date().toLocaleDateString('de-DE')+' · CMOA 2027 Zahlungsübersicht',M,fy);
+                doc.text('Interne Planungsunterlage',W-M,fy,{align:'right'});
+            }
+
+            for(var i=0;i<targetBands.length;i++){
+                if(i>0) doc.addPage('a4','landscape');
+                drawBandPage(targetBands[i],i+1);
+            }
+            var fn = targetBands.length===1 ? ('CMOA_2027_Zahlungsziele_'+safeName(targetBands[0].name)+'.pdf') : 'CMOA_2027_Zahlungsziele.pdf';
+            doc.save(fn);
         }
 
         function getPtText(type) {
