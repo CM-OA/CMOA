@@ -2765,12 +2765,18 @@ function loadFromLocalStorage() {
             var W=297,H=210,M=12, dark=[24,24,28], blue=[37,99,235], green=[5,150,105], red=[190,28,34], muted=[100,100,100];
             var title=isCheck?'CHECK-IN-LISTE':'AKKREDITIERUNGSÜBERSICHT';
             var stamp=new Date().toLocaleString('de-DE');
+            var total=rows.length;
+            var checked=rows.filter(function(r){return r.chk;}).length;
+            var money=rows.reduce(function(a,r){return a+Number(r.amt||0);},0);
+            var paid=rows.filter(function(r){return r.chk;}).reduce(function(a,r){return a+Number(r.amt||0);},0);
+            var summary='GESAMT: '+total+'  ·  EINGECHECKT: '+checked+'  ·  OFFEN: '+(total-checked)+'  ·  BETRÄGE: '+money.toFixed(2).replace('.',',')+' €  ·  EINGECHECKT: '+paid.toFixed(2).replace('.',',')+' €';
             function header(pageNo){
-                doc.setFillColor(dark[0],dark[1],dark[2]); doc.rect(0,0,W,27,'F');
-                doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(16); doc.text('CHRONICAL MOSHERS OPEN AIR 2027',M,11);
-                doc.setFontSize(9); doc.setFont('helvetica','normal'); doc.text(title+'  ·  11.–12. JUNI 2027',M,18);
-                doc.setTextColor(210,210,210); doc.setFontSize(7.5); doc.text('Erstellt: '+stamp+'  ·  Seite '+pageNo, W-M,18,{align:'right'});
-                doc.setFillColor(isCheck?green[0]:blue[0],isCheck?green[1]:blue[1],isCheck?green[2]:blue[2]); doc.rect(0,27,W,2.5,'F');
+                doc.setFillColor(dark[0],dark[1],dark[2]); doc.rect(0,0,W,32,'F');
+                doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(16); doc.text('CHRONICAL MOSHERS OPEN AIR 2027',M,10);
+                doc.setFontSize(9); doc.setFont('helvetica','normal'); doc.text(title+'  ·  11.–12. JUNI 2027',M,17);
+                doc.setTextColor(210,210,210); doc.setFontSize(7.5); doc.text('Erstellt: '+stamp+'  ·  Seite '+pageNo, W-M,17,{align:'right'});
+                doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(7.8); doc.text(summary,M,26);
+                doc.setFillColor(isCheck?green[0]:blue[0],isCheck?green[1]:blue[1],isCheck?green[2]:blue[2]); doc.rect(0,32,W,2.5,'F');
             }
             var cols=[
                 {t:'ID',x:M,w:24},{t:'NAME',x:M+24,w:52},{t:'ORGANISATION',x:M+76,w:57},
@@ -2779,7 +2785,7 @@ function loadFromLocalStorage() {
             var perPage=20, page=0;
             for(var start=0;start<rows.length;start+=perPage){
                 if(page>0) doc.addPage(); page++; header(page);
-                var y=36;
+                var y=40;
                 doc.setFillColor(242,244,247); doc.roundedRect(M,y,W-2*M,10,1.5,1.5,'F');
                 doc.setTextColor(70,70,75); doc.setFont('helvetica','bold'); doc.setFontSize(7.4);
                 cols.forEach(function(c){ doc.text(c.t,c.x+2,y+6.5); });
@@ -2795,10 +2801,6 @@ function loadFromLocalStorage() {
                     else { doc.setTextColor(red[0],red[1],red[2]); doc.text('OFFEN',sc.x+2,y+4.8); }
                     y+=7.2;
                 });
-                var total=rows.length, checked=rows.filter(function(r){return r.chk;}).length, money=rows.reduce(function(a,r){return a+Number(r.amt||0);},0), paid=rows.filter(function(r){return r.chk;}).reduce(function(a,r){return a+Number(r.amt||0);},0);
-                y=Math.min(y+5,H-22); doc.setFillColor(246,247,249); doc.roundedRect(M,y,W-2*M,12,2,2,'F');
-                doc.setTextColor(muted[0],muted[1],muted[2]); doc.setFont('helvetica','bold'); doc.setFontSize(7.5);
-                doc.text('GESAMT: '+total+'   ·   EINGECHECKT: '+checked+'   ·   OFFEN: '+(total-checked)+'   ·   BETRÄGE: '+money.toFixed(2).replace('.',',')+' €   ·   EINGECHECKT: '+paid.toFixed(2).replace('.',',')+' €',M+5,y+7.5);
             }
             doc.save(isCheck?'CMOA_Check-In_Liste_2027.pdf':'CMOA_Akkreditierungsuebersicht_2027.pdf');
         }
