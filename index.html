@@ -1357,7 +1357,7 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
 
             <!-- CATERING EXPORT KACHEL AM ENDE DER LISTE -->
             <div class="card" id="cat-export-card" style="border: 1px solid var(--accent-blue); margin-top:20px;">
-                <h3 style="color:var(--accent-blue);">📤 Catering Druck & PDF-Export</h3>
+                <h3 style="color:var(--accent-blue);">📤 Catering Export</h3>
                 
                 <div class="form-group">
                     <label>1. Bandauswahl wählen:</label>
@@ -1387,7 +1387,10 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
                     </select>
                 </div>
 
-                <button class="btn-primary" style="width:100%; padding:12px; margin-top:6px; background:linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); color:#fff; border:none;" onclick="triggerCateringExport()">📤 Catering-Report Exportieren / Drucken</button>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px;">
+                    <button class="btn-primary" style="width:100%; padding:12px; background:linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); color:#fff; border:none;" onclick="triggerCateringExport()">📄 Als PDF exportieren</button>
+                    <button class="btn-primary" style="width:100%; padding:12px; background:linear-gradient(135deg, #059669 0%, #047857 100%); color:#fff; border:none;" onclick="exportCateringExcel()">📊 Als Excel exportieren</button>
+                </div>
             </div>
 
             <div id="cat-export-preview-area"></div>
@@ -3927,272 +3930,77 @@ function loadFromLocalStorage() {
             }
         }
 
-        function triggerCateringExport() {
-            var scope = document.getElementById('cat-export-scope').value;
-            var layoutMode = document.getElementById('cat-export-layout').value;
-
-            var targetBands = [];
-
-            if (scope === 'all') {
-                targetBands = bands.slice();
-            } else if (scope === 'single') {
-                var singleSelect = document.getElementById('cat-export-single-select');
-                if (singleSelect && singleSelect.value) {
-                    var selectedId = singleSelect.value;
-                    for (var i = 0; i < bands.length; i++) {
-                        if (String(bands[i].id) === String(selectedId)) {
-                            targetBands.push(bands[i]);
-                            break;
-                        }
-                    }
-                }
-            } else if (scope === 'selected') {
-                var cbs = document.querySelectorAll('.cat-exp-cb');
-                for (var j = 0; j < cbs.length; j++) {
-                    if (cbs[j].checked) {
-                        var bId = cbs[j].value;
-                        for (var k = 0; k < bands.length; k++) {
-                            if (String(bands[k].id) === String(bId)) {
-                                targetBands.push(bands[k]);
-                                break;
-                            }
-                        }
-                    }
-                }
+        function getCateringExportBands() {
+            var scopeEl=document.getElementById('cat-export-scope');
+            var scope=scopeEl?scopeEl.value:'all', out=[];
+            if(scope==='all') return bands.slice();
+            if(scope==='single'){
+                var el=document.getElementById('cat-export-single-select'), id=el?el.value:'';
+                bands.forEach(function(b){if(String(b.id)===String(id))out.push(b);});
+            } else if(scope==='selected'){
+                var ids={}; document.querySelectorAll('.cat-exp-cb:checked').forEach(function(x){ids[String(x.value)]=true;});
+                bands.forEach(function(b){if(ids[String(b.id)])out.push(b);});
             }
-
-            if (targetBands.length === 0) {
-                alert("⚠️ Bitte mindestens eine Band auswählen!");
-                return;
-            }
-
-            renderCateringPDF(targetBands, layoutMode);
+            return out;
         }
 
+        function triggerCateringExport() {
+            var targetBands=getCateringExportBands();
+            var layoutEl=document.getElementById('cat-export-layout');
+            var layoutMode=layoutEl?layoutEl.value:'both';
+            if(!targetBands.length){alert('⚠️ Bitte mindestens eine Band auswählen!');return;}
+            renderCateringPDF(targetBands,layoutMode);
+        }
+
+        function cateringBandStats(b){
+            var members=parseInt(b.paxCount)||0, vips=parseInt(b.vipGuests)||0;
+            var meat=parseInt(b.meatCount)||0, veg=parseInt(b.vegetarianCount)||0, vegan=parseInt(b.veganCount)||0;
+            var days=getCateringDaysForBand(b), pax=members+vips;
+            return {members:members,vips:vips,meat:meat,veg:veg,vegan:vegan,days:days,pax:pax,meals:pax*2*days};
+        }
+        function cateringDrinksText(b){var a=[];if(b.drinks)Object.keys(b.drinks).forEach(function(k){var x=b.drinks[k]||{},n=parseInt(x.count)||0;if(n>0)a.push(k+': '+n+' Stk.'+(x.comment?' ('+x.comment+')':''));});return a.length?a:['Keine Getränke erfasst'];}
+        function cateringFoodText(b){var a=[];(b.extraFood||[]).forEach(function(x){var n=parseInt(x.count)||0;if(x.name&&n>0)a.push(x.name+': '+n+' Stk.'+(x.comment?' ('+x.comment+')':''));});return a.length?a:['Keine zusätzlichen Speisen'];}
+        function cateringSpecialText(b){var a=[];(b.extraSpecials||[]).forEach(function(x){if(x.text&&x.text.trim())a.push(x.text+(x.comment?' – '+x.comment:''));});return a.length?a:['Keine Besonderheiten'];}
+
         function renderCateringPDF(targetBands, layoutMode) {
-            var container = document.getElementById('cat-export-preview-area');
-            if (!container) return;
-            container.innerHTML = '';
-
-            var now = new Date();
-            var dateSub = document.getElementById('print-date-sub');
-            if (dateSub) dateSub.innerText = 'Catering & Verpflegungs-Report | Erstellt am ' + now.toLocaleDateString('de-DE') + ' um ' + now.toLocaleTimeString('de-DE') + ' Uhr';
-
-            var html = '<div style="margin-top:0; padding-top:0;">';
-
-            if (layoutMode === 'both' || layoutMode === 'summary') {
-                var frPax = 0, frMeals = 0, saPax = 0, saMeals = 0;
-                var totalPax = 0, totalMeals = 0, totalVips = 0;
-                var drinkTotals = {};
-                var foodTotals = [];
-                var specialTotals = [];
-
-                for (var i = 0; i < targetBands.length; i++) {
-                    var b = targetBands[i];
-                    var members = parseInt(b.paxCount) || 0;
-                    var vips = parseInt(b.vipGuests) || 0;
-                    var bandPax = members + vips;
-                    var days = getCateringDaysForBand(b);
-                    var meals = bandPax * 2 * days;
-
-                    var isFr = (b.showday === 'Fr');
-                    var isSa = (b.showday === 'Sa');
-                    var isBothDays = (days > 1) || (!isFr && !isSa);
-
-                    if (isFr || isBothDays) { frPax += bandPax; frMeals += (bandPax * 2); }
-                    if (isSa || isBothDays) { saPax += bandPax; saMeals += (bandPax * 2); }
-
-                    totalPax += bandPax;
-                    totalMeals += meals;
-                    totalVips += vips;
-
-                    if (b.drinks) {
-                        for (var dKey in b.drinks) {
-                            var cnt = parseInt(b.drinks[dKey].count) || 0;
-                            if (cnt > 0) {
-                                var comment = b.drinks[dKey].comment ? b.drinks[dKey].comment.trim() : '';
-                                var fullDrinkLabel = comment !== '' ? dKey + ' (' + comment + ')' : dKey;
-                                drinkTotals[fullDrinkLabel] = (drinkTotals[fullDrinkLabel] || 0) + cnt;
-                            }
-                        }
-                    }
-
-                    if (Array.isArray(b.extraFood)) {
-                        for (var f = 0; f < b.extraFood.length; f++) {
-                            var food = b.extraFood[f];
-                            if (food.name && (parseInt(food.count) || 0) > 0) {
-                                foodTotals.push({
-                                    band: b.name,
-                                    name: food.name,
-                                    count: parseInt(food.count) || 0,
-                                    comment: food.comment || ''
-                                });
-                            }
-                        }
-                    }
-                    if (Array.isArray(b.extraSpecials)) {
-                        for (var s = 0; s < b.extraSpecials.length; s++) {
-                            var special = b.extraSpecials[s];
-                            if (special.text && special.text.trim()) {
-                                specialTotals.push({
-                                    band: b.name,
-                                    text: special.text,
-                                    comment: special.comment || ''
-                                });
-                            }
-                        }
-                    }
-                }
-
-                html += 
-                    '<div class="export-unified-card">' +
-                        '<div class="export-band-header">' +
-                            '<div>' +
-                                '<span class="export-band-name-title">🛒 FESTIVAL CATERING GESAMTÜBERSICHT</span>' +
-                                '<span style="font-size:0.85rem; color:#64748b; font-weight:600;">Einkaufsliste & Gesamtkalkulation Küchenbetrieb</span>' +
-                            '</div>' +
-                        '</div>' +
-
-                        '<div class="export-payment-summary-box">' +
-                            '<div class="export-summary-item"><span class="export-summary-label">Personen Gesamt</span><span class="export-summary-val">' + totalPax + ' Pers.</span></div>' +
-                            '<div class="export-summary-item"><span class="export-summary-label">Mahlzeiten Gesamt</span><span class="export-summary-val" style="color:#059669;">' + totalMeals + ' Warmmahlzeiten</span></div>' +
-                            '<div class="export-summary-item"><span class="export-summary-label">VIP-Gäste</span><span class="export-summary-val">' + totalVips + ' Gäste</span></div>' +
-                        '</div>' +
-
-                        '<h4 style="font-size:0.9rem; text-transform:uppercase; color:#2563eb; margin-top:14px; margin-bottom:6px;">🥤 Getränke Gesamtsummen</h4>' +
-                        '<table class="pdf-table"><thead><tr><th>Getränke-Typ / Sorte</th><th>Gesamtmenge (Stück)</th></tr></thead><tbody>';
-
-                var hasDrinksSum = false;
-                for (var dLabel in drinkTotals) {
-                    hasDrinksSum = true;
-                    html += '<tr><td><strong>' + dLabel + '</strong></td><td><strong style="color:#2563eb;">' + drinkTotals[dLabel] + ' Stk.</strong></td></tr>';
-                }
-                if (!hasDrinksSum) html += '<tr><td colspan="2" style="color:#64748b;">Keine Getränke erfasst.</td></tr>';
-                html += '</tbody></table>';
-
-                if (foodTotals.length > 0) {
-                    html += '<h4 style="font-size:0.9rem; text-transform:uppercase; color:#2563eb; margin-top:16px; margin-bottom:6px;">🍕 Extra Food & Speisen</h4>' +
-                        '<table class="pdf-table"><thead><tr><th>Band</th><th>Speise / Snack</th><th>Anzahl</th></tr></thead><tbody>';
-                    for (var ft = 0; ft < foodTotals.length; ft++) {
-                        var fItem = foodTotals[ft];
-                        html += '<tr><td><strong>' + fItem.band + '</strong></td><td>' + fItem.name + (fItem.comment ? ' <em>(' + fItem.comment + ')</em>' : '') + '</td><td><strong style="color:#059669;">' + fItem.count + ' Stk.</strong></td></tr>';
-                    }
-                    html += '</tbody></table>';
-                }
-
-                if (specialTotals.length > 0) {
-                    html += '<h4 style="font-size:0.9rem; text-transform:uppercase; color:#dc2626; margin-top:16px; margin-bottom:6px;">⚠️ Besonderheiten</h4>' +
-                        '<table class="pdf-table"><thead><tr><th>Band</th><th>Besonderheit</th><th>Notiz</th></tr></thead><tbody>';
-                    for (var st = 0; st < specialTotals.length; st++) {
-                        var sItem = specialTotals[st];
-                        html += '<tr><td><strong>' + sItem.band + '</strong></td><td><strong style="color:#dc2626;">' + sItem.text + '</strong></td><td style="color:#dc2626;">' + (sItem.comment || '-') + '</td></tr>';
-                    }
-                    html += '</tbody></table>';
-                }
-
-                html += '</div>';
+            if(!window.jspdf||!window.jspdf.jsPDF){alert('PDF-Modul konnte nicht geladen werden. Bitte Internetverbindung prüfen.');return;}
+            var doc=new window.jspdf.jsPDF({orientation:'portrait',unit:'mm',format:'a4'}), W=210,H=297,M=14,y=0;
+            var blue=[37,99,235], dark=[25,30,40], gray=[100,110,125], green=[5,150,105], red=[220,38,38];
+            function header(title,sub){doc.setFillColor(dark[0],dark[1],dark[2]);doc.rect(0,0,W,30,'F');doc.setFillColor(blue[0],blue[1],blue[2]);doc.rect(0,30,W,2.5,'F');doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');doc.setFontSize(17);doc.text('CHRONICAL MOSHERS OPEN AIR 2027',M,13);doc.setFontSize(10);doc.setFont('helvetica','normal');doc.text(title,M,22);doc.setTextColor(gray[0],gray[1],gray[2]);doc.setFontSize(7.5);doc.text(sub,M,38);y=45;}
+            function newPage(title,sub){doc.addPage();header(title,sub);}
+            function ensure(h,title,sub){if(y+h>H-14)newPage(title,sub);}
+            function section(t){ensure(12,'CATERING REPORT','Fortsetzung');doc.setFillColor(239,246,255);doc.roundedRect(M,y,W-2*M,8,1.5,1.5,'F');doc.setTextColor(blue[0],blue[1],blue[2]);doc.setFont('helvetica','bold');doc.setFontSize(9);doc.text(t,M+4,y+5.5);y+=11;}
+            function lines(arr,color){color=color||dark;doc.setTextColor(color[0],color[1],color[2]);doc.setFont('helvetica','normal');doc.setFontSize(8.3);arr.forEach(function(txt){var ls=doc.splitTextToSize(String(txt),W-2*M-8);ensure(ls.length*4.2+2,'CATERING REPORT','Fortsetzung');doc.text(ls,M+4,y);y+=ls.length*4.2+1;});}
+            function kv(label,val,accent){ensure(8,'CATERING REPORT','Fortsetzung');doc.setFontSize(8.2);doc.setFont('helvetica','bold');doc.setTextColor(gray[0],gray[1],gray[2]);doc.text(label,M+4,y);doc.setFont('helvetica','bold');doc.setTextColor.apply(doc,accent||dark);doc.text(String(val),76,y);y+=6;}
+            var stamp='Erstellt am '+new Date().toLocaleDateString('de-DE')+' · '+new Date().toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'})+' Uhr';
+            var first=true;
+            if(layoutMode==='both'||layoutMode==='summary'){
+                header('CATERING · GESAMTÜBERSICHT',stamp);
+                var totalPax=0,totalMeals=0,totalVips=0,frPax=0,saPax=0,drinks={};
+                targetBands.forEach(function(b){var st=cateringBandStats(b);totalPax+=st.pax;totalMeals+=st.meals;totalVips+=st.vips;var both=st.days>1||(!b.showday);if(b.showday==='Fr'||both)frPax+=st.pax;if(b.showday==='Sa'||both)saPax+=st.pax;if(b.drinks)Object.keys(b.drinks).forEach(function(k){var x=b.drinks[k]||{},n=parseInt(x.count)||0;if(n>0){var key=k+(x.comment?' ('+x.comment+')':'');drinks[key]=(drinks[key]||0)+n;}});});
+                section('FESTIVAL-SUMMEN');kv('Ausgewählte Bands',targetBands.length);kv('Personen gesamt',totalPax+' Pers.',blue);kv('VIP-Gäste',totalVips+' Pers.');kv('Warme Mahlzeiten',totalMeals+' Mahlzeiten',green);kv('Freitag · Personen',frPax+' Pers.');kv('Samstag · Personen',saPax+' Pers.');
+                section('GETRÄNKE · GESAMTMENGEN');var dl=Object.keys(drinks).sort().map(function(k){return k+'  ·  '+drinks[k]+' Stk.';});lines(dl.length?dl:['Keine Getränke erfasst']);
+                section('BESONDERHEITEN');var sp=[];targetBands.forEach(function(b){cateringSpecialText(b).forEach(function(x){if(x!=='Keine Besonderheiten')sp.push(b.name+': '+x);});});lines(sp.length?sp:['Keine Besonderheiten erfasst'],sp.length?red:gray);
             }
-
-            if (layoutMode === 'both' || layoutMode === 'details') {
-                for (var j = 0; j < targetBands.length; j++) {
-                    var band = targetBands[j];
-                    var members = parseInt(band.paxCount) || 0;
-                    var vips = parseInt(band.vipGuests) || 0;
-                    var totalPax = members + vips;
-                    var days = getCateringDaysForBand(band);
-                    var meals = totalPax * 2 * days;
-
-                    html += 
-                        '<div class="export-unified-card">' +
-                            '<div class="export-band-header">' +
-                                '<div>' +
-                                    '<span class="export-band-name-title">🎸 ' + band.name + '</span>' +
-                                    '<div style="display:flex; gap:6px; align-items:center; margin-top:4px;">' +
-                                        '<span class="export-meta-badge">Showday: ' + (band.showday || 'Fr/Sa') + '</span>' +
-                                        '<span style="font-size:0.82rem; color:#64748b; font-weight:600;">Anwesenheit: ' + days + ' Tag(e)</span>' +
-                                    '</div>' +
-                                '</div>' +
-                                '<div>' +
-                                    '<div class="export-highlight-amount" style="color:#059669; background:#ecfdf5; border-color:#a7f3d0;">' + meals + ' Mahlzeiten</div>' +
-                                    '<div style="font-size:0.72rem; color:#64748b; text-align:right; margin-top:2px; font-weight:700;">WARM CATERING</div>' +
-                                '</div>' +
-                            '</div>' +
-
-                            '<div class="export-payment-summary-box">' +
-                                '<div class="export-summary-item"><span class="export-summary-label">Mitglieder</span><span class="export-summary-val">' + members + ' Pers.</span></div>' +
-                                '<div class="export-summary-item"><span class="export-summary-label">VIP Guests</span><span class="export-summary-val">' + vips + ' Pers.</span></div>' +
-                                '<div class="export-summary-item"><span class="export-summary-label">Personen Gesamt</span><span class="export-summary-val" style="color:#2563eb;">' + totalPax + ' Pax</span></div>' +
-                            '</div>';
-
-                    var bDrinkRows = '';
-                    if (band.drinks) {
-                        for (var bDKey in band.drinks) {
-                            var bDCnt = parseInt(band.drinks[bDKey].count) || 0;
-                            if (bDCnt > 0) {
-                                bDrinkRows += '<tr>' +
-                                    '<td><strong>' + bDKey + '</strong></td>' +
-                                    '<td><strong style="color:#2563eb;">' + bDCnt + ' Stk.</strong></td>' +
-                                    '<td>' + (band.drinks[bDKey].comment || '-') + '</td>' +
-                                '</tr>';
-                            }
-                        }
-                    }
-
-                    if (bDrinkRows !== '') {
-                        html += '<h4 style="font-size:0.85rem; text-transform:uppercase; color:#334155; margin-top:10px; margin-bottom:4px;">🌳 Getränke</h4>' +
-                            '<table class="pdf-table"><thead><tr><th>Getränk</th><th>Menge</th><th>Anmerkung / Sorte</th></tr></thead><tbody>' +
-                            bDrinkRows + '</tbody></table>';
-                    } else {
-                        html += '<p style="font-size:0.82rem; color:#64748b; margin-top:8px;"><em>Keine Getränke für diese Band eingetragen.</em></p>';
-                    }
-
-                    var bFoodRows = '';
-                    if (Array.isArray(band.extraFood)) {
-                        for (var bF = 0; bF < band.extraFood.length; bF++) {
-                            var bFood = band.extraFood[bF];
-                            if (bFood.name && (parseInt(bFood.count) || 0) > 0) {
-                                bFoodRows += '<tr>' +
-                                    '<td><strong>' + bFood.name + '</strong></td>' +
-                                    '<td><strong style="color:#059669;">' + bFood.count + ' Stk.</strong></td>' +
-                                    '<td>' + (bFood.comment || '-') + '</td>' +
-                                '</tr>';
-                            }
-                        }
-                    }
-
-                    if (bFoodRows !== '') {
-                        html += '<h4 style="font-size:0.85rem; text-transform:uppercase; color:#334155; margin-top:12px; margin-bottom:4px;">🍕 Extra Food & Sonderwünsche</h4>' +
-                            '<table class="pdf-table"><thead><tr><th>Speise / Snack</th><th>Menge</th><th>Notiz</th></tr></thead><tbody>' +
-                            bFoodRows + '</tbody></table>';
-                    }
-
-                    var bSpecialRows = '';
-                    if (Array.isArray(band.extraSpecials)) {
-                        for (var bS = 0; bS < band.extraSpecials.length; bS++) {
-                            var bSpecial = band.extraSpecials[bS];
-                            if (bSpecial.text && bSpecial.text.trim()) {
-                                bSpecialRows += '<tr>' +
-                                    '<td><strong style="color:#dc2626;">' + bSpecial.text + '</strong></td>' +
-                                    '<td style="color:#dc2626;">' + (bSpecial.comment || '-') + '</td>' +
-                                '</tr>';
-                            }
-                        }
-                    }
-
-                    if (bSpecialRows !== '') {
-                        html += '<h4 style="font-size:0.85rem; text-transform:uppercase; color:#dc2626; margin-top:12px; margin-bottom:4px;">⚠️ Besonderheiten</h4>' +
-                            '<table class="pdf-table"><thead><tr><th>Besonderheit</th><th>Notiz</th></tr></thead><tbody>' +
-                            bSpecialRows + '</tbody></table>';
-                    }
-
-                    html += '</div>';
-                }
+            if(layoutMode==='both'||layoutMode==='details'){
+                targetBands.forEach(function(b,idx){if(first&&layoutMode==='details'){header('CATERING · BANDDETAILS',stamp);first=false;}else{newPage('CATERING · '+String(b.name||'BAND').toUpperCase(),stamp);}
+                    var st=cateringBandStats(b);doc.setTextColor(dark[0],dark[1],dark[2]);doc.setFont('helvetica','bold');doc.setFontSize(18);doc.text(String(b.name||'—').toUpperCase(),M,y+2);y+=9;
+                    section('PERSONEN & VERPFLEGUNG');kv('Showday',b.showday||'Fr/Sa');kv('Catering-Tage',st.days);kv('Bandmitglieder',st.members+' Pers.');kv('VIP-Gäste',st.vips+' Pers.');kv('Personen gesamt',st.pax+' Pers.',blue);kv('Fleisch / Vegetarisch / Vegan',st.meat+' / '+st.veg+' / '+st.vegan);kv('Warme Mahlzeiten',st.meals+' Mahlzeiten',green);
+                    section('GETRÄNKE');lines(cateringDrinksText(b));section('EXTRA FOOD & SPEISEN');lines(cateringFoodText(b));section('BESONDERHEITEN');var spl=cateringSpecialText(b);lines(spl,spl[0]==='Keine Besonderheiten'?gray:red);
+                });
             }
+            doc.setProperties({title:'CMOA Catering Report 2027'});doc.save('CMOA_Catering_Report_2027.pdf');
+        }
 
-            html += '</div>';
-            container.innerHTML = html;
-
-            setTimeout(function() { window.print(); }, 300);
+        function exportCateringExcel(){
+            if(!window.XLSX){alert('Excel-Modul konnte nicht geladen werden. Bitte Internetverbindung prüfen.');return;}
+            var targetBands=getCateringExportBands();if(!targetBands.length){alert('⚠️ Bitte mindestens eine Band auswählen!');return;}
+            var overview=[],drinkRows=[],foodRows=[],specialRows=[];
+            targetBands.forEach(function(b){var st=cateringBandStats(b);overview.push({'Band / Act':b.name||'','Showday':b.showday||'','Catering-Tage':st.days,'Bandmitglieder':st.members,'VIP-Gäste':st.vips,'Personen gesamt':st.pax,'Fleischesser':st.meat,'Vegetarier':st.veg,'Veganer':st.vegan,'Warme Mahlzeiten':st.meals});if(b.drinks)Object.keys(b.drinks).forEach(function(k){var x=b.drinks[k]||{},n=parseInt(x.count)||0;if(n>0)drinkRows.push({'Band / Act':b.name||'','Getränk':k,'Menge':n,'Anmerkung / Sorte':x.comment||''});});(b.extraFood||[]).forEach(function(x){var n=parseInt(x.count)||0;if(x.name&&n>0)foodRows.push({'Band / Act':b.name||'','Speise / Snack':x.name,'Menge':n,'Notiz':x.comment||''});});(b.extraSpecials||[]).forEach(function(x){if(x.text&&x.text.trim())specialRows.push({'Band / Act':b.name||'','Besonderheit':x.text,'Notiz':x.comment||''});});});
+            var wb=XLSX.utils.book_new();
+            function add(name,data,widths){var ws=XLSX.utils.json_to_sheet(data.length?data:[{}]);ws['!cols']=widths.map(function(w){return {wch:w};});XLSX.utils.book_append_sheet(wb,ws,name);}
+            add('Catering Übersicht',overview,[28,12,14,16,12,16,14,14,12,18]);add('Getränke',drinkRows,[28,26,12,34]);add('Extra Food',foodRows,[28,28,12,36]);add('Besonderheiten',specialRows,[28,42,42]);
+            XLSX.writeFile(wb,'CMOA_Catering_2027.xlsx');
         }
 
         function updatePaymentStatusFlag(bandId, flagType, isChecked) {
@@ -5295,7 +5103,7 @@ function loadFromLocalStorage() {
 
                 tableHtml += '<tr>' +
                     '<td><strong style="font-size: 0.98rem; text-transform: uppercase;">' + b.name + '</strong></td>' +
-                    '<td>' + g.toFixed(2) + ' € <span style="font-size:0.75rem; color:var(--text-muted);">(' + tr + '%)</span></td>' +
+                    '<td>' + g.toFixed(2) + ' € <span style="font-size:0.75rem; color:#dc2626; font-weight:700;">(' + tr + '%)</span></td>' +
                     '<td style="text-align: right;"><strong class="cost-val" style="font-size: 1rem;">' + brutto.toFixed(2) + ' €</strong></td>' +
                 '</tr>';
             }
