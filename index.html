@@ -3,6 +3,7 @@
 <head>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script>
   let _supabase = null;
   
@@ -2072,11 +2073,15 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
 
                 <!-- HOTEL EXPORT KACHEL -->
                 <div class="card" id="hotel-export-card" style="border: 1px solid var(--accent-blue);">
-                    <h3 style="color:var(--accent-blue);">📤 Hotel-Report Druck & Export</h3>
+                    <h3 style="color:var(--accent-blue);">📤 Hotel-Report Export</h3>
                     <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 12px;">
-                        Druckt oder exportiert die komplette Hotelübersicht inklusive Zimmer-Zusammenfassung in einem modernen Design.
+                        Exportiert ausschließlich die Hotelübersicht und Zimmer-Zusammenfassung – ohne Hauptmenü, Akkreditierung, Design-Auswahl oder andere Bereiche.
                     </div>
-                    <button class="btn-primary" style="width:100%; padding:12px; background:linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); color:#fff; border:none;" onclick="printHotelReport()">📤 Hotel-Report Drucken / PDF</button>
+                    <div style="display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px;">
+                        <button class="btn-primary" style="padding:12px; background:linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); color:#fff; border:none;" onclick="exportHotelPDF()">📄 PDF</button>
+                        <button class="btn-primary" style="padding:12px; background:linear-gradient(135deg, #16a34a 0%, #15803d 100%); color:#fff; border:none;" onclick="exportHotelExcel()">📊 Excel</button>
+                        <button class="btn-primary" style="padding:12px; background:linear-gradient(135deg, #475569 0%, #334155 100%); color:#fff; border:none;" onclick="exportHotelCSV()">📋 CSV</button>
+                    </div>
                 </div>
             </div>
 
@@ -5512,11 +5517,153 @@ function loadFromLocalStorage() {
             statsC.innerHTML = statsTableHtml;
         }
 
-        function printHotelReport() {
-            var now = new Date();
-            var dateSub = document.getElementById('print-date-sub');
-            if (dateSub) dateSub.innerText = 'Hotelübersicht & Zimmer-Statistik | Erstellt am ' + now.toLocaleDateString('de-DE') + ' ' + now.toLocaleTimeString('de-DE') + ' Uhr';
-            window.print();
+        function getHotelExportData() {
+            var detailRows = [];
+            var summaryMap = {};
+            var totalEz = 0, totalDz = 0, totalCost = 0;
+
+            bands.forEach(function(b) {
+                if (!(b.hotelNeeded === 'ja' || b.hotelNeeded === true)) return;
+
+                var ez = parseInt(b.hotelEzCount) || 0;
+                var dz = parseInt(b.hotelDzCount) || 0;
+                var nights = 0;
+                if (b.hotelFrom && b.hotelTo) {
+                    var d1 = new Date(b.hotelFrom), d2 = new Date(b.hotelTo);
+                    if (!isNaN(d1) && !isNaN(d2)) nights = Math.max(0, Math.round((d2 - d1) / 86400000));
+                }
+                var costs = getCostForHotel(b.hotelName);
+                var cost = (ez * (Number(costs.ezCost) || 0) * nights) + (dz * (Number(costs.dzCost) || 0) * nights);
+                var hotel = b.hotelName || 'Offen';
+
+                detailRows.push({
+                    band: String(b.name || '').toUpperCase(),
+                    hotel: hotel,
+                    from: b.hotelFrom ? formatDateDE(b.hotelFrom) : '-',
+                    to: b.hotelTo ? formatDateDE(b.hotelTo) : '-',
+                    nights: nights,
+                    ez: ez,
+                    dz: dz,
+                    persons: parseInt(b.hotelPersons) || 0,
+                    cost: cost
+                });
+
+                if (!summaryMap[hotel]) summaryMap[hotel] = {hotel:hotel, bands:0, ez:0, dz:0, cost:0};
+                summaryMap[hotel].bands++;
+                summaryMap[hotel].ez += ez;
+                summaryMap[hotel].dz += dz;
+                summaryMap[hotel].cost += cost;
+                totalEz += ez; totalDz += dz; totalCost += cost;
+            });
+
+            detailRows.sort(function(a,b){ return a.hotel.localeCompare(b.hotel,'de') || a.band.localeCompare(b.band,'de'); });
+            var summaryRows = Object.keys(summaryMap).map(function(k){ return summaryMap[k]; });
+            summaryRows.sort(function(a,b){ return a.hotel.localeCompare(b.hotel,'de'); });
+            return {details:detailRows, summary:summaryRows, totalEz:totalEz, totalDz:totalDz, totalCost:totalCost};
+        }
+
+        function hotelExportFileStamp() {
+            var d = new Date();
+            return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+        }
+
+        function exportHotelCSV() {
+            var data = getHotelExportData();
+            if (!data.details.length) { alert('Keine Hotel-Buchungen zum Exportieren vorhanden.'); return; }
+            var q = function(v) { return '"' + String(v == null ? '' : v).replace(/"/g,'""') + '"'; };
+            var lines = ['Band / Act;Hotel;Von;Bis;Nächte;EZ;DZ;Personen;Kosten EUR'];
+            data.details.forEach(function(r){
+                lines.push([q(r.band),q(r.hotel),q(r.from),q(r.to),r.nights,r.ez,r.dz,r.persons,String(r.cost.toFixed(2)).replace('.',',')].join(';'));
+            });
+            lines.push('');
+            lines.push('ZUSAMMENFASSUNG PRO HOTEL');
+            lines.push('Hotel;Bands;EZ;DZ;Gesamtkosten EUR');
+            data.summary.forEach(function(r){ lines.push([q(r.hotel),r.bands,r.ez,r.dz,String(r.cost.toFixed(2)).replace('.',',')].join(';')); });
+            lines.push(['GESAMTSUMME','',data.totalEz,data.totalDz,String(data.totalCost.toFixed(2)).replace('.',',')].join(';'));
+            var blob = new Blob(['\ufeff' + lines.join('\r\n')], {type:'text/csv;charset=utf-8;'});
+            var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'CMOA_Hotelreport_' + hotelExportFileStamp() + '.csv';
+            document.body.appendChild(a); a.click(); a.remove(); setTimeout(function(){URL.revokeObjectURL(a.href);},500);
+        }
+
+        function exportHotelExcel() {
+            var data = getHotelExportData();
+            if (!data.details.length) { alert('Keine Hotel-Buchungen zum Exportieren vorhanden.'); return; }
+            if (!window.XLSX) { alert('Excel-Modul konnte nicht geladen werden. Bitte Internetverbindung prüfen.'); return; }
+
+            var detail = data.details.map(function(r){ return {
+                'Band / Act': r.band, 'Hotel': r.hotel, 'Von': r.from, 'Bis': r.to, 'Nächte': r.nights,
+                'EZ': r.ez, 'DZ': r.dz, 'Personen': r.persons, 'Kosten EUR': Number(r.cost.toFixed(2))
+            };});
+            var summary = data.summary.map(function(r){ return {
+                'Hotel': r.hotel, 'Bands': r.bands, 'EZ': r.ez, 'DZ': r.dz, 'Gesamtkosten EUR': Number(r.cost.toFixed(2))
+            };});
+            summary.push({'Hotel':'GESAMTSUMME','Bands':'','EZ':data.totalEz,'DZ':data.totalDz,'Gesamtkosten EUR':Number(data.totalCost.toFixed(2))});
+
+            var wb = XLSX.utils.book_new();
+            var ws1 = XLSX.utils.json_to_sheet(detail);
+            var ws2 = XLSX.utils.json_to_sheet(summary);
+            ws1['!cols'] = [{wch:24},{wch:24},{wch:13},{wch:13},{wch:9},{wch:7},{wch:7},{wch:10},{wch:14}];
+            ws2['!cols'] = [{wch:28},{wch:10},{wch:8},{wch:8},{wch:20}];
+            XLSX.utils.book_append_sheet(wb, ws1, 'Hotelübersicht');
+            XLSX.utils.book_append_sheet(wb, ws2, 'Zusammenfassung');
+            XLSX.writeFile(wb, 'CMOA_Hotelreport_' + hotelExportFileStamp() + '.xlsx');
+        }
+
+        function exportHotelPDF() {
+            var data = getHotelExportData();
+            if (!data.details.length) { alert('Keine Hotel-Buchungen zum Exportieren vorhanden.'); return; }
+            if (!window.jspdf || !window.jspdf.jsPDF) { alert('PDF-Modul konnte nicht geladen werden. Bitte Internetverbindung prüfen.'); return; }
+
+            var jsPDF = window.jspdf.jsPDF;
+            var doc = new jsPDF({orientation:'landscape', unit:'mm', format:'a4'});
+            var W = 297, H = 210, margin = 14, y = 16;
+            var dark=[24,24,28], blue=[37,99,235], muted=[95,99,104], light=[246,248,250], border=[215,220,226];
+
+            function header(title) {
+                doc.setFillColor(dark[0],dark[1],dark[2]); doc.rect(0,0,W,24,'F');
+                doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(16); doc.text('CHRONICAL MOSHERS OPEN AIR 2027',margin,10);
+                doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.text(title,margin,17);
+                doc.setTextColor(muted[0],muted[1],muted[2]); doc.setFontSize(7.5);
+                doc.text('Erstellt am ' + new Date().toLocaleDateString('de-DE') + ' ' + new Date().toLocaleTimeString('de-DE') + ' Uhr', W-margin, 30, {align:'right'});
+                y=35;
+            }
+            function pageCheck(needed, title) { if (y + needed > H-13) { doc.addPage(); header(title); } }
+            function txt(v,x,yy,size,bold,align) { doc.setTextColor(dark[0],dark[1],dark[2]); doc.setFont('helvetica',bold?'bold':'normal'); doc.setFontSize(size); doc.text(String(v),x,yy,{align:align||'left'}); }
+            function money(v){ return Number(v||0).toLocaleString('de-DE',{minimumFractionDigits:2,maximumFractionDigits:2}) + ' EUR'; }
+
+            header('Hotelübersicht & Zimmer-Statistik');
+            doc.setTextColor(blue[0],blue[1],blue[2]); doc.setFont('helvetica','bold'); doc.setFontSize(15); doc.text('HOTELÜBERSICHT',margin,y); y+=8;
+
+            var cols=[margin,72,128,158,183,203,223,244,283];
+            doc.setFillColor(235,239,244); doc.roundedRect(margin,y-5,W-2*margin,9,1,1,'F');
+            txt('BAND / ACT',cols[0]+2,y,7.5,true); txt('HOTEL',cols[1],y,7.5,true); txt('VON',cols[2],y,7.5,true); txt('BIS',cols[3],y,7.5,true);
+            txt('NÄCHTE',cols[4],y,7.5,true); txt('EZ',cols[5],y,7.5,true); txt('DZ',cols[6],y,7.5,true); txt('PERS.',cols[7],y,7.5,true); txt('KOSTEN',cols[8],y,7.5,true,'right'); y+=7;
+
+            data.details.forEach(function(r,idx){
+                pageCheck(9,'Hotelübersicht & Zimmer-Statistik');
+                if (idx%2===0) { doc.setFillColor(light[0],light[1],light[2]); doc.rect(margin,y-4.5,W-2*margin,8,'F'); }
+                txt(r.band.substring(0,28),cols[0]+2,y,8,true); txt(r.hotel.substring(0,25),cols[1],y,8,false); txt(r.from,cols[2],y,8,false); txt(r.to,cols[3],y,8,false);
+                txt(r.nights,cols[4]+7,y,8,false,'center'); txt(r.ez,cols[5]+4,y,8,false,'center'); txt(r.dz,cols[6]+4,y,8,false,'center'); txt(r.persons,cols[7]+5,y,8,false,'center');
+                doc.setTextColor(190,28,34); doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.text(money(r.cost),cols[8],y,{align:'right'}); y+=8;
+            });
+
+            y+=7; pageCheck(35,'Hotelübersicht & Zimmer-Statistik');
+            doc.setTextColor(blue[0],blue[1],blue[2]); doc.setFont('helvetica','bold'); doc.setFontSize(13); doc.text('ZIMMER-ZUSAMMENFASSUNG PRO HOTEL',margin,y); y+=8;
+            doc.setFillColor(235,239,244); doc.roundedRect(margin,y-5,W-2*margin,9,1,1,'F');
+            txt('HOTEL',margin+2,y,7.5,true); txt('BANDS',150,y,7.5,true); txt('EZ',190,y,7.5,true); txt('DZ',215,y,7.5,true); txt('GESAMTKOSTEN',W-margin,y,7.5,true,'right'); y+=7;
+            data.summary.forEach(function(r,idx){
+                pageCheck(9,'Hotelübersicht & Zimmer-Statistik');
+                if (idx%2===0) { doc.setFillColor(light[0],light[1],light[2]); doc.rect(margin,y-4.5,W-2*margin,8,'F'); }
+                txt(r.hotel,margin+2,y,8,true); txt(r.bands,158,y,8,false,'center'); txt(r.ez,194,y,8,false,'center'); txt(r.dz,219,y,8,false,'center'); txt(money(r.cost),W-margin,y,8,true,'right'); y+=8;
+            });
+            pageCheck(11,'Hotelübersicht & Zimmer-Statistik');
+            doc.setDrawColor(border[0],border[1],border[2]); doc.line(margin,y-3,W-margin,y-3);
+            txt('GESAMTSUMME',margin+2,y+2,9,true); txt(data.totalEz + ' EZ',194,y+2,9,true,'center'); txt(data.totalDz + ' DZ',219,y+2,9,true,'center');
+            doc.setTextColor(190,28,34); doc.setFont('helvetica','bold'); doc.setFontSize(10); doc.text(money(data.totalCost),W-margin,y+2,{align:'right'});
+
+            var pages=doc.getNumberOfPages();
+            for(var p=1;p<=pages;p++){ doc.setPage(p); doc.setTextColor(120,120,120); doc.setFontSize(7); doc.text('Seite '+p+' / '+pages,W-margin,H-7,{align:'right'}); }
+            doc.save('CMOA_Hotelreport_' + hotelExportFileStamp() + '.pdf');
         }
 
         function renderRO() {
