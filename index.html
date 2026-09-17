@@ -2957,14 +2957,15 @@ function loadFromLocalStorage() {
             if (!to) { alert('Für diese Akkreditierung ist keine E-Mail-Adresse hinterlegt.'); return; }
 
             var eventName = (currentEvent && (currentEvent.short_name || currentEvent.name)) || 'CMOA 2027';
-            var subject = 'Akkreditierung – ' + eventName;
-            var body = 'Hallo ' + String(rec.name || '') + ',\n\n' +
+            var subject = 'Akkreditierung – ' + eventName + ' – ' + String(rec.id || '') + ' – ' + String(rec.name || '');
+            // mailto unterstützt nur reinen Text. Die Unicode-Zeichen erzeugen optisch eine kursive Hinweiszeile.
+            var body = '𝑑𝑖𝑒𝑠 𝑖𝑠𝑡 𝑒𝑖𝑛𝑒 𝑎𝑢𝑡𝑜𝑚𝑎𝑡𝑖𝑠𝑐ℎ 𝑔𝑒𝑛𝑒𝑟𝑖𝑒𝑟𝑡𝑒 𝑒-𝑚𝑎𝑖𝑙\n\n' +
+                'Hallo ' + String(rec.name || '') + ',\n\n' +
                 'anbei erhältst du deine Akkreditierung für ' + eventName + '.\n\n' +
                 'Bitte bringe die Akkreditierung digital oder ausgedruckt zur Veranstaltung mit.\n\n' +
                 'Wichtig: Die letzten drei Ziffern deiner Akkreditierungs-ID (' + String(rec.id || '') + ') müssen am Einlass mitgeteilt werden.\n\n' +
                 'Die PDF-Akkreditierung bitte ich als Anhang dieser E-Mail zu beachten.\n\n' +
-                'Bei Rückfragen kannst du dich gerne an uns wenden.\n\n' +
-                'Viele Grüße\nCMOA-Team';
+                'Bei Rückfragen kannst du dich gerne an uns wenden.';
 
             // Öffnet das Standard-Mailprogramm. PDF-Anhänge können Browser per mailto: nicht automatisch hinzufügen.
             var mailto = 'mailto:' + encodeURIComponent(to) +
