@@ -1500,6 +1500,10 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
                     <label style="display:block; font-size:12px; font-weight:700; margin-bottom:4px; color:var(--text-muted); margin-top:10px;">Organisation</label>
                     <input type="text" id="in-org" placeholder="z. B. Magazin, Band">
 
+                    <label style="display:block; font-size:12px; font-weight:700; margin-bottom:4px; color:var(--text-muted); margin-top:10px;">E-Mail-Adresse Empfänger</label>
+                    <input type="email" id="in-email" placeholder="z. B. name@beispiel.de" autocomplete="email">
+                    <div style="font-size:11px; color:var(--text-muted); margin-top:4px;">Für den späteren Versand der persönlichen Akkreditierungs-PDF. CC wird automatisch an cmoa@gmx.de gesendet.</div>
+
                     <div class="akk-small-title">Berechtigung *</div>
                     <div class="akk-grid" id="grid-perm">
                         <button type="button" class="akk-grid-btn" data-val="VIP">VIP</button>
@@ -2645,6 +2649,8 @@ function loadFromLocalStorage() {
                 btnSubmit.onclick = function() {
                     var name = document.getElementById('in-name').value.trim();
                     var org = document.getElementById('in-org').value.trim();
+                    var emailEl = document.getElementById('in-email');
+                    var email = emailEl ? emailEl.value.trim() : '';
                     var amt = parseFloat(amtIn.value);
                     var msg = document.getElementById('akk-msg');
 
@@ -2664,11 +2670,16 @@ function loadFromLocalStorage() {
                         perm: selPerm,
                         day: selDay,
                         amt: amt,
-                        chk: false
+                        chk: false,
+                        email: email,
+                        emailSent: false,
+                        emailSentAt: '',
+                        emailError: ''
                     });
 
                     document.getElementById('in-name').value = "";
                     document.getElementById('in-org').value = "";
+                    if (emailEl) emailEl.value = "";
                     amtIn.value = "";
                     amtIn.disabled = false;
                     isFree = false;
@@ -2886,7 +2897,7 @@ function loadFromLocalStorage() {
             var listO = document.getElementById('list-overview');
             if(listO) {
                 var fO = akkDb.filter(function(r){
-                    var matchesSearch = String(r.name||'').toLowerCase().indexOf(qO) > -1 || String(r.org||'').toLowerCase().indexOf(qO) > -1 || String(r.id||'').toLowerCase().indexOf(qO) > -1;
+                    var matchesSearch = String(r.name||'').toLowerCase().indexOf(qO) > -1 || String(r.org||'').toLowerCase().indexOf(qO) > -1 || String(r.id||'').toLowerCase().indexOf(qO) > -1 || String(r.email||'').toLowerCase().indexOf(qO) > -1;
                     var matchesOrg = !selectedOrg || String(r.org||'') === selectedOrg;
                     return matchesSearch && matchesOrg;
                 });
@@ -2899,7 +2910,8 @@ function loadFromLocalStorage() {
                     fO.forEach(function(r) {
                         htmlO += '<div class="akk-record ' + (r.chk ? 'checked' : '') + '">' +
                             '<div class="akk-rec-top"><span>' + r.name + '</span><span class="akk-rec-status ' + (r.chk ? 'da' : 'offen') + '">' + (r.chk ? 'EINGECHECKT' : 'OFFEN') + '</span></div>' +
-                            '<div class="akk-rec-sub"><span class="akk-rec-id-tag">' + r.id + '</span> • Org: <b>' + r.org + '</b><br>Berechtigung: <b>' + r.perm + '</b> | Tag: <b>' + r.day + '</b> | Betrag: <b>' + r.amt.toFixed(2).replace('.',',') + ' €</b></div>' +
+                            '<div class="akk-rec-sub"><span class="akk-rec-id-tag">' + r.id + '</span> • Org: <b>' + r.org + '</b><br>Berechtigung: <b>' + r.perm + '</b> | Tag: <b>' + r.day + '</b> | Betrag: <b>' + r.amt.toFixed(2).replace('.',',') + ' €</b>' +
+                            (r.email ? '<br>📧 <b>' + r.email + '</b> · ' + (r.emailSent ? '<span style="color:var(--accent-green);font-weight:700;">✅ versendet' + (r.emailSentAt ? ' am ' + new Date(r.emailSentAt).toLocaleString('de-DE') : '') + '</span>' : '<span style="color:var(--accent-yellow);font-weight:700;">⏳ noch nicht versendet</span>') : '<br><span style="color:var(--text-muted);">📧 Keine E-Mail-Adresse hinterlegt</span>') + '</div>' +
                             '<div class="akk-rec-actions">' +
                             '<button type="button" class="akk-action-btn" data-akk-act="pdf" data-akk-id="'+r.id+'">📄 PDF</button>' +
                             '<button type="button" class="akk-action-btn check" data-akk-act="chk" data-akk-id="'+r.id+'">' + (r.chk ? 'Stornieren' : 'Einchecken') + '</button>' +
@@ -2914,7 +2926,7 @@ function loadFromLocalStorage() {
             var qC = srcCh ? srcCh.value.toLowerCase() : "";
             var listC = document.getElementById('list-checkin');
             if(listC) {
-                var fC = akkDb.filter(function(r){ return String(r.name||'').toLowerCase().indexOf(qC) > -1 || String(r.org||'').toLowerCase().indexOf(qC) > -1 || String(r.id||'').toLowerCase().indexOf(qC) > -1; });
+                var fC = akkDb.filter(function(r){ return String(r.name||'').toLowerCase().indexOf(qC) > -1 || String(r.org||'').toLowerCase().indexOf(qC) > -1 || String(r.id||'').toLowerCase().indexOf(qC) > -1 || String(r.email||'').toLowerCase().indexOf(qC) > -1; });
                 var sortCheckinEl = document.getElementById('sort-checkin');
                 fC = sortAkkRecords(fC, sortCheckinEl ? sortCheckinEl.value : 'newest');
 
