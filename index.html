@@ -1265,11 +1265,6 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
 
         <!-- HAUPTMENÜ -->
         <div id="main-page" class="page active">
-            <div class="event-switcher">
-                <label for="event-selector">Veranstaltung</label>
-                <select id="event-selector" onchange="switchCmoaEvent(this.value)"></select>
-                <button id="event-admin-btn" type="button" class="btn-subtle permission-hidden" onclick="showPage('events-admin-page')">⚙️ Veranstaltungen</button>
-            </div>
             <div class="auth-userbar"><span id="auth-user-label"></span><button type="button" class="btn-subtle" onclick="cmoaLogout()">Abmelden</button></div>
             <div id="rights-banner" class="rights-banner"></div>
             <div class="menu-grid">
@@ -1315,6 +1310,12 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
                     <button type="button" class="design-choice" data-design-choice="forest" onclick="setDesign('forest')"><span class="design-dot" style="--dot:#4f785e"></span>Forest</button>
                     <button type="button" class="design-choice" data-design-choice="ocean" onclick="setDesign('ocean')"><span class="design-dot" style="--dot:#477b9c"></span>Ocean</button>
                 </div>
+            </div>
+
+            <div class="event-switcher" style="margin-top:14px;">
+                <label for="event-selector">Veranstaltung wechseln</label>
+                <select id="event-selector" onchange="switchCmoaEvent(this.value)"></select>
+                <button id="event-admin-btn" type="button" class="btn-subtle permission-hidden" onclick="showPage('events-admin-page')">⚙️ Veranstaltungen verwalten</button>
             </div>
 
         </div>
