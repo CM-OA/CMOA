@@ -1502,9 +1502,23 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
             <div id="sec-akk-uebersicht" class="akk-section">
                 <div class="akk-card">
                     <input type="text" id="src-overview" placeholder="Suchen in Übersicht..." style="margin-bottom:8px;">
-                    <select id="filter-org-overview" style="width:100%;">
+                    <select id="filter-org-overview" style="width:100%; margin-bottom:8px;">
                         <option value="">Alle Organisationen</option>
                     </select>
+                    <label style="display:block;font-size:11px;font-weight:800;color:var(--text-muted);margin:2px 0 4px;">SORTIERUNG</label>
+                    <select id="sort-overview" style="width:100%; margin-bottom:8px;">
+                        <option value="newest" selected>Neueste Akkreditierung zuerst</option>
+                        <option value="oldest">Älteste Akkreditierung zuerst</option>
+                        <option value="name-az">Name A–Z</option>
+                        <option value="name-za">Name Z–A</option>
+                        <option value="org-az">Organisation A–Z</option>
+                        <option value="id-asc">ID aufsteigend</option>
+                        <option value="id-desc">ID absteigend</option>
+                        <option value="status-open">Offen zuerst</option>
+                        <option value="status-checked">Eingecheckt zuerst</option>
+                        <option value="day">Wochentag FR → SA → WE</option>
+                    </select>
+                    <button type="button" class="akk-backup-btn" style="width:100%;background:linear-gradient(135deg,#2563eb,#1d4ed8);color:#fff;border:none;" onclick="exportAkkListPdf('overview')">📄 Übersicht als PDF exportieren</button>
                 </div>
                 <div id="list-overview"></div>
             </div>
@@ -1512,7 +1526,21 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
             <!-- CHECK-IN -->
             <div id="sec-akk-checkin" class="akk-section">
                 <div class="akk-card">
-                    <input type="text" id="src-checkin" placeholder="Suchen für Check-In...">
+                    <input type="text" id="src-checkin" placeholder="Suchen für Check-In..." style="margin-bottom:8px;">
+                    <label style="display:block;font-size:11px;font-weight:800;color:var(--text-muted);margin:2px 0 4px;">SORTIERUNG</label>
+                    <select id="sort-checkin" style="width:100%; margin-bottom:8px;">
+                        <option value="newest" selected>Neueste Akkreditierung zuerst</option>
+                        <option value="oldest">Älteste Akkreditierung zuerst</option>
+                        <option value="name-az">Name A–Z</option>
+                        <option value="name-za">Name Z–A</option>
+                        <option value="org-az">Organisation A–Z</option>
+                        <option value="id-asc">ID aufsteigend</option>
+                        <option value="id-desc">ID absteigend</option>
+                        <option value="status-open">Offen zuerst</option>
+                        <option value="status-checked">Eingecheckt zuerst</option>
+                        <option value="day">Wochentag FR → SA → WE</option>
+                    </select>
+                    <button type="button" class="akk-backup-btn" style="width:100%;background:linear-gradient(135deg,#059669,#047857);color:#fff;border:none;" onclick="exportAkkListPdf('checkin')">📄 Check-In-Liste als PDF exportieren</button>
                 </div>
                 <div id="list-checkin"></div>
             </div>
@@ -2679,6 +2707,10 @@ function loadFromLocalStorage() {
             if (srcOv) srcOv.oninput = renderAkk;
             var filterOrgOv = document.getElementById('filter-org-overview');
             if (filterOrgOv) filterOrgOv.onchange = renderAkk;
+            var sortOv = document.getElementById('sort-overview');
+            var sortCh = document.getElementById('sort-checkin');
+            if (sortOv) sortOv.onchange = renderAkk;
+            if (sortCh) sortCh.onchange = renderAkk;
             if (srcCh) srcCh.oninput = renderAkk;
 
             document.addEventListener('click', function(e) {
@@ -2697,6 +2729,78 @@ function loadFromLocalStorage() {
                     renderAkk();
                 }
             });
+        }
+
+        function sortAkkRecords(records, mode) {
+            var arr = records.slice();
+            var indexed = akkDb.map(function(r,i){ return {r:r,i:i}; });
+            var idxMap = new Map(indexed.map(function(x){ return [x.r, x.i]; }));
+            function txt(v){ return String(v || '').toLocaleLowerCase('de'); }
+            function idNum(r){ var m=String(r.id||'').match(/(\d{3})$/); return m ? Number(m[1]) : 0; }
+            function dayNum(r){ return ({FR:1,SA:2,WE:3})[String(r.day||'').toUpperCase()] || 9; }
+            mode = mode || 'newest';
+            arr.sort(function(a,b){
+                if(mode==='newest') return (idxMap.get(b)||0)-(idxMap.get(a)||0);
+                if(mode==='oldest') return (idxMap.get(a)||0)-(idxMap.get(b)||0);
+                if(mode==='name-az') return txt(a.name).localeCompare(txt(b.name),'de');
+                if(mode==='name-za') return txt(b.name).localeCompare(txt(a.name),'de');
+                if(mode==='org-az') return txt(a.org).localeCompare(txt(b.org),'de') || txt(a.name).localeCompare(txt(b.name),'de');
+                if(mode==='id-asc') return idNum(a)-idNum(b);
+                if(mode==='id-desc') return idNum(b)-idNum(a);
+                if(mode==='status-open') return Number(!!a.chk)-Number(!!b.chk) || txt(a.name).localeCompare(txt(b.name),'de');
+                if(mode==='status-checked') return Number(!!b.chk)-Number(!!a.chk) || txt(a.name).localeCompare(txt(b.name),'de');
+                if(mode==='day') return dayNum(a)-dayNum(b) || txt(a.name).localeCompare(txt(b.name),'de');
+                return 0;
+            });
+            return arr;
+        }
+
+        function exportAkkListPdf(kind) {
+            if (!akkDb.length) { alert('Keine Akkreditierungen vorhanden.'); return; }
+            if (!window.jspdf || !window.jspdf.jsPDF) { alert('PDF-Modul konnte nicht geladen werden. Bitte Internetverbindung prüfen.'); return; }
+            var isCheck = kind === 'checkin';
+            var sortEl = document.getElementById(isCheck ? 'sort-checkin' : 'sort-overview');
+            var rows = sortAkkRecords(akkDb, sortEl ? sortEl.value : 'newest');
+            var jsPDF=window.jspdf.jsPDF, doc=new jsPDF({orientation:'landscape',unit:'mm',format:'a4'});
+            var W=297,H=210,M=12, dark=[24,24,28], blue=[37,99,235], green=[5,150,105], red=[190,28,34], muted=[100,100,100];
+            var title=isCheck?'CHECK-IN-LISTE':'AKKREDITIERUNGSÜBERSICHT';
+            var stamp=new Date().toLocaleString('de-DE');
+            function header(pageNo){
+                doc.setFillColor(dark[0],dark[1],dark[2]); doc.rect(0,0,W,27,'F');
+                doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(16); doc.text('CHRONICAL MOSHERS OPEN AIR 2027',M,11);
+                doc.setFontSize(9); doc.setFont('helvetica','normal'); doc.text(title+'  ·  11.–12. JUNI 2027',M,18);
+                doc.setTextColor(210,210,210); doc.setFontSize(7.5); doc.text('Erstellt: '+stamp+'  ·  Seite '+pageNo, W-M,18,{align:'right'});
+                doc.setFillColor(isCheck?green[0]:blue[0],isCheck?green[1]:blue[1],isCheck?green[2]:blue[2]); doc.rect(0,27,W,2.5,'F');
+            }
+            var cols=[
+                {t:'ID',x:M,w:24},{t:'NAME',x:M+24,w:52},{t:'ORGANISATION',x:M+76,w:57},
+                {t:'BERECHTIGUNG',x:M+133,w:31},{t:'TAG',x:M+164,w:17},{t:'BETRAG',x:M+181,w:27},{t:'STATUS',x:M+208,w:40}
+            ];
+            var perPage=20, page=0;
+            for(var start=0;start<rows.length;start+=perPage){
+                if(page>0) doc.addPage(); page++; header(page);
+                var y=36;
+                doc.setFillColor(242,244,247); doc.roundedRect(M,y,W-2*M,10,1.5,1.5,'F');
+                doc.setTextColor(70,70,75); doc.setFont('helvetica','bold'); doc.setFontSize(7.4);
+                cols.forEach(function(c){ doc.text(c.t,c.x+2,y+6.5); });
+                y+=11;
+                rows.slice(start,start+perPage).forEach(function(r,i){
+                    if(i%2===0){ doc.setFillColor(249,250,251); doc.rect(M,y,W-2*M,7.2,'F'); }
+                    doc.setDrawColor(232,232,235); doc.line(M,y+7.2,W-M,y+7.2);
+                    doc.setFont('helvetica','normal'); doc.setFontSize(7.4); doc.setTextColor(dark[0],dark[1],dark[2]);
+                    var vals=[String(r.id||'—'),String(r.name||'—'),String(r.org||'—'),String(r.perm||'—'),String(r.day||'—'),Number(r.amt||0).toFixed(2).replace('.',',')+' €'];
+                    for(var j=0;j<6;j++){ var c=cols[j], v=vals[j]; if(doc.getTextWidth(v)>c.w-4) v=doc.splitTextToSize(v,c.w-4)[0]; doc.text(v,c.x+2,y+4.8); }
+                    var sc=cols[6]; doc.setFont('helvetica','bold');
+                    if(r.chk){ doc.setTextColor(green[0],green[1],green[2]); doc.text('EINGECHECKT',sc.x+2,y+4.8); }
+                    else { doc.setTextColor(red[0],red[1],red[2]); doc.text('OFFEN',sc.x+2,y+4.8); }
+                    y+=7.2;
+                });
+                var total=rows.length, checked=rows.filter(function(r){return r.chk;}).length, money=rows.reduce(function(a,r){return a+Number(r.amt||0);},0), paid=rows.filter(function(r){return r.chk;}).reduce(function(a,r){return a+Number(r.amt||0);},0);
+                y=Math.min(y+5,H-22); doc.setFillColor(246,247,249); doc.roundedRect(M,y,W-2*M,12,2,2,'F');
+                doc.setTextColor(muted[0],muted[1],muted[2]); doc.setFont('helvetica','bold'); doc.setFontSize(7.5);
+                doc.text('GESAMT: '+total+'   ·   EINGECHECKT: '+checked+'   ·   OFFEN: '+(total-checked)+'   ·   BETRÄGE: '+money.toFixed(2).replace('.',',')+' €   ·   EINGECHECKT: '+paid.toFixed(2).replace('.',',')+' €',M+5,y+7.5);
+            }
+            doc.save(isCheck?'CMOA_Check-In_Liste_2027.pdf':'CMOA_Akkreditierungsuebersicht_2027.pdf');
         }
 
         function renderAkk() {
@@ -2747,6 +2851,8 @@ function loadFromLocalStorage() {
                     var matchesOrg = !selectedOrg || String(r.org||'') === selectedOrg;
                     return matchesSearch && matchesOrg;
                 });
+                var sortOverviewEl = document.getElementById('sort-overview');
+                fO = sortAkkRecords(fO, sortOverviewEl ? sortOverviewEl.value : 'newest');
                 
                 if(fO.length === 0) listO.innerHTML = '<div class="akk-empty">Keine Personen vorhanden</div>';
                 else {
@@ -2769,7 +2875,9 @@ function loadFromLocalStorage() {
             var qC = srcCh ? srcCh.value.toLowerCase() : "";
             var listC = document.getElementById('list-checkin');
             if(listC) {
-                var fC = akkDb.filter(function(r){ return r.name.toLowerCase().indexOf(qC) > -1 || r.org.toLowerCase().indexOf(qC) > -1 || r.id.toLowerCase().indexOf(qC) > -1; });
+                var fC = akkDb.filter(function(r){ return String(r.name||'').toLowerCase().indexOf(qC) > -1 || String(r.org||'').toLowerCase().indexOf(qC) > -1 || String(r.id||'').toLowerCase().indexOf(qC) > -1; });
+                var sortCheckinEl = document.getElementById('sort-checkin');
+                fC = sortAkkRecords(fC, sortCheckinEl ? sortCheckinEl.value : 'newest');
 
                 if(fC.length === 0) listC.innerHTML = '<div class="akk-empty">Keine Personen gefunden</div>';
                 else {
