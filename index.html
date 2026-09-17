@@ -2006,6 +2006,7 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
             <div style="display:flex; gap:8px; margin-bottom:12px;">
                 <button class="btn-primary" style="flex:1;" onclick="toggleShuttleView('timeline')">⏱️ Timeline-Ansicht</button>
                 <button class="btn-primary" style="flex:1;" onclick="toggleShuttleView('plan')">🚗 Fahrplan & Fahrerliste</button>
+                <button class="btn-primary" style="flex:1;" onclick="toggleShuttleView('overview')">🗓️ Overview</button>
             </div>
 
             <!-- TAB 1: TIMELINE -->
@@ -2028,7 +2029,7 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
                             </select>
                         </div>
                     </div>
-                    <button class="btn-subtle" style="width:100%; padding:10px;" onclick="printShuttlePlan()">📄 Fahrplan als sauberes PDF exportieren</button>
+                    <button class="btn-subtle" style="width:100%; padding:10px;" onclick="printShuttlePlan()">📄 Fahrplan als PDF exportieren</button>
                 </div>
 
                 <div class="card" id="shuttle-plan-print-area">
@@ -2048,6 +2049,21 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
                             <tbody id="shuttle-plan-tbody"></tbody>
                         </table>
                     </div>
+                </div>
+            </div>
+
+            <!-- TAB 3: OVERVIEW -->
+            <div id="shuttle-view-overview" style="display:none;">
+                <div class="card">
+                    <div style="display:flex; justify-content:space-between; gap:10px; align-items:center; flex-wrap:wrap;">
+                        <div>
+                            <h3 style="margin-bottom:3px;">🗓️ Shuttle Overview</h3>
+                            <div style="font-size:0.82rem; color:var(--text-muted);">Festivalzeitraum inklusive einem Tag davor und einem Tag danach. Jede Band hat eine eigene Farbe.</div>
+                        </div>
+                        <button class="btn-subtle" style="padding:10px 14px;" onclick="exportShuttleOverviewPDF()">📄 Overview als PDF exportieren</button>
+                    </div>
+                    <div id="shuttle-overview-legend" style="display:flex; gap:8px; flex-wrap:wrap; margin:14px 0 10px;"></div>
+                    <div id="shuttle-overview-calendar" style="overflow-x:auto;"></div>
                 </div>
             </div>
         </div>
@@ -5288,15 +5304,71 @@ function loadFromLocalStorage() {
         function toggleShuttleView(view) {
             var timeline = document.getElementById('shuttle-view-timeline');
             var plan = document.getElementById('shuttle-view-plan');
-            if (view === 'plan') {
-                if (timeline) timeline.style.display = 'none';
-                if (plan) plan.style.display = 'block';
-                populateShuttleDriverFilter();
-                renderShuttlePlanTable();
-            } else {
-                if (timeline) timeline.style.display = 'block';
-                if (plan) plan.style.display = 'none';
-            }
+            var overview = document.getElementById('shuttle-view-overview');
+            if (timeline) timeline.style.display = view === 'timeline' ? 'block' : 'none';
+            if (plan) plan.style.display = view === 'plan' ? 'block' : 'none';
+            if (overview) overview.style.display = view === 'overview' ? 'block' : 'none';
+            if (view === 'plan') { populateShuttleDriverFilter(); renderShuttlePlanTable(); }
+            if (view === 'overview') renderShuttleOverview();
+        }
+
+        function getShuttleOverviewData() {
+            var events = [], bandNames = [];
+            bands.forEach(function(b) {
+                if (!(b.shuttleNeeded === 'ja' || b.shuttleNeeded === true)) return;
+                var name = (b.name || '-').toUpperCase();
+                if (bandNames.indexOf(name) < 0) bandNames.push(name);
+                if (b.shuttleDate && b.shuttleTime) events.push({date:b.shuttleDate,time:b.shuttleTime,type:'HINFAHRT',band:name,location:b.shuttleAirport||'-',flight:b.shuttleFlightNum||'',driver:b.shuttleDriver||'-',vehicle:b.shuttleVehicle||'-'});
+                if (b.shuttleRetDate && b.shuttleRetTime) events.push({date:b.shuttleRetDate,time:b.shuttleRetTime,type:'RÜCKREISE',band:name,location:b.shuttleRetAirport||'-',flight:b.shuttleRetFlightNum||'',driver:b.shuttleDriver||'-',vehicle:b.shuttleVehicle||'-'});
+            });
+            events.sort(function(a,b){return (a.date+' '+a.time).localeCompare(b.date+' '+b.time);});
+            bandNames.sort();
+            var dates = events.map(function(e){return e.date;}).filter(Boolean).sort();
+            if (!dates.length) return {events:events,bands:bandNames,days:[]};
+            var first = new Date(dates[0]+'T12:00:00'), last = new Date(dates[dates.length-1]+'T12:00:00');
+            // Wenn nur Festivaltage erfasst sind, automatisch je einen Randtag ergänzen.
+            first.setDate(first.getDate()-1); last.setDate(last.getDate()+1);
+            // Gewünschte Festivalansicht: maximal vier Tage (typisch Donnerstag bis Sonntag).
+            var span = Math.round((last-first)/86400000)+1;
+            if (span < 4) last = new Date(first.getTime()+3*86400000);
+            var days=[]; for(var d=new Date(first); d<=last && days.length<6; d.setDate(d.getDate()+1)) days.push(d.toISOString().slice(0,10));
+            return {events:events,bands:bandNames,days:days};
+        }
+
+        function shuttleBandColor(index) {
+            var palette=['#2563eb','#dc2626','#16a34a','#9333ea','#ea580c','#0891b2','#be123c','#4f46e5','#65a30d','#c026d3','#0f766e','#b45309'];
+            return palette[index % palette.length];
+        }
+
+        function renderShuttleOverview() {
+            var cal=document.getElementById('shuttle-overview-calendar'), legend=document.getElementById('shuttle-overview-legend');
+            if(!cal||!legend) return;
+            var data=getShuttleOverviewData(); legend.innerHTML=''; cal.innerHTML='';
+            if(!data.events.length){cal.innerHTML='<div style="padding:25px; text-align:center; color:var(--text-muted);">Noch keine Shuttle-Fahrten mit Datum und Uhrzeit vorhanden.</div>';return;}
+            var colorMap={}; data.bands.forEach(function(n,i){colorMap[n]=shuttleBandColor(i); legend.innerHTML+='<span style="display:inline-flex;align-items:center;gap:6px;font-size:.78rem;"><i style="width:10px;height:10px;border-radius:50%;background:'+colorMap[n]+';display:inline-block;"></i>'+n+'</span>';});
+            var minW=Math.max(820,data.days.length*220);
+            var html='<div style="min-width:'+minW+'px;border:1px solid var(--border);border-radius:8px;overflow:hidden;background:var(--card-bg);">';
+            html+='<div style="display:grid;grid-template-columns:64px repeat('+data.days.length+',1fr);background:var(--input-bg);border-bottom:1px solid var(--border);"><div></div>';
+            data.days.forEach(function(day){var dt=new Date(day+'T12:00:00');html+='<div style="padding:10px;text-align:center;font-weight:700;border-left:1px solid var(--border);">'+dt.toLocaleDateString('de-DE',{weekday:'long'})+'<br><span style="font-size:.8rem;font-weight:400;">'+dt.toLocaleDateString('de-DE')+'</span></div>';}); html+='</div>';
+            html+='<div style="display:grid;grid-template-columns:64px repeat('+data.days.length+',1fr);height:960px;position:relative;">';
+            html+='<div style="position:relative;">'; for(var h=0;h<24;h++) html+='<div style="position:absolute;top:'+(h*40)+'px;right:8px;font-size:.7rem;color:var(--text-muted);transform:translateY(-50%);">'+String(h).padStart(2,'0')+':00</div>'; html+='</div>';
+            data.days.forEach(function(day){html+='<div style="position:relative;border-left:1px solid var(--border);background:repeating-linear-gradient(to bottom,transparent 0,transparent 39px,var(--border) 40px);">';
+                data.events.filter(function(e){return e.date===day;}).forEach(function(e){var parts=e.time.split(':'), mins=(+parts[0])*60+(+parts[1]||0), top=mins/1440*960; var c=colorMap[e.band]; html+='<div title="'+e.band+' – '+e.type+'" style="position:absolute;left:6px;right:6px;top:'+Math.max(0,top-12)+'px;border-left:5px solid '+c+';background:'+c+'18;border-radius:5px;padding:5px 7px;font-size:.7rem;line-height:1.25;z-index:2;"><strong style="color:'+c+';">'+e.time+' · '+e.type+'</strong><br><strong>'+e.band+'</strong><br>'+e.location+(e.flight?' · '+e.flight:'')+'</div>';});
+                html+='</div>';}); html+='</div></div>'; cal.innerHTML=html;
+        }
+
+        function exportShuttleOverviewPDF() {
+            if (!window.jspdf || !window.jspdf.jsPDF) { alert('PDF-Bibliothek konnte nicht geladen werden. Bitte Seite neu laden.'); return; }
+            var data=getShuttleOverviewData(); if(!data.events.length){alert('Keine Shuttle-Fahrten mit Datum und Uhrzeit vorhanden.');return;}
+            var jsPDF=window.jspdf.jsPDF, doc=new jsPDF({orientation:'landscape',unit:'mm',format:'a4'}), W=297,H=210,m=10;
+            var colorMap={}; data.bands.forEach(function(n,i){colorMap[n]=shuttleBandColor(i);});
+            doc.setFont('helvetica','bold');doc.setFontSize(17);doc.text('SHUTTLE OVERVIEW',m,13);
+            doc.setFont('helvetica','normal');doc.setFontSize(8);doc.text('Festivalzeitraum inkl. einem Tag davor und danach · Stand '+new Date().toLocaleDateString('de-DE'),m,18);
+            var top=28,bottom=8,left=m+16,gridW=W-left-m,gridH=H-top-bottom,dayW=gridW/data.days.length,hourH=gridH/24;
+            doc.setFontSize(6.5);doc.setTextColor(90); for(var h=0;h<=24;h++){var y=top+h*hourH;doc.setDrawColor(225);doc.line(left,y,W-m,y);if(h<24)doc.text(String(h).padStart(2,'0')+':00',m,y+1.5);}
+            data.days.forEach(function(day,di){var x=left+di*dayW;doc.setDrawColor(190);doc.line(x,top-8,x,H-bottom);var dt=new Date(day+'T12:00:00');doc.setTextColor(20);doc.setFont('helvetica','bold');doc.setFontSize(8);doc.text(dt.toLocaleDateString('de-DE',{weekday:'short'})+' '+dt.toLocaleDateString('de-DE'),x+2,top-3);});doc.line(W-m,top-8,W-m,H-bottom);
+            data.events.forEach(function(e){var di=data.days.indexOf(e.date);if(di<0)return;var pp=e.time.split(':'),mins=(+pp[0])*60+(+pp[1]||0),y=top+(mins/60)*hourH,x=left+di*dayW+1.5,w=dayW-3,c=colorMap[e.band];var rgb=c.match(/\w\w/g).map(function(v){return parseInt(v,16)});doc.setFillColor(rgb[0],rgb[1],rgb[2]);doc.roundedRect(x,y-2,w,7,1,1,'F');doc.setTextColor(255);doc.setFont('helvetica','bold');doc.setFontSize(6);doc.text(e.time+' '+e.type+' · '+e.band, x+1.5,y+1);doc.setFont('helvetica','normal');doc.setFontSize(5.5);doc.text(doc.splitTextToSize(e.location+(e.flight?' · '+e.flight:''),w-3)[0]||'',x+1.5,y+3.5);});
+            doc.save('CMOA_Shuttle_Overview_'+new Date().toISOString().slice(0,10)+'.pdf');
         }
 
         function renderShuttle() {
