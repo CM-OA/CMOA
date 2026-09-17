@@ -1570,6 +1570,7 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
             </div>
             <div class="card">
                 <h3>Gebuchte Bands (Alphabetisch)</h3>
+                <button class="btn-primary" onclick="exportAllBandsPdf()" style="width:100%; margin:0 0 12px 0;">📄 Alle Bands als PDF exportieren</button>
                 <div id="bands-list-container"></div>
             </div>
         </div>
@@ -3027,6 +3028,7 @@ function loadFromLocalStorage() {
                             '</div>' +
                             '<div style="display: flex; gap: 6px;">' +
                                 '<button class="btn-sm btn-view">👁️ View</button>' +
+                                '<button class="btn-sm btn-band-pdf" style="padding:6px 10px;">📄 PDF</button>' +
                                 '<button class="btn-primary btn-edit-band" style="padding: 6px 12px; font-size: 0.85rem;">✏️ Edit</button>' +
                                 '<button class="btn-danger btn-del-band" style="padding: 6px 10px; font-size: 0.85rem;">🗑️</button>' +
                             '</div>' +
@@ -3035,14 +3037,138 @@ function loadFromLocalStorage() {
                     container.appendChild(item);
 
                     var btnView = item.querySelector('.btn-view');
+                    var btnPdf = item.querySelector('.btn-band-pdf');
                     var btnEdit = item.querySelector('.btn-edit-band');
                     var btnDel = item.querySelector('.btn-del-band');
 
                     if (btnView) btnView.onclick = function(e) { e.stopPropagation(); renderBandView(b.id); };
+                    if (btnPdf) btnPdf.onclick = function(e) { e.stopPropagation(); exportBandPdf(b.id); };
                     if (btnEdit) btnEdit.onclick = function(e) { e.stopPropagation(); openBandDetail(b.id); };
                     if (btnDel) btnDel.onclick = function(e) { e.stopPropagation(); deleteBand(b.id); };
                 })(bands[i]);
             }
+        }
+
+
+
+        // =============================================================
+        // BAND-GESAMT-PDF: eine Band pro A4-Seite
+        // =============================================================
+        function pdfBandText(v, fallback) {
+            if (v === true) return 'Ja';
+            if (v === false) return 'Nein';
+            if (v === undefined || v === null || v === '') return fallback || '—';
+            return String(v);
+        }
+        function pdfBandMoney(v) {
+            var n = Number(v || 0);
+            return n.toLocaleString('de-DE', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' EUR';
+        }
+        function pdfBandDate(v) {
+            if (!v) return '—';
+            var m=String(v).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+            return m ? (m[3]+'.'+m[2]+'.'+m[1]) : String(v);
+        }
+        function pdfBandPaymentType(b) {
+            var map={'1a':'100 % vor Auftritt','1b':'100 % nach Auftritt','2a':'Anzahlung + Rest vor Auftritt','2b':'Anzahlung vor / Rest nach Auftritt','2c':'Anzahlung + Rest nach Auftritt'};
+            var t=map[b.paymentTermsType] || pdfBandText(b.paymentTermsType);
+            if ((b.paymentTermsMainMode||'full') !== 'full') t += ' | Split: '+pdfBandText(b.ptSplitPct, '50')+' %';
+            return t;
+        }
+        function pdfBandDrinkLines(b) {
+            var out=[];
+            if (b.drinks) Object.keys(b.drinks).forEach(function(k){
+                var d=b.drinks[k]||{}, c=parseInt(d.count)||0;
+                if(c>0) out.push(c+'x '+k+(d.comment?' ('+d.comment+')':''));
+            });
+            return out.length ? out.join(' · ') : '—';
+        }
+        function pdfBandExtraFood(b) {
+            if(!Array.isArray(b.extraFood)) return '—';
+            var a=b.extraFood.filter(function(x){return x && (x.name || x.text);}).map(function(x){return (x.count?x.count+'x ':'')+(x.name||x.text)+(x.comment?' ('+x.comment+')':'');});
+            return a.length?a.join(' · '):'—';
+        }
+        function pdfBandSpecials(b) {
+            if(!Array.isArray(b.extraSpecials)) return '—';
+            var a=b.extraSpecials.filter(function(x){return x && (x.text||x.name);}).map(function(x){return (x.text||x.name)+(x.comment?' ('+x.comment+')':'');});
+            return a.length?a.join(' · '):'—';
+        }
+        function buildBandPdfSections(b) {
+            var g=Number(b.gage)||0, tr=Number(b.taxRate)||0, tax=g*tr/100;
+            var contractStatus=getBandDocumentStatusLabel(b.contractDocStatus || ((b.contractReceived||b.contractSigned)?'vorhanden':'offen'),'contract').replace(/[📑🎛️✅❌🟡⚪➖]/g,'').trim();
+            var riderStatus=getBandDocumentStatusLabel(b.riderDocStatus || ((b.riderReceived||b.riderChecked)?'vorhanden':'offen'),'rider').replace(/[📑🎛️✅❌🟡⚪➖]/g,'').trim();
+            var notes='—';
+            if(Array.isArray(b.notesList)&&b.notesList.length) notes=b.notesList.map(function(n){return (n.title? n.title+': ':'')+(n.text||'');}).join(' | ');
+            else if(b.bandNotes) notes=b.bandNotes;
+            return [
+                {t:'BAND & KONTAKT', rows:[['Band / Act',pdfBandText(b.name)],['Ansprechpartner',pdfBandText(b.contactName)],['Organisation',pdfBandText(b.contactOrg)],['Telefon',pdfBandText(b.contactPhone)],['E-Mail',pdfBandText(b.contactEmail)],['Mitglieder / VIP',pdfBandText(b.paxCount,'0')+' / '+pdfBandText(b.vipGuests,'0')]]},
+                {t:'DEAL, GAGE & ZAHLUNG', rows:[['Deal',b.dealDone?'Abgeschlossen':'Offen'],['Deal / Vereinbarung',pdfBandText(b.dealText)],['Gage netto',pdfBandMoney(g)],['Steuer',tr.toLocaleString('de-DE')+' % / '+pdfBandMoney(tax)],['Gage brutto',pdfBandMoney(g+tax)],['Zahlungsweise',pdfBandPaymentType(b)],['Anzahlung fällig',pdfBandDate(b.advDueDate||b.advDate)],['Restzahlung fällig',pdfBandDate(b.restDueDate)],['Gesamtzahlung fällig',pdfBandDate(b.fullDueDate)],['Bezahlt',b.paid?'Ja':'Nein'],['Keine Rechnung',b.noInvoice?'Ja':'Nein']]},
+                {t:'SHOW & RUNNING ORDER', rows:[['Showday',pdfBandText(b.showday)],['Spielzeit',pdfBandText(b.roStart)+' – '+pdfBandText(b.roEnd)+' Uhr'],['Changeover vorher',pdfBandText(b.roChangeover,'0')+' Min.']]},
+                {t:'HOTEL', rows:[['Status',pdfBandText(b.hotelNeeded)],['Hotel',pdfBandText(b.hotelName)],['Zeitraum',pdfBandDate(b.hotelFrom)+' – '+pdfBandDate(b.hotelTo)],['Personen / Nächte',pdfBandText(b.hotelPersons,'0')+' / '+pdfBandText(b.nightsCount,'0')],['EZ / DZ',pdfBandText(b.hotelEzCount,'0')+' / '+pdfBandText(b.hotelDzCount,'0')]]},
+                {t:'SHUTTLE & FLÜGE', rows:[['Status / Pax',pdfBandText(b.shuttleNeeded)+' / '+pdfBandText(b.shuttlePax,'0')],['Fahrer / Fahrzeug',pdfBandText(b.shuttleDriver)+' / '+pdfBandText(b.shuttleVehicle)],['Anreise',pdfBandDate(b.shuttleDate)+' '+pdfBandText(b.shuttleTime)+' | '+pdfBandText(b.shuttleAirport)+' | Flug '+pdfBandText(b.shuttleFlightNum)],['Rückreise',pdfBandDate(b.shuttleRetDate)+' '+pdfBandText(b.shuttleRetTime)+' | '+pdfBandText(b.shuttleRetAirport)+' | Flug '+pdfBandText(b.shuttleRetFlightNum)]]},
+                {t:'CATERING', rows:[['Catering-Tage',pdfBandText(b.cateringDays || getCateringDaysForBand(b),'1')],['Fleisch / Vegetarisch / Vegan',pdfBandText(b.meatCount,'0')+' / '+pdfBandText(b.vegetarianCount,'0')+' / '+pdfBandText(b.veganCount,'0')],['Getränke',pdfBandDrinkLines(b)],['Zusätzliches Essen',pdfBandExtraFood(b)],['Besonderheiten',pdfBandSpecials(b)]]},
+                {t:'DOKUMENTE & NOTIZEN', rows:[['Vertrag',contractStatus+' | erhalten: '+(b.contractReceived?'Ja':'Nein')+' | unterschrieben: '+(b.contractSigned?'Ja':'Nein')],['Vertrag-Datei',pdfBandText(b.contractDocUrl)],['Rider',riderStatus+' | erhalten: '+(b.riderReceived?'Ja':'Nein')+' | geprüft: '+(b.riderChecked?'Ja':'Nein')],['Rider-Datei',pdfBandText(b.riderDocUrl)],['Notizen / Zusatzvereinbarungen',notes]]}
+            ];
+        }
+        function addBandPdfPage(doc,b,pageNo,totalPages) {
+            var W=210,H=297, mx=12, top=12, bottom=10;
+            doc.setFillColor(24,24,28); doc.rect(0,0,W,31,'F');
+            doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(15); doc.text('CHRONICAL MOSHERS OPEN AIR 2027',mx,11);
+            doc.setFontSize(8); doc.setFont('helvetica','normal'); doc.text('Band-Gesamtübersicht',mx,17);
+            doc.setFont('helvetica','bold'); doc.setFontSize(17); doc.text(String(b.name||'BAND').toUpperCase(),mx,26);
+            doc.setFillColor(48,132,190); doc.rect(0,31,W,2.5,'F');
+
+            var sections=buildBandPdfSections(b);
+            // Inhalte zunächst in Zeilen umrechnen; danach Schriftgröße so wählen, dass alles auf genau eine Seite passt.
+            var fs=7.2, lh=3.35, labelW=42, contentW=144, titleH=5.2, secGap=1.5;
+            function prepare(fontSize){
+                var lineH=fontSize*0.47, total=0, prepared=[];
+                sections.forEach(function(sec){
+                    var rows=[]; total += titleH;
+                    sec.rows.forEach(function(r){
+                        doc.setFontSize(fontSize);
+                        var lines=doc.splitTextToSize(pdfBandText(r[1]),contentW);
+                        var h=Math.max(lineH+1.0, lines.length*lineH+0.7); total+=h;
+                        rows.push([r[0],lines,h]);
+                    });
+                    total+=secGap; prepared.push({t:sec.t,rows:rows});
+                });
+                return {height:total,data:prepared,lineH:lineH};
+            }
+            var avail=H-39-bottom-7, prep=prepare(fs);
+            while(prep.height>avail && fs>5.1){fs-=0.25; prep=prepare(fs);}
+            var y=38;
+            prep.data.forEach(function(sec){
+                doc.setFillColor(238,242,246); doc.roundedRect(mx,y,W-2*mx,titleH-0.5,1,1,'F');
+                doc.setTextColor(35,74,105); doc.setFont('helvetica','bold'); doc.setFontSize(Math.max(6,fs+0.4)); doc.text(sec.t,mx+2.5,y+3.5); y+=titleH;
+                sec.rows.forEach(function(r){
+                    doc.setTextColor(95,95,95); doc.setFont('helvetica','bold'); doc.setFontSize(fs); doc.text(r[0],mx+2,y+prep.lineH);
+                    doc.setTextColor(25,25,28); doc.setFont('helvetica','normal'); doc.text(r[1],mx+labelW,y+prep.lineH);
+                    y+=r[2];
+                });
+                y+=secGap;
+            });
+            doc.setDrawColor(210,210,210); doc.line(mx,H-8,W-mx,H-8);
+            doc.setTextColor(115,115,115); doc.setFontSize(6.5); doc.setFont('helvetica','normal');
+            doc.text('Erstellt am '+new Date().toLocaleDateString('de-DE')+' · Seite '+pageNo+' / '+totalPages,mx,H-4.5);
+            doc.text('CMOA 2027',W-mx,H-4.5,{align:'right'});
+        }
+        function makeBandsPdf(list, filename) {
+            if(!window.jspdf || !window.jspdf.jsPDF){alert('PDF-Modul konnte nicht geladen werden. Bitte Internetverbindung prüfen.');return;}
+            if(!list || !list.length){alert('Keine Banddaten zum Exportieren vorhanden.');return;}
+            var doc=new window.jspdf.jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+            list.forEach(function(b,i){if(i>0)doc.addPage(); addBandPdfPage(doc,b,i+1,list.length);});
+            doc.save(filename);
+        }
+        function exportBandPdf(id){
+            var b=getBandById(id); if(!b){alert('Band nicht gefunden.');return;}
+            var safe=String(b.name||'Band').replace(/[^a-zA-Z0-9ÄÖÜäöüß_-]+/g,'_');
+            makeBandsPdf([b],'CMOA_2027_Band_'+safe+'.pdf');
+        }
+        function exportAllBandsPdf(){
+            if(!Array.isArray(bands)||!bands.length){alert('Keine Bands zum Exportieren vorhanden.');return;}
+            var list=bands.slice().sort(function(a,b){return String(a.name||'').localeCompare(String(b.name||''),'de');});
+            makeBandsPdf(list,'CMOA_2027_Alle_Bands.pdf');
         }
 
         function addNewBand() {
