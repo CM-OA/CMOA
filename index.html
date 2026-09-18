@@ -1388,7 +1388,7 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
             .production-row .production-type::before { content:'Art'; }
             .production-row .production-desc::before { content:'Bezeichnung'; }
             .production-row .production-amount::before { content:'Betrag'; }
-            .production-row .production-note::before { content:'Kategorie / Notiz'; }
+            .production-row .production-note::before { content:'Empfänger / Absender · Notiz'; }
             .production-actions { grid-column:1 / -1; }
         }
         @media(max-width:430px){
@@ -1564,7 +1564,7 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
                 <input type="hidden" id="production-edit-id">
                 <div class="production-form-grid">
                     <div class="form-group"><label>Art</label><select id="production-type"><option value="expense">Ausgabe</option><option value="income">Einnahme</option></select></div>
-                    <div class="form-group"><label>Kategorie</label><input id="production-category" list="production-categories" placeholder="Kategorie auswählen oder eingeben"><datalist id="production-categories"><option value="Ticketverkauf"><option value="Merchandise"><option value="Sponsoring"><option value="Genehmigungen"><option value="Gebühren"><option value="Bühne"><option value="Security"><option value="Hygiene"><option value="Catering"><option value="Sanitär"><option value="Sound & Licht"><option value="Werbung"><option value="Versicherung"><option value="Personal"><option value="Technik"><option value="Strom"></datalist></div>
+                    <div class="form-group"><label>Empfänger / Absender</label><input id="production-party" placeholder="z. B. Stadtverwaltung oder Ticketanbieter"></div>
                     <div class="form-group"><label>Bezeichnung</label><input id="production-description" placeholder="z. B. Bühnenmiete"></div>
                     <div class="form-group"><label>Betrag (€)</label><input id="production-amount" type="number" min="0" step="0.01"></div>
                     <div class="form-group"><label>Datum</label><input id="production-date" type="date"></div>
@@ -5891,7 +5891,7 @@ function loadFromLocalStorage() {
         }
 
         function resetProductionForm() {
-            ['production-edit-id','production-category','production-description','production-amount','production-date','production-note'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});
+            ['production-edit-id','production-party','production-description','production-amount','production-date','production-note'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});
             var type=document.getElementById('production-type');if(type)type.value='expense';
             var title=document.getElementById('production-form-title');if(title)title.textContent='Eintrag hinzufügen';
             var cancel=document.getElementById('production-cancel-btn');if(cancel)cancel.style.display='none';
@@ -5903,14 +5903,14 @@ function loadFromLocalStorage() {
             var entry={
                 id:id||('production_'+Date.now()),
                 type:document.getElementById('production-type').value,
-                category:(document.getElementById('production-category').value||'').trim(),
+                party:(document.getElementById('production-party').value||'').trim(),
                 description:(document.getElementById('production-description').value||'').trim(),
                 amount:Number(document.getElementById('production-amount').value||0),
                 date:document.getElementById('production-date').value||'',
                 note:(document.getElementById('production-note').value||'').trim(),
                 updatedAt:new Date().toISOString()
             };
-            if(!entry.category||!entry.description||entry.amount<=0){alert('Bitte Art, Kategorie, Bezeichnung und einen Betrag größer als 0 angeben.');return;}
+            if(!entry.party||!entry.description||entry.amount<=0){alert('Bitte Art, Empfänger beziehungsweise Absender, Bezeichnung und einen Betrag größer als 0 angeben.');return;}
             var index=(productionEntries||[]).findIndex(function(e){return e.id===entry.id;});
             if(index>=0)productionEntries[index]=entry;else productionEntries.push(entry);
             try{await writeDataModule('fees');logCmoaActivity(index>=0?'Produktionseintrag bearbeitet':'Produktionseintrag angelegt',entry.description+' · '+cashEuro(entry.amount),'fees');resetProductionForm();renderProductionCosts();renderOverview();}
@@ -5921,7 +5921,7 @@ function loadFromLocalStorage() {
             var e=(productionEntries||[]).find(function(x){return x.id===id;});if(!e)return;
             document.getElementById('production-edit-id').value=e.id;
             document.getElementById('production-type').value=e.type||'expense';
-            document.getElementById('production-category').value=e.category||'';
+            document.getElementById('production-party').value=e.party||e.category||'';
             document.getElementById('production-description').value=e.description||'';
             document.getElementById('production-amount').value=Number(e.amount||0);
             document.getElementById('production-date').value=e.date||'';
@@ -5944,7 +5944,7 @@ function loadFromLocalStorage() {
             var totals=getProductionTotals();
             summary.innerHTML='<div class="production-summary-box"><span>Einnahmen</span><b style="color:var(--accent-green)">'+cashEuro(totals.income)+'</b></div><div class="production-summary-box"><span>Ausgaben</span><b style="color:#dc2626">'+cashEuro(totals.expense)+'</b></div><div class="production-summary-box"><span>Saldo (Ausgaben − Einnahmen)</span><b>'+cashEuro(totals.net)+'</b></div>';
             var entries=(productionEntries||[]).slice().sort(function(a,b){return String(b.date||b.updatedAt||'').localeCompare(String(a.date||a.updatedAt||''));});
-            list.innerHTML=entries.map(function(e){return '<div class="production-row '+(e.type==='income'?'income':'expense')+'"><span class="production-date">'+(e.date?formatDateDE(e.date):'—')+'</span><b class="production-type">'+(e.type==='income'?'Einnahme':'Ausgabe')+'</b><span class="production-desc"><b>'+escapeHtmlAuth(e.description)+'</b></span><b class="production-amount">'+(e.type==='income'?'+ ':'− ')+cashEuro(e.amount)+'</b><span class="production-note">'+escapeHtmlAuth(e.category)+(e.note?' · '+escapeHtmlAuth(e.note):'')+'</span><span class="production-actions"><button class="btn-subtle" style="padding:5px 7px" onclick="editProductionEntry(\''+e.id+'\')">✎</button> <button class="btn-danger" style="padding:5px 7px" onclick="deleteProductionEntry(\''+e.id+'\')">🗑</button></span></div>';}).join('');
+            list.innerHTML=entries.map(function(e){return '<div class="production-row '+(e.type==='income'?'income':'expense')+'"><span class="production-date">'+(e.date?formatDateDE(e.date):'—')+'</span><b class="production-type">'+(e.type==='income'?'Einnahme':'Ausgabe')+'</b><span class="production-desc"><b>'+escapeHtmlAuth(e.description)+'</b></span><b class="production-amount">'+(e.type==='income'?'+ ':'− ')+cashEuro(e.amount)+'</b><span class="production-note">'+escapeHtmlAuth(e.party||e.category||'—')+(e.note?' · '+escapeHtmlAuth(e.note):'')+'</span><span class="production-actions"><button class="btn-subtle" style="padding:5px 7px" onclick="editProductionEntry(\''+e.id+'\')">✎</button> <button class="btn-danger" style="padding:5px 7px" onclick="deleteProductionEntry(\''+e.id+'\')">🗑</button></span></div>';}).join('');
             if(!entries.length)list.innerHTML='<div style="text-align:center;color:var(--text-muted);padding:14px;">Noch keine Einnahmen oder Ausgaben erfasst.</div>';
         }
 
