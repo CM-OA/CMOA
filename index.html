@@ -1307,6 +1307,14 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
         .cash-finance-result.positive { color:#166534; background:#dcfce7; }
         .cash-finance-result.negative { color:#991b1b; background:#fee2e2; }
         .cash-finance-note { margin-top:8px; color:var(--text-muted); font-size:.67rem; line-height:1.4; }
+        .shuttle-cost-summary { display:grid; grid-template-columns:repeat(5,minmax(120px,1fr)); gap:8px; margin:12px 0; }
+        .shuttle-cost-box { background:var(--input-bg); border:1px solid var(--border); border-radius:9px; padding:10px; }
+        .shuttle-cost-box span { display:block; color:var(--text-muted); font-size:.7rem; }
+        .shuttle-cost-box b { display:block; margin-top:3px; font-size:.92rem; }
+        .shuttle-log-table input, .shuttle-log-table select { min-width:88px; padding:6px; font-size:.75rem; }
+        .shuttle-log-table .wide-input { min-width:150px; }
+        .shuttle-vehicle-row { display:grid; grid-template-columns:1.2fr .8fr .7fr 1.4fr auto; gap:8px; align-items:center; padding:8px 0; border-bottom:1px solid var(--border); font-size:.78rem; }
+        @media(max-width:800px){ .shuttle-cost-summary{grid-template-columns:1fr 1fr;} .shuttle-vehicle-row{grid-template-columns:1fr 1fr;} }
         .cmoa-decorated-page { position:relative; }
         .cmoa-page-logo {
             position:absolute;
@@ -2156,7 +2164,8 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
                 <div class="stat-row"><span>Bands Gesamt:</span><span id="stat-count">0</span></div>
                 <div class="stat-row"><span>Gagen (Netto):</span><span id="stat-gage" class="cost-val">0,00 €</span></div>
                 <div class="stat-row"><span>Steuern (Gesamt):</span><span id="stat-tax" class="cost-val">0,00 €</span></div>
-                <div class="stat-row"><span>Gesamtkosten (Brutto):</span><span id="stat-total" class="cost-val">0,00 €</span></div>
+                <div class="stat-row"><span>Gagen (Brutto):</span><span id="stat-total" class="cost-val">0,00 €</span></div>
+                <div class="stat-row"><span>Alle erfassten Kosten:</span><strong id="stat-all-cost-total" class="cost-val">0,00 €</strong></div>
             </div>
             <div class="card">
                 <h3>Personen & Hotelzimmer</h3>
@@ -2167,6 +2176,7 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
             <div class="card">
                 <h3>Shuttle-Bedarf</h3>
                 <div class="stat-row"><span>Bands mit Shuttle:</span><strong id="stat-shuttle-count">0</strong></div>
+                <div class="stat-row"><span>Shuttlekosten Gesamt:</span><strong id="stat-shuttle-cost-total" class="cost-val">0,00 €</strong></div>
                 <div id="stat-shuttle-list" style="margin-top:10px;"></div>
             </div>
         </div>
@@ -2190,6 +2200,7 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
                 <button class="btn-primary" style="flex:1;" onclick="toggleShuttleView('timeline')">⏱️ Timeline-Ansicht</button>
                 <button class="btn-primary" style="flex:1;" onclick="toggleShuttleView('plan')">🚗 Fahrplan & Fahrerliste</button>
                 <button class="btn-primary" style="flex:1;" onclick="toggleShuttleView('overview')">🗓️ Overview</button>
+                <button class="btn-primary" style="flex:1;" onclick="toggleShuttleView('costs')">💶 Shuttlekosten</button>
             </div>
 
             <!-- TAB 1: TIMELINE -->
@@ -2247,6 +2258,30 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
                     </div>
                     <div id="shuttle-overview-legend" style="display:flex; gap:8px; flex-wrap:wrap; margin:14px 0 10px;"></div>
                     <div id="shuttle-overview-calendar" style="overflow-x:auto;"></div>
+                </div>
+            </div>
+
+            <!-- TAB 4: SHUTTLEKOSTEN & FAHRTENBUCH -->
+            <div id="shuttle-view-costs" style="display:none;">
+                <div class="card">
+                    <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;">
+                        <div><h3 style="margin-bottom:3px;">💶 Shuttlekosten & Fahrtenbuch</h3><div style="font-size:.8rem;color:var(--text-muted);">Fahrten aus der Bandmaske werden automatisch übernommen.</div></div>
+                        <button class="btn-subtle" style="padding:7px 10px;" onclick="addShuttleVehicle()">＋ Fahrzeug</button>
+                    </div>
+                    <div id="shuttle-cost-summary" class="shuttle-cost-summary"></div>
+                </div>
+                <div class="card">
+                    <h3>🚐 Fahrzeuge</h3>
+                    <div id="shuttle-vehicle-list"></div>
+                </div>
+                <div class="card">
+                    <h3>📖 Fahrtenbuch</h3>
+                    <div style="overflow-x:auto;">
+                        <table class="shuttle-table shuttle-log-table">
+                            <thead><tr><th>Fahrt / Band</th><th>Strecke / Flughafen</th><th>Fahrer</th><th>Fahrzeug</th><th>km</th><th>€/Liter</th><th>L/100 km</th><th>Tank</th><th>Parken</th><th>Sonstiges</th></tr></thead>
+                            <tbody id="shuttle-log-tbody"></tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>
@@ -2373,6 +2408,8 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
         var bands = [];
         var manualTodos = [];
         var hotelCostsList = [];
+        var shuttleTripLog = {};
+        var shuttleVehicles = [];
         var currentBandId = null;
         var openCateringBands = {};
 
@@ -2415,6 +2452,7 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
             if(module==='accreditation') return {akkDb:Array.isArray(akkDb)?akkDb:[]};
             if(module==='todos') return {manualTodos:Array.isArray(manualTodos)?manualTodos:[]};
             if(module==='hotel') return {bands:(bands||[]).map(function(b){return bandSlice(b,module);}),hotelCostsList:Array.isArray(hotelCostsList)?hotelCostsList:[]};
+            if(module==='shuttle') return {bands:(bands||[]).map(function(b){return bandSlice(b,module);}),shuttleTripLog:shuttleTripLog||{},shuttleVehicles:Array.isArray(shuttleVehicles)?shuttleVehicles:[]};
             return {bands:(bands||[]).map(function(b){return bandSlice(b,module);})};
         }
         function mergeBandPart(part){
@@ -2429,6 +2467,10 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
             if(module==='accreditation'){akkDb=Array.isArray(data.akkDb)?data.akkDb:[];return;}
             if(module==='todos'){manualTodos=Array.isArray(data.manualTodos)?data.manualTodos:[];return;}
             if(module==='hotel' && Array.isArray(data.hotelCostsList)) hotelCostsList=data.hotelCostsList;
+            if(module==='shuttle') {
+                shuttleTripLog=data.shuttleTripLog && typeof data.shuttleTripLog==='object' ? data.shuttleTripLog : {};
+                shuttleVehicles=Array.isArray(data.shuttleVehicles) ? data.shuttleVehicles : [];
+            }
             if(Array.isArray(data.bands)) data.bands.forEach(mergeBandPart);
         }
         async function writeDataModule(module){
@@ -2445,7 +2487,7 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
         }
         async function migrateLegacyStateIfNeeded(){ return false; }
         async function loadPhase2CloudData(){
-            bands=[];manualTodos=[];hotelCostsList=[];akkDb=[];
+            bands=[];manualTodos=[];hotelCostsList=[];shuttleTripLog={};shuttleVehicles=[];akkDb=[];
             await migrateLegacyStateIfNeeded();
             if(!currentEventId) return;
             var r=await _supabase.from('cmoa_module_state').select('module,data').eq('event_id',currentEventId);
@@ -2474,7 +2516,7 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
                 var designSaved=localStorage.getItem('cmoa_design_v1')||'steel';document.body.setAttribute('data-design',designSaved);updateDesignButtons();
                 var themeSaved=localStorage.getItem('cmoa_theme_v1');if(themeSaved==='night'){document.body.classList.add('night-mode');var btn=document.getElementById('theme-toggle-btn');if(btn)btn.innerText='☀️ Daymode';}
             } catch(e) {}
-            if(!Array.isArray(bands))bands=[];if(!Array.isArray(manualTodos))manualTodos=[];if(!Array.isArray(hotelCostsList))hotelCostsList=[];if(!Array.isArray(akkDb))akkDb=[];
+            if(!Array.isArray(bands))bands=[];if(!Array.isArray(manualTodos))manualTodos=[];if(!Array.isArray(hotelCostsList))hotelCostsList=[];if(!shuttleTripLog||typeof shuttleTripLog!=='object')shuttleTripLog={};if(!Array.isArray(shuttleVehicles))shuttleVehicles=[];if(!Array.isArray(akkDb))akkDb=[];
             try{updateMainProgress();renderBandsList();initAkkreditierung();}catch(err){console.error('Init error:',err);}
         };
 
@@ -2569,7 +2611,7 @@ function loadFromLocalStorage() {
         }
 
         function exportBackup() {
-            var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({ bands: bands, manualTodos: manualTodos, hotelCostsList: hotelCostsList, akkDb: akkDb }));
+            var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({ bands: bands, manualTodos: manualTodos, hotelCostsList: hotelCostsList, shuttleTripLog: shuttleTripLog, shuttleVehicles: shuttleVehicles, akkDb: akkDb }));
             var downloadAnchor = document.createElement('a');
             downloadAnchor.setAttribute("href", dataStr);
             downloadAnchor.setAttribute("download", "CMOA_2027_Backup.json");
@@ -2588,7 +2630,7 @@ function loadFromLocalStorage() {
                 try {
                     var imported = JSON.parse(e.target.result);
                     if (Array.isArray(imported)) { bands = imported; normalizeAllBandNames(); }
-                    else if (imported.bands) { bands = imported.bands || []; normalizeAllBandNames(); manualTodos = imported.manualTodos || []; hotelCostsList = imported.hotelCostsList || []; akkDb = imported.akkDb || imported.akkreditierung || []; }
+                    else if (imported.bands) { bands = imported.bands || []; normalizeAllBandNames(); manualTodos = imported.manualTodos || []; hotelCostsList = imported.hotelCostsList || []; shuttleTripLog = imported.shuttleTripLog || {}; shuttleVehicles = imported.shuttleVehicles || []; akkDb = imported.akkDb || imported.akkreditierung || []; }
                     saveToStorage();
                     alert("✅ Backup erfolgreich geladen!");
                     showPage('main-page');
@@ -2764,7 +2806,8 @@ function loadFromLocalStorage() {
                 var costs = getCostForHotel(b.hotelName);
                 hotelTotal += ((Number(b.hotelEzCount || 0) * Number(costs.ezCost || 0)) + (Number(b.hotelDzCount || 0) * Number(costs.dzCost || 0))) * nights;
             });
-            return { feesGross: feesGross, hotelTotal: hotelTotal, total: feesGross + hotelTotal };
+            var shuttleTotal = getShuttleCostTotals().total;
+            return { feesGross: feesGross, hotelTotal: hotelTotal, shuttleTotal: shuttleTotal, total: feesGross + hotelTotal + shuttleTotal };
         }
 
         function buildCashEventFinancials(data) {
@@ -2875,9 +2918,10 @@ function loadFromLocalStorage() {
                     + '<div class="cash-drink-list"><div class="cash-drink-list-title">Alle verkauften Getränke</div>' + totalDrinkRows + '</div>'
                     + '<div class="cash-finance-row"><span>Bandgagen brutto</span><b>' + cashEuro(finance.costs.feesGross) + '</b></div>'
                     + '<div class="cash-finance-row"><span>Hotelkosten</span><b>' + cashEuro(finance.costs.hotelTotal) + '</b></div>'
+                    + '<div class="cash-finance-row"><span>Shuttlekosten</span><b>' + cashEuro(finance.costs.shuttleTotal) + '</b></div>'
                     + '<div class="cash-finance-row cash-finance-total"><span>Erfasste Gesamtkosten</span><b>' + cashEuro(finance.costs.total) + '</b></div>'
                     + '<div class="cash-finance-row cash-finance-result ' + (finance.result >= 0 ? 'positive' : 'negative') + '"><span>Getränkeeinnahmen minus Gesamtkosten</span><b>' + cashEuro(finance.result) + '</b></div>'
-                    + '<div class="cash-finance-note">Shuttle- und Cateringkosten sind nicht enthalten, weil dafür in dieser HTML keine Euro-Preise erfasst werden.</div>'
+                    + '<div class="cash-finance-note">Cateringkosten sind nicht enthalten, weil dafür in dieser HTML noch keine Euro-Preise erfasst werden.</div>'
                     + '</div>';
                 loadCashSummaryMini();
             } catch (e) {
@@ -5188,7 +5232,7 @@ function loadFromLocalStorage() {
         }
 
         function exportSelectedJSON(selectedBands) {
-            var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({ bands: selectedBands, manualTodos: manualTodos, hotelCostsList: hotelCostsList, akkDb: akkDb }));
+            var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({ bands: selectedBands, manualTodos: manualTodos, hotelCostsList: hotelCostsList, shuttleTripLog: shuttleTripLog, shuttleVehicles: shuttleVehicles, akkDb: akkDb }));
             var downloadAnchor = document.createElement('a');
             downloadAnchor.setAttribute("href", dataStr);
             downloadAnchor.setAttribute("download", "CMOA_2027_Export.json");
@@ -5599,6 +5643,8 @@ function loadFromLocalStorage() {
             setTxt('stat-pers-total', pers);
             setTxt('stat-rooms-total', ez + ' EZ / ' + dz + ' DZ (Gesamt: ' + (ez + dz) + ')');
             setTxt('stat-hotel-cost-total', totalHotelCost.toLocaleString('de-DE', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' €');
+            setTxt('stat-shuttle-cost-total', getShuttleCostTotals().total.toLocaleString('de-DE', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' €');
+            setTxt('stat-all-cost-total', ((net + taxSum) + totalHotelCost + getShuttleCostTotals().total).toLocaleString('de-DE', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' €');
             setTxt('stat-shuttle-count', shuttleCnt);
         }
 
@@ -5644,11 +5690,14 @@ function loadFromLocalStorage() {
             var timeline = document.getElementById('shuttle-view-timeline');
             var plan = document.getElementById('shuttle-view-plan');
             var overview = document.getElementById('shuttle-view-overview');
+            var costs = document.getElementById('shuttle-view-costs');
             if (timeline) timeline.style.display = view === 'timeline' ? 'block' : 'none';
             if (plan) plan.style.display = view === 'plan' ? 'block' : 'none';
             if (overview) overview.style.display = view === 'overview' ? 'block' : 'none';
+            if (costs) costs.style.display = view === 'costs' ? 'block' : 'none';
             if (view === 'plan') { populateShuttleDriverFilter(); renderShuttlePlanTable(); }
             if (view === 'overview') renderShuttleOverview();
+            if (view === 'costs') renderShuttleCosts();
         }
 
         function getShuttleOverviewData() {
@@ -5723,6 +5772,117 @@ function loadFromLocalStorage() {
                     c.appendChild(div);
                 }
             }
+        }
+
+        function getShuttleLogRides() {
+            var rides=[];
+            (bands||[]).forEach(function(b){
+                if (!(b.shuttleNeeded === 'ja' || b.shuttleNeeded === true)) return;
+                var base={bandId:b.id,band:(b.name||'-').toUpperCase(),driver:b.shuttleDriver||'',vehicle:b.shuttleVehicle||''};
+                if (b.shuttleDate || b.shuttleTime || b.shuttleAirport) rides.push(Object.assign({},base,{id:String(b.id)+'_arrival',type:'Anreise',date:b.shuttleDate||'',time:b.shuttleTime||'',airport:b.shuttleAirport||'',flight:b.shuttleFlightNum||'',route:(b.shuttleAirport||'Flughafen')+' → Festival'}));
+                if (b.shuttleRetDate || b.shuttleRetTime || b.shuttleRetAirport) rides.push(Object.assign({},base,{id:String(b.id)+'_departure',type:'Abreise',date:b.shuttleRetDate||'',time:b.shuttleRetTime||'',airport:b.shuttleRetAirport||'',flight:b.shuttleRetFlightNum||'',route:'Festival → '+(b.shuttleRetAirport||'Flughafen')}));
+            });
+            rides.forEach(function(r){
+                var saved=shuttleTripLog[r.id]||{};
+                ['driver','vehicle','route','kilometers','fuelPrice','consumption','parkingCost','otherCost','note'].forEach(function(k){if(saved[k]!==undefined&&saved[k]!==null&&saved[k]!=='')r[k]=saved[k];});
+            });
+            return rides.sort(function(a,b){return (a.date+' '+a.time).localeCompare(b.date+' '+b.time);});
+        }
+
+        function getShuttleCostTotals() {
+            var totals={rental:0,fuel:0,parking:0,other:0,kilometers:0,total:0};
+            (shuttleVehicles||[]).forEach(function(v){totals.rental+=Number(v.rentalCost||0);});
+            getShuttleLogRides().forEach(function(r){
+                var km=Number(r.kilometers||0), price=Number(r.fuelPrice||0), consumption=Number(r.consumption||0);
+                totals.kilometers+=km;
+                totals.fuel+=(km/100)*consumption*price;
+                totals.parking+=Number(r.parkingCost||0);
+                totals.other+=Number(r.otherCost||0);
+            });
+            totals.total=totals.rental+totals.fuel+totals.parking+totals.other;
+            return totals;
+        }
+
+        async function saveShuttleCostData() {
+            if (!hasDataModuleWrite('shuttle')) { alert('Du hast für Shuttle nur Leserechte.'); renderShuttleCosts(); return; }
+            try { await writeDataModule('shuttle'); renderShuttleCosts(); renderOverview(); }
+            catch(e){ alert('Shuttlekosten konnten nicht gespeichert werden: '+e.message); }
+        }
+
+        function updateShuttleTripField(id,field,value) {
+            if(!shuttleTripLog[id]) shuttleTripLog[id]={};
+            var numeric=['kilometers','fuelPrice','consumption','parkingCost','otherCost'];
+            shuttleTripLog[id][field]=numeric.indexOf(field)>=0 ? (Number(value)||0) : value;
+            saveShuttleCostData();
+        }
+
+        function getShuttleVehicleNames() {
+            var names=[];
+            (bands||[]).forEach(function(b){var n=String(b.shuttleVehicle||'').trim();if(n&&names.indexOf(n)<0)names.push(n);});
+            (shuttleVehicles||[]).forEach(function(v){var n=String(v.name||'').trim();if(n&&names.indexOf(n)<0)names.push(n);});
+            return names.sort(function(a,b){return a.localeCompare(b,'de');});
+        }
+
+        function addShuttleVehicle() {
+            if (!hasDataModuleWrite('shuttle')) { alert('Du hast für Shuttle nur Leserechte.'); return; }
+            var name=prompt('Name des zusätzlichen Fahrzeugs:'); if(!name||!name.trim())return;
+            var plate=prompt('Kennzeichen (optional):','')||'';
+            var rental=prompt('Fahrzeugmiete in Euro:','0'); if(rental===null)return;
+            shuttleVehicles.push({id:'vehicle_'+Date.now(),name:name.trim(),plate:plate.trim(),rentalCost:Number(String(rental).replace(',','.'))||0,note:''});
+            saveShuttleCostData();
+        }
+
+        function editShuttleVehicle(id) {
+            var v=(shuttleVehicles||[]).find(function(x){return x.id===id;}); if(!v)return;
+            var name=prompt('Fahrzeugname:',v.name||''); if(name===null||!name.trim())return;
+            var plate=prompt('Kennzeichen:',v.plate||''); if(plate===null)return;
+            var rental=prompt('Fahrzeugmiete in Euro:',String(v.rentalCost||0)); if(rental===null)return;
+            var note=prompt('Notiz:',v.note||''); if(note===null)return;
+            v.name=name.trim();v.plate=plate.trim();v.rentalCost=Number(String(rental).replace(',','.'))||0;v.note=note.trim();saveShuttleCostData();
+        }
+
+        function editShuttleVehicleByName(encodedName) {
+            var name=decodeURIComponent(encodedName), v=(shuttleVehicles||[]).find(function(x){return x.name===name;});
+            if(!v){v={id:'vehicle_'+Date.now(),name:name,plate:'',rentalCost:0,note:'aus Bandmaske'};shuttleVehicles.push(v);}
+            editShuttleVehicle(v.id);
+        }
+
+        function deleteShuttleVehicle(id) {
+            if(!confirm('Dieses zusätzliche Fahrzeug wirklich löschen?'))return;
+            shuttleVehicles=(shuttleVehicles||[]).filter(function(v){return v.id!==id;});saveShuttleCostData();
+        }
+
+        function renderShuttleCosts() {
+            var summary=document.getElementById('shuttle-cost-summary'),vehicleList=document.getElementById('shuttle-vehicle-list'),tbody=document.getElementById('shuttle-log-tbody');
+            if(!summary||!vehicleList||!tbody)return;
+            var totals=getShuttleCostTotals();
+            summary.innerHTML=[['Kilometer',totals.kilometers.toLocaleString('de-DE')+' km'],['Fahrzeugmiete',cashEuro(totals.rental)],['Tankkosten',cashEuro(totals.fuel)],['Parken & Sonstiges',cashEuro(totals.parking+totals.other)],['Shuttlekosten gesamt',cashEuro(totals.total)]].map(function(x){return '<div class="shuttle-cost-box"><span>'+x[0]+'</span><b>'+x[1]+'</b></div>';}).join('');
+            var assigned={};(bands||[]).forEach(function(b){var n=String(b.shuttleVehicle||'').trim();if(n)assigned[n]=true;});
+            var rows=getShuttleVehicleNames().map(function(n){
+                var v=(shuttleVehicles||[]).find(function(x){return x.name===n;});
+                var source=assigned[n]?'Bandmaske':'zusätzlich';
+                return '<div class="shuttle-vehicle-row"><b>'+escapeHtmlAuth(n)+'</b><span>'+escapeHtmlAuth(v&&v.plate?v.plate:source)+'</span><b>'+cashEuro(v?v.rentalCost:0)+'</b><span>'+escapeHtmlAuth(v&&v.note?v.note:(assigned[n]?'Fahrzeug aus Bandmaske':''))+'</span><span><button class="btn-subtle" style="padding:5px 7px;" onclick="editShuttleVehicleByName(\''+encodeURIComponent(n)+'\')">✎</button>'+(v&&!assigned[n]?' <button class="btn-danger" style="padding:5px 7px;" onclick="deleteShuttleVehicle(\''+v.id+'\')">🗑</button>':'')+'</span></div>';
+            });
+            vehicleList.innerHTML=rows.length?rows.join(''):'<div style="color:var(--text-muted);font-size:.8rem;">Noch keine Fahrzeuge erfasst.</div>';
+            var drivers=[];(bands||[]).forEach(function(b){var d=String(b.shuttleDriver||'').trim();if(d&&drivers.indexOf(d)<0)drivers.push(d);});drivers.sort();
+            var vehicles=getShuttleVehicleNames();
+            var driverOptions='<option value="">– Fahrer –</option>'+drivers.map(function(d){return '<option value="'+escapeHtmlAuth(d)+'">'+escapeHtmlAuth(d)+'</option>';}).join('');
+            var vehicleOptions='<option value="">– Fahrzeug –</option>'+vehicles.map(function(v){return '<option value="'+escapeHtmlAuth(v)+'">'+escapeHtmlAuth(v)+'</option>';}).join('');
+            var rides=getShuttleLogRides();
+            tbody.innerHTML=rides.map(function(r){
+                var fuel=(Number(r.kilometers||0)/100)*Number(r.consumption||0)*Number(r.fuelPrice||0);
+                return '<tr><td><b>'+escapeHtmlAuth(r.type)+'</b><br>'+escapeHtmlAuth(r.band)+'<br><small>'+formatDateDE(r.date)+' '+escapeHtmlAuth(r.time||'')+'</small></td>'
+                    +'<td><input class="wide-input" value="'+escapeHtmlAuth(r.route||'')+'" onchange="updateShuttleTripField(\''+r.id+'\',\'route\',this.value)"><br><small>'+escapeHtmlAuth(r.airport||'-')+(r.flight?' · Flug '+escapeHtmlAuth(r.flight):'')+'</small></td>'
+                    +'<td><select onchange="updateShuttleTripField(\''+r.id+'\',\'driver\',this.value)">'+driverOptions.replace('value="'+escapeHtmlAuth(r.driver||'')+'"','value="'+escapeHtmlAuth(r.driver||'')+'" selected')+'</select></td>'
+                    +'<td><select onchange="updateShuttleTripField(\''+r.id+'\',\'vehicle\',this.value)">'+vehicleOptions.replace('value="'+escapeHtmlAuth(r.vehicle||'')+'"','value="'+escapeHtmlAuth(r.vehicle||'')+'" selected')+'</select></td>'
+                    +'<td><input type="number" min="0" step="0.1" value="'+Number(r.kilometers||0)+'" onchange="updateShuttleTripField(\''+r.id+'\',\'kilometers\',this.value)"></td>'
+                    +'<td><input type="number" min="0" step="0.001" value="'+Number(r.fuelPrice||0)+'" onchange="updateShuttleTripField(\''+r.id+'\',\'fuelPrice\',this.value)"></td>'
+                    +'<td><input type="number" min="0" step="0.1" value="'+Number(r.consumption||0)+'" onchange="updateShuttleTripField(\''+r.id+'\',\'consumption\',this.value)"></td>'
+                    +'<td><b>'+cashEuro(fuel)+'</b></td>'
+                    +'<td><input type="number" min="0" step="0.01" value="'+Number(r.parkingCost||0)+'" onchange="updateShuttleTripField(\''+r.id+'\',\'parkingCost\',this.value)"></td>'
+                    +'<td><input type="number" min="0" step="0.01" value="'+Number(r.otherCost||0)+'" onchange="updateShuttleTripField(\''+r.id+'\',\'otherCost\',this.value)"></td></tr>';
+            }).join('');
+            if(!rides.length)tbody.innerHTML='<tr><td colspan="10" style="text-align:center;color:var(--text-muted);">Noch keine Shuttlefahrten in den Bandmasken erfasst.</td></tr>';
         }
 
         function populateShuttleDriverFilter() {
