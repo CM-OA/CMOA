@@ -1314,7 +1314,44 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
         .shuttle-log-table input, .shuttle-log-table select { min-width:88px; padding:6px; font-size:.75rem; }
         .shuttle-log-table .wide-input { min-width:150px; }
         .shuttle-vehicle-row { display:grid; grid-template-columns:1.2fr .8fr .7fr 1.4fr auto; gap:8px; align-items:center; padding:8px 0; border-bottom:1px solid var(--border); font-size:.78rem; }
-        @media(max-width:800px){ .shuttle-cost-summary{grid-template-columns:1fr 1fr;} .shuttle-vehicle-row{grid-template-columns:1fr 1fr;} }
+        .shuttle-vehicle-cell small { display:none; color:var(--text-muted); font-size:.65rem; font-weight:700; text-transform:uppercase; margin-bottom:3px; }
+        .shuttle-vehicle-actions { white-space:nowrap; text-align:right; }
+        @media(max-width:900px){
+            .shuttle-tabs { display:grid!important; grid-template-columns:1fr 1fr; }
+            .shuttle-tabs .btn-primary { width:100%; min-height:46px; white-space:normal; }
+            .shuttle-cost-summary{grid-template-columns:1fr 1fr;}
+        }
+        @media(max-width:700px){
+            #shuttle-view-costs .card { padding:10px; }
+            #shuttle-timeline-list .card > div:last-child { grid-template-columns:1fr!important; }
+            #shuttle-plan-controls .form-row, #shuttle-plan-controls .form-group { display:block; width:100%; }
+            #shuttle-plan-controls select { width:100%; min-height:44px; font-size:16px; }
+            .shuttle-cost-summary { grid-template-columns:1fr 1fr; gap:6px; }
+            .shuttle-cost-box:last-child { grid-column:1 / -1; }
+            .shuttle-vehicle-row { display:grid; grid-template-columns:1fr 1fr; padding:11px 0; gap:9px 12px; }
+            .shuttle-vehicle-cell small { display:block; }
+            .shuttle-vehicle-actions { grid-column:1 / -1; text-align:left; }
+            .shuttle-vehicle-actions button { min-width:44px; min-height:40px; }
+            .shuttle-log-table, .shuttle-log-table tbody, .shuttle-log-table tr, .shuttle-log-table td { display:block; width:100%; }
+            .shuttle-log-table thead { display:none; }
+            .shuttle-log-table tr { margin:0 0 12px; padding:9px; border:1px solid var(--border); border-radius:11px; background:var(--input-bg); }
+            .shuttle-log-table td { display:grid; grid-template-columns:105px minmax(0,1fr); gap:9px; align-items:center; padding:7px 3px; border:0; border-bottom:1px dashed var(--border); text-align:left; }
+            .shuttle-log-table td:last-child { border-bottom:0; }
+            .shuttle-log-table td::before { content:attr(data-label); color:var(--text-muted); font-size:.68rem; font-weight:800; text-transform:uppercase; }
+            .shuttle-log-table td[data-label="Fahrt / Band"] { display:block; padding:5px 3px 10px; }
+            .shuttle-log-table td[data-label="Fahrt / Band"]::before { display:none; }
+            .shuttle-log-table input, .shuttle-log-table select, .shuttle-log-table .wide-input { width:100%; min-width:0; min-height:42px; font-size:16px; }
+            .shuttle-log-table .mobile-empty { display:block; text-align:center; }
+            .shuttle-log-table .mobile-empty::before { display:none; }
+        }
+        @media(max-width:430px){
+            .shuttle-tabs { grid-template-columns:1fr; }
+            .shuttle-cost-summary { grid-template-columns:1fr; }
+            .shuttle-cost-box:last-child { grid-column:auto; }
+            .shuttle-vehicle-row { grid-template-columns:1fr; }
+            .shuttle-vehicle-actions { grid-column:auto; }
+            .shuttle-log-table td { grid-template-columns:88px minmax(0,1fr); }
+        }
         .cmoa-decorated-page { position:relative; }
         .cmoa-page-logo {
             position:absolute;
@@ -1417,7 +1454,7 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
                 <button id="event-admin-btn" type="button" class="btn-subtle permission-hidden" onclick="showPage('events-admin-page')">⚙️ Veranstaltungen verwalten</button>
             </div>
 
-            <div class="cash-summary-launch">
+            <div id="cash-summary-launch" class="cash-summary-launch permission-hidden">
                 <button type="button" class="cash-summary-button" onclick="openCashSummary()">
                     💶 Kassenübersicht
                     <span id="cash-summary-mini" class="cash-summary-mini">Wird geladen …</span>
@@ -2196,7 +2233,7 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
         <!-- SHUTTLE PAGE -->
         <div id="shuttle-page" class="page">
             <button class="btn-back" onclick="showPage('main-page')">← Hauptmenü</button>
-            <div style="display:flex; gap:8px; margin-bottom:12px;">
+            <div class="shuttle-tabs" style="display:flex; gap:8px; margin-bottom:12px;">
                 <button class="btn-primary" style="flex:1;" onclick="toggleShuttleView('timeline')">⏱️ Timeline-Ansicht</button>
                 <button class="btn-primary" style="flex:1;" onclick="toggleShuttleView('plan')">🚗 Fahrplan & Fahrerliste</button>
                 <button class="btn-primary" style="flex:1;" onclick="toggleShuttleView('overview')">🗓️ Overview</button>
@@ -2838,7 +2875,7 @@ function loadFromLocalStorage() {
 
         async function loadCashSummaryMini() {
             var mini = document.getElementById('cash-summary-mini');
-            if (!mini || !currentEventId || !_supabase) return;
+            if (!mini || !currentEventId || !_supabase || !canViewCashSummary()) return;
             mini.textContent = 'Wird geladen …';
             try {
                 var cashData = await fetchCashSummaryData();
@@ -2852,6 +2889,7 @@ function loadFromLocalStorage() {
         }
 
         async function openCashSummary() {
+            if (!canViewCashSummary()) return;
             var overlay = document.getElementById('cash-summary-overlay');
             if (overlay) overlay.classList.add('show');
             await loadCashSummary();
@@ -2863,6 +2901,7 @@ function loadFromLocalStorage() {
         }
 
         async function loadCashSummary() {
+            if (!canViewCashSummary()) { closeCashSummary(); return; }
             var content = document.getElementById('cash-summary-content');
             var eventName = document.getElementById('cash-summary-event-name');
             if (eventName) eventName.textContent = (currentEvent && (currentEvent.short_name || currentEvent.name)) || 'Veranstaltung';
@@ -5861,7 +5900,7 @@ function loadFromLocalStorage() {
             var rows=getShuttleVehicleNames().map(function(n){
                 var v=(shuttleVehicles||[]).find(function(x){return x.name===n;});
                 var source=assigned[n]?'Bandmaske':'zusätzlich';
-                return '<div class="shuttle-vehicle-row"><b>'+escapeHtmlAuth(n)+'</b><span>'+escapeHtmlAuth(v&&v.plate?v.plate:source)+'</span><b>'+cashEuro(v?v.rentalCost:0)+'</b><span>'+escapeHtmlAuth(v&&v.note?v.note:(assigned[n]?'Fahrzeug aus Bandmaske':''))+'</span><span><button class="btn-subtle" style="padding:5px 7px;" onclick="editShuttleVehicleByName(\''+encodeURIComponent(n)+'\')">✎</button>'+(v&&!assigned[n]?' <button class="btn-danger" style="padding:5px 7px;" onclick="deleteShuttleVehicle(\''+v.id+'\')">🗑</button>':'')+'</span></div>';
+                return '<div class="shuttle-vehicle-row"><div class="shuttle-vehicle-cell"><small>Fahrzeug</small><b>'+escapeHtmlAuth(n)+'</b></div><div class="shuttle-vehicle-cell"><small>Kennzeichen / Quelle</small><span>'+escapeHtmlAuth(v&&v.plate?v.plate:source)+'</span></div><div class="shuttle-vehicle-cell"><small>Miete</small><b>'+cashEuro(v?v.rentalCost:0)+'</b></div><div class="shuttle-vehicle-cell"><small>Notiz</small><span>'+escapeHtmlAuth(v&&v.note?v.note:(assigned[n]?'Fahrzeug aus Bandmaske':''))+'</span></div><div class="shuttle-vehicle-actions"><button class="btn-subtle" style="padding:5px 7px;" onclick="editShuttleVehicleByName(\''+encodeURIComponent(n)+'\')">✎</button>'+(v&&!assigned[n]?' <button class="btn-danger" style="padding:5px 7px;" onclick="deleteShuttleVehicle(\''+v.id+'\')">🗑</button>':'')+'</div></div>';
             });
             vehicleList.innerHTML=rows.length?rows.join(''):'<div style="color:var(--text-muted);font-size:.8rem;">Noch keine Fahrzeuge erfasst.</div>';
             var drivers=[];(bands||[]).forEach(function(b){var d=String(b.shuttleDriver||'').trim();if(d&&drivers.indexOf(d)<0)drivers.push(d);});drivers.sort();
@@ -5871,18 +5910,18 @@ function loadFromLocalStorage() {
             var rides=getShuttleLogRides();
             tbody.innerHTML=rides.map(function(r){
                 var fuel=(Number(r.kilometers||0)/100)*Number(r.consumption||0)*Number(r.fuelPrice||0);
-                return '<tr><td><b>'+escapeHtmlAuth(r.type)+'</b><br>'+escapeHtmlAuth(r.band)+'<br><small>'+formatDateDE(r.date)+' '+escapeHtmlAuth(r.time||'')+'</small></td>'
-                    +'<td><input class="wide-input" value="'+escapeHtmlAuth(r.route||'')+'" onchange="updateShuttleTripField(\''+r.id+'\',\'route\',this.value)"><br><small>'+escapeHtmlAuth(r.airport||'-')+(r.flight?' · Flug '+escapeHtmlAuth(r.flight):'')+'</small></td>'
-                    +'<td><select onchange="updateShuttleTripField(\''+r.id+'\',\'driver\',this.value)">'+driverOptions.replace('value="'+escapeHtmlAuth(r.driver||'')+'"','value="'+escapeHtmlAuth(r.driver||'')+'" selected')+'</select></td>'
-                    +'<td><select onchange="updateShuttleTripField(\''+r.id+'\',\'vehicle\',this.value)">'+vehicleOptions.replace('value="'+escapeHtmlAuth(r.vehicle||'')+'"','value="'+escapeHtmlAuth(r.vehicle||'')+'" selected')+'</select></td>'
-                    +'<td><input type="number" min="0" step="0.1" value="'+Number(r.kilometers||0)+'" onchange="updateShuttleTripField(\''+r.id+'\',\'kilometers\',this.value)"></td>'
-                    +'<td><input type="number" min="0" step="0.001" value="'+Number(r.fuelPrice||0)+'" onchange="updateShuttleTripField(\''+r.id+'\',\'fuelPrice\',this.value)"></td>'
-                    +'<td><input type="number" min="0" step="0.1" value="'+Number(r.consumption||0)+'" onchange="updateShuttleTripField(\''+r.id+'\',\'consumption\',this.value)"></td>'
-                    +'<td><b>'+cashEuro(fuel)+'</b></td>'
-                    +'<td><input type="number" min="0" step="0.01" value="'+Number(r.parkingCost||0)+'" onchange="updateShuttleTripField(\''+r.id+'\',\'parkingCost\',this.value)"></td>'
-                    +'<td><input type="number" min="0" step="0.01" value="'+Number(r.otherCost||0)+'" onchange="updateShuttleTripField(\''+r.id+'\',\'otherCost\',this.value)"></td></tr>';
+                return '<tr><td data-label="Fahrt / Band"><b>'+escapeHtmlAuth(r.type)+'</b><br>'+escapeHtmlAuth(r.band)+'<br><small>'+formatDateDE(r.date)+' '+escapeHtmlAuth(r.time||'')+'</small></td>'
+                    +'<td data-label="Strecke / Flughafen"><div><input class="wide-input" value="'+escapeHtmlAuth(r.route||'')+'" onchange="updateShuttleTripField(\''+r.id+'\',\'route\',this.value)"><br><small>'+escapeHtmlAuth(r.airport||'-')+(r.flight?' · Flug '+escapeHtmlAuth(r.flight):'')+'</small></div></td>'
+                    +'<td data-label="Fahrer"><select onchange="updateShuttleTripField(\''+r.id+'\',\'driver\',this.value)">'+driverOptions.replace('value="'+escapeHtmlAuth(r.driver||'')+'"','value="'+escapeHtmlAuth(r.driver||'')+'" selected')+'</select></td>'
+                    +'<td data-label="Fahrzeug"><select onchange="updateShuttleTripField(\''+r.id+'\',\'vehicle\',this.value)">'+vehicleOptions.replace('value="'+escapeHtmlAuth(r.vehicle||'')+'"','value="'+escapeHtmlAuth(r.vehicle||'')+'" selected')+'</select></td>'
+                    +'<td data-label="Kilometer"><input type="number" min="0" step="0.1" value="'+Number(r.kilometers||0)+'" onchange="updateShuttleTripField(\''+r.id+'\',\'kilometers\',this.value)"></td>'
+                    +'<td data-label="€/Liter"><input type="number" min="0" step="0.001" value="'+Number(r.fuelPrice||0)+'" onchange="updateShuttleTripField(\''+r.id+'\',\'fuelPrice\',this.value)"></td>'
+                    +'<td data-label="L/100 km"><input type="number" min="0" step="0.1" value="'+Number(r.consumption||0)+'" onchange="updateShuttleTripField(\''+r.id+'\',\'consumption\',this.value)"></td>'
+                    +'<td data-label="Tankkosten"><b>'+cashEuro(fuel)+'</b></td>'
+                    +'<td data-label="Parkgebühren"><input type="number" min="0" step="0.01" value="'+Number(r.parkingCost||0)+'" onchange="updateShuttleTripField(\''+r.id+'\',\'parkingCost\',this.value)"></td>'
+                    +'<td data-label="Sonstiges"><input type="number" min="0" step="0.01" value="'+Number(r.otherCost||0)+'" onchange="updateShuttleTripField(\''+r.id+'\',\'otherCost\',this.value)"></td></tr>';
             }).join('');
-            if(!rides.length)tbody.innerHTML='<tr><td colspan="10" style="text-align:center;color:var(--text-muted);">Noch keine Shuttlefahrten in den Bandmasken erfasst.</td></tr>';
+            if(!rides.length)tbody.innerHTML='<tr><td class="mobile-empty" colspan="10" style="text-align:center;color:var(--text-muted);">Noch keine Shuttlefahrten in den Bandmasken erfasst.</td></tr>';
         }
 
         function populateShuttleDriverFilter() {
@@ -7096,6 +7135,12 @@ function loadFromLocalStorage() {
           if(currentUserProfile.role==='admin')return true;
           var p=effectivePermissions(currentUserProfile); return rightRank(p[module])>=rightRank(need||'read');
         }
+        function canViewCashSummary(){
+          if(!currentUserProfile)return false;
+          if(currentUserProfile.role==='admin')return true;
+          var p=effectivePermissions(currentUserProfile);
+          return CMOA_MODULES.filter(function(m){return m[0]!=='admin';}).every(function(m){return rightRank(p[m[0]])>=rightRank('write');});
+        }
         function showAuthError(msg){var e=document.getElementById('auth-error');if(e)e.textContent=msg||'';}
         async function initCmoaAuth(){
           try{
@@ -7119,6 +7164,8 @@ function loadFromLocalStorage() {
           var label=document.getElementById('auth-user-label'); if(label)label.textContent=(currentAuthUser&&currentAuthUser.email?currentAuthUser.email:'')+' · '+((ROLE_PRESETS[currentUserProfile.role]||{}).label||currentUserProfile.role);
           document.querySelectorAll('[data-module]').forEach(function(el){var m=el.getAttribute('data-module');el.classList.toggle('permission-hidden',!hasModuleRight(m,'read'));});
           var ab=document.getElementById('admin-menu-btn');if(ab)ab.classList.toggle('permission-hidden',!hasModuleRight('admin','read')); var eb=document.getElementById('event-admin-btn');if(eb)eb.classList.toggle('permission-hidden',currentUserProfile.role!=='admin');
+          var cashLaunch=document.getElementById('cash-summary-launch');if(cashLaunch)cashLaunch.classList.toggle('permission-hidden',!canViewCashSummary());
+          if(!canViewCashSummary())closeCashSummary();
         }
         function updateRightsBanner(pageId){
           var b=document.getElementById('rights-banner'); if(!b)return; var m=CMOA_PAGE_MODULES[pageId];
