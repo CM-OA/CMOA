@@ -1294,6 +1294,19 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
         .cash-emptying-row { display:flex; justify-content:space-between; gap:10px; padding:7px 0; border-bottom:1px solid var(--border); font-size:.71rem; }
         .cash-emptying-row:last-child { border-bottom:0; }
         .cash-emptying-row span { color:var(--text-muted); }
+        .cash-drink-list { margin-top:9px; border-top:1px solid var(--border); padding-top:8px; }
+        .cash-drink-list-title { font-size:.74rem; font-weight:850; margin-bottom:4px; }
+        .cash-drink-row { display:flex; justify-content:space-between; gap:10px; padding:5px 0; font-size:.72rem; border-bottom:1px dashed var(--border); }
+        .cash-drink-row:last-child { border-bottom:0; }
+        .cash-finance-card { margin-top:14px; background:var(--card-bg); border:2px solid var(--border); border-radius:14px; padding:13px; }
+        .cash-finance-card h3 { margin:0 0 10px; }
+        .cash-finance-row { display:flex; justify-content:space-between; gap:12px; padding:7px 0; border-bottom:1px solid var(--border); font-size:.78rem; }
+        .cash-finance-row:last-child { border-bottom:0; }
+        .cash-finance-total { font-size:.9rem; font-weight:900; }
+        .cash-finance-result { margin-top:10px; padding:11px; border-radius:10px; text-align:center; font-weight:900; }
+        .cash-finance-result.positive { color:#166534; background:#dcfce7; }
+        .cash-finance-result.negative { color:#991b1b; background:#fee2e2; }
+        .cash-finance-note { margin-top:8px; color:var(--text-muted); font-size:.67rem; line-height:1.4; }
         .cmoa-decorated-page { position:relative; }
         .cmoa-page-logo {
             position:absolute;
@@ -2680,8 +2693,8 @@ function loadFromLocalStorage() {
             if (!currentEventId) throw new Error('Keine Veranstaltung ausgewählt.');
             var results = await Promise.all([
                 _supabase.from('cash_registers').select('id,name,active').eq('event_id', currentEventId).order('name'),
-                _supabase.from('cash_sales').select('id,register_id,sold_at,total,deposit_charged,deposit_returned,voided').eq('event_id', currentEventId),
-                _supabase.from('cash_sale_items').select('sale_id,quantity').eq('event_id', currentEventId),
+                _supabase.from('cash_sales').select('*').eq('event_id', currentEventId),
+                _supabase.from('cash_sale_items').select('*').eq('event_id', currentEventId),
                 _supabase.from('cash_movements').select('register_id,movement_type,amount,person_name,created_at,note').eq('event_id', currentEventId).order('created_at')
             ]);
             var failed = results.find(function(r){ return r.error; });
@@ -2704,7 +2717,17 @@ function loadFromLocalStorage() {
                     return s.register_id === register.id && !s.voided && new Date(s.sold_at).getTime() > lastClosingTime;
                 });
                 var saleIds = new Set(sales.map(function(s){ return s.id; }));
-                var drinkCount = data.items.filter(function(i){ return saleIds.has(i.sale_id); }).reduce(function(sum,i){ return sum + Number(i.quantity || 0); }, 0);
+                var drinkMap = {};
+                data.items.filter(function(i){ return saleIds.has(i.sale_id); }).forEach(function(i){
+                    var qty = Number(i.quantity || 0);
+                    if (qty <= 0) return;
+                    var name = String(i.drink_name || i.product_name || i.name || 'Getränk');
+                    if (!drinkMap[name]) drinkMap[name] = { name: name, quantity: 0, revenue: 0 };
+                    drinkMap[name].quantity += qty;
+                    drinkMap[name].revenue += qty * Number(i.unit_price || i.price || 0);
+                });
+                var drinks = Object.keys(drinkMap).map(function(name){ return drinkMap[name]; }).sort(function(a,b){ return a.name.localeCompare(b.name, 'de'); });
+                var drinkCount = drinks.reduce(function(sum,d){ return sum + d.quantity; }, 0);
                 var opening = periodMovements.filter(function(m){ return m.movement_type === 'opening'; }).reduce(function(sum,m){ return sum + Number(m.amount || 0); }, 0);
                 var emptying = periodMovements.filter(function(m){ return m.movement_type === 'emptying'; }).reduce(function(sum,m){ return sum + Number(m.amount || 0); }, 0);
                 var turnover = sales.reduce(function(sum,s){ return sum + Number(s.total || 0); }, 0);
@@ -2718,6 +2741,7 @@ function loadFromLocalStorage() {
                     drinkCount: drinkCount,
                     depositCharged: depositCharged,
                     depositReturned: depositReturned,
+                    drinks: drinks,
                     lastEmptying: emptyings[0] || null,
                     emptyings: emptyings,
                     lastClosingTime: lastClosingTime
@@ -2725,12 +2749,57 @@ function loadFromLocalStorage() {
             });
         }
 
+        function calculateFestivalCosts() {
+            var feesGross = 0;
+            var hotelTotal = 0;
+            (Array.isArray(bands) ? bands : []).forEach(function(b) {
+                var fee = Number(b.gage || 0);
+                feesGross += fee + (fee * Number(b.taxRate || 0) / 100);
+                if (b.hotelNeeded !== 'ja' && b.hotelNeeded !== true) return;
+                var nights = 1;
+                if (b.hotelFrom && b.hotelTo) {
+                    var diff = Math.ceil(Math.abs(new Date(b.hotelTo) - new Date(b.hotelFrom)) / 86400000);
+                    if (diff > 0) nights = diff;
+                }
+                var costs = getCostForHotel(b.hotelName);
+                hotelTotal += ((Number(b.hotelEzCount || 0) * Number(costs.ezCost || 0)) + (Number(b.hotelDzCount || 0) * Number(costs.dzCost || 0))) * nights;
+            });
+            return { feesGross: feesGross, hotelTotal: hotelTotal, total: feesGross + hotelTotal };
+        }
+
+        function buildCashEventFinancials(data) {
+            var sales = data.sales.filter(function(s){ return !s.voided; });
+            var saleIds = new Set(sales.map(function(s){ return s.id; }));
+            var drinks = {};
+            data.items.filter(function(i){ return saleIds.has(i.sale_id); }).forEach(function(i){
+                var qty = Number(i.quantity || 0);
+                if (qty <= 0) return;
+                var name = String(i.drink_name || i.product_name || i.name || 'Getränk');
+                if (!drinks[name]) drinks[name] = { name: name, quantity: 0, revenue: 0 };
+                drinks[name].quantity += qty;
+                drinks[name].revenue += qty * Number(i.unit_price || i.price || 0);
+            });
+            var beverageRevenue = sales.reduce(function(sum,s){ return sum + Number(s.drinks_total || s.subtotal || 0); }, 0);
+            if (!beverageRevenue) beverageRevenue = Object.keys(drinks).reduce(function(sum,k){ return sum + drinks[k].revenue; }, 0);
+            var costs = calculateFestivalCosts();
+            return {
+                drinks: Object.keys(drinks).map(function(k){ return drinks[k]; }).sort(function(a,b){ return a.name.localeCompare(b.name, 'de'); }),
+                beverageRevenue: beverageRevenue,
+                depositCharged: sales.reduce(function(sum,s){ return sum + Number(s.deposit_charged || 0); }, 0),
+                depositReturned: sales.reduce(function(sum,s){ return sum + Number(s.deposit_returned || 0); }, 0),
+                cashTotal: sales.reduce(function(sum,s){ return sum + Number(s.total || 0); }, 0),
+                costs: costs,
+                result: beverageRevenue - costs.total
+            };
+        }
+
         async function loadCashSummaryMini() {
             var mini = document.getElementById('cash-summary-mini');
             if (!mini || !currentEventId || !_supabase) return;
             mini.textContent = 'Wird geladen …';
             try {
-                var stats = buildCashRegisterStats(await fetchCashSummaryData());
+                var cashData = await fetchCashSummaryData();
+                var stats = buildCashRegisterStats(cashData);
                 if (!stats.length) { mini.textContent = 'Noch keine Kasse angelegt'; return; }
                 var total = stats.reduce(function(sum,s){ return sum + s.balance; }, 0);
                 mini.textContent = stats.length + (stats.length === 1 ? ' Kasse · ' : ' Kassen · ') + cashEuro(total);
@@ -2757,7 +2826,8 @@ function loadFromLocalStorage() {
             if (!content) return;
             content.innerHTML = '<div class="card">Kassendaten werden geladen …</div>';
             try {
-                var stats = buildCashRegisterStats(await fetchCashSummaryData());
+                var cashData = await fetchCashSummaryData();
+                var stats = buildCashRegisterStats(cashData);
                 if (!stats.length) {
                     content.innerHTML = '<div class="card">Für diese Veranstaltung wurde noch keine Kasse angelegt.</div>';
                     loadCashSummaryMini();
@@ -2776,6 +2846,9 @@ function loadFromLocalStorage() {
                             }).join('')
                           + '</details>'
                         : '<div class="cash-emptying-history"><span class="cash-emptying">Noch keine Leerung dokumentiert.</span></div>';
+                    var drinkRows = s.drinks.length
+                        ? s.drinks.map(function(d){ return '<div class="cash-drink-row"><span>' + escapeHtmlAuth(d.name) + '</span><b>' + d.quantity + '</b></div>'; }).join('')
+                        : '<div class="cash-drink-row"><span>Noch keine Getränke verkauft</span><b>0</b></div>';
                     return '<div class="cash-register-card">'
                         + '<div class="cash-register-title"><strong>' + escapeHtmlAuth(s.name) + '</strong><span class="cash-balance">' + cashEuro(s.balance) + '</span></div>'
                         + '<div class="cash-stat-grid">'
@@ -2785,9 +2858,27 @@ function loadFromLocalStorage() {
                         + '<div class="cash-stat"><span>Pfand zurückgegeben</span><b>' + cashEuro(s.depositReturned) + '</b></div>'
                         + '</div>'
                         + '<div class="cash-emptying"><b>Letzte Leerung:</b> ' + emptyText + '</div>'
+                        + '<div class="cash-drink-list"><div class="cash-drink-list-title">Verkaufte Getränke</div>' + drinkRows + '</div>'
                         + emptyingHistory
                         + '</div>';
                 }).join('');
+                var finance = buildCashEventFinancials(cashData);
+                var totalDrinkRows = finance.drinks.length
+                    ? finance.drinks.map(function(d){ return '<div class="cash-drink-row"><span>' + escapeHtmlAuth(d.name) + '</span><b>' + d.quantity + ' · ' + cashEuro(d.revenue) + '</b></div>'; }).join('')
+                    : '<div class="cash-drink-row"><span>Noch keine Getränke verkauft</span><b>0</b></div>';
+                content.innerHTML += '<div class="cash-finance-card">'
+                    + '<h3>Gesamtbilanz der Veranstaltung</h3>'
+                    + '<div class="cash-finance-row"><span>Getränkeeinnahmen (ohne Pfand)</span><b>' + cashEuro(finance.beverageRevenue) + '</b></div>'
+                    + '<div class="cash-finance-row"><span>Pfand berechnet</span><b>' + cashEuro(finance.depositCharged) + '</b></div>'
+                    + '<div class="cash-finance-row"><span>Pfand zurückgegeben</span><b>− ' + cashEuro(finance.depositReturned) + '</b></div>'
+                    + '<div class="cash-finance-row cash-finance-total"><span>Kassenumsatz gesamt</span><b>' + cashEuro(finance.cashTotal) + '</b></div>'
+                    + '<div class="cash-drink-list"><div class="cash-drink-list-title">Alle verkauften Getränke</div>' + totalDrinkRows + '</div>'
+                    + '<div class="cash-finance-row"><span>Bandgagen brutto</span><b>' + cashEuro(finance.costs.feesGross) + '</b></div>'
+                    + '<div class="cash-finance-row"><span>Hotelkosten</span><b>' + cashEuro(finance.costs.hotelTotal) + '</b></div>'
+                    + '<div class="cash-finance-row cash-finance-total"><span>Erfasste Gesamtkosten</span><b>' + cashEuro(finance.costs.total) + '</b></div>'
+                    + '<div class="cash-finance-row cash-finance-result ' + (finance.result >= 0 ? 'positive' : 'negative') + '"><span>Getränkeeinnahmen minus Gesamtkosten</span><b>' + cashEuro(finance.result) + '</b></div>'
+                    + '<div class="cash-finance-note">Shuttle- und Cateringkosten sind nicht enthalten, weil dafür in dieser HTML keine Euro-Preise erfasst werden.</div>'
+                    + '</div>';
                 loadCashSummaryMini();
             } catch (e) {
                 content.innerHTML = '<div class="card" style="color:#dc2626">Kassendaten konnten nicht geladen werden: ' + escapeHtmlAuth(e.message || String(e)) + '</div>';
