@@ -1289,6 +1289,27 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
         .cash-stat span { display:block; color:var(--text-muted); font-size:.68rem; margin-bottom:3px; }
         .cash-stat b { font-size:.86rem; }
         .cash-emptying { margin-top:9px; color:var(--text-muted); font-size:.72rem; line-height:1.4; }
+        .cash-emptying-history { margin-top:9px; border-top:1px solid var(--border); padding-top:8px; }
+        .cash-emptying-history summary { cursor:pointer; font-size:.74rem; font-weight:800; color:var(--text-main); }
+        .cash-emptying-row { display:flex; justify-content:space-between; gap:10px; padding:7px 0; border-bottom:1px solid var(--border); font-size:.71rem; }
+        .cash-emptying-row:last-child { border-bottom:0; }
+        .cash-emptying-row span { color:var(--text-muted); }
+        .cmoa-decorated-page { position:relative; }
+        .cmoa-page-logo {
+            position:absolute;
+            top:8px;
+            right:8px;
+            width:46px;
+            height:46px;
+            object-fit:contain;
+            opacity:.14;
+            pointer-events:none;
+            z-index:0;
+            border-radius:8px;
+            mix-blend-mode:multiply;
+        }
+        body.night-mode .cmoa-page-logo { opacity:.10; mix-blend-mode:screen; filter:invert(1); }
+        .cmoa-decorated-page > *:not(.cmoa-page-logo) { position:relative; z-index:1; }
         @media(max-width:520px){.cash-stat-grid{grid-template-columns:1fr}.cash-summary-dialog{padding:11px}}
 </style>
     <link rel="manifest" href="manifest.json">
@@ -2632,10 +2653,33 @@ function loadFromLocalStorage() {
             return new Date(value).toLocaleString('de-DE');
         }
 
+        function decorateCmoaPages() {
+            if (typeof AKK_PDF_LOGO_2027 !== 'string' || !AKK_PDF_LOGO_2027) return;
+            [
+                'overview-page',
+                'bands-page',
+                'catering-page',
+                'hotel-page',
+                'shuttle-page',
+                'ro-page',
+                'misc-page'
+            ].forEach(function(pageId) {
+                var page = document.getElementById(pageId);
+                if (!page || page.querySelector('.cmoa-page-logo')) return;
+                page.classList.add('cmoa-decorated-page');
+                var img = document.createElement('img');
+                img.className = 'cmoa-page-logo';
+                img.alt = '';
+                img.setAttribute('aria-hidden', 'true');
+                img.src = AKK_PDF_LOGO_2027;
+                page.appendChild(img);
+            });
+        }
+
         async function fetchCashSummaryData() {
             if (!currentEventId) throw new Error('Keine Veranstaltung ausgewählt.');
             var results = await Promise.all([
-                _supabase.from('cash_registers').select('id,name,active').eq('event_id', currentEventId).eq('active', true).order('name'),
+                _supabase.from('cash_registers').select('id,name,active').eq('event_id', currentEventId).order('name'),
                 _supabase.from('cash_sales').select('id,register_id,sold_at,total,deposit_charged,deposit_returned,voided').eq('event_id', currentEventId),
                 _supabase.from('cash_sale_items').select('sale_id,quantity').eq('event_id', currentEventId),
                 _supabase.from('cash_movements').select('register_id,movement_type,amount,person_name,created_at,note').eq('event_id', currentEventId).order('created_at')
@@ -2675,6 +2719,7 @@ function loadFromLocalStorage() {
                     depositCharged: depositCharged,
                     depositReturned: depositReturned,
                     lastEmptying: emptyings[0] || null,
+                    emptyings: emptyings,
                     lastClosingTime: lastClosingTime
                 };
             });
@@ -2722,6 +2767,15 @@ function loadFromLocalStorage() {
                     var emptyText = s.lastEmptying
                         ? cashDate(s.lastEmptying.created_at) + ' · ' + cashEuro(s.lastEmptying.amount) + (s.lastEmptying.person_name ? ' · ' + escapeHtmlAuth(s.lastEmptying.person_name) : '')
                         : 'Noch keine Zwischenleerung';
+                    var emptyingHistory = s.emptyings.length
+                        ? '<details class="cash-emptying-history"><summary>Alle Leerungen (' + s.emptyings.length + ')</summary>'
+                          + s.emptyings.map(function(m){
+                              return '<div class="cash-emptying-row"><span>' + cashDate(m.created_at)
+                                  + (m.person_name ? ' · ' + escapeHtmlAuth(m.person_name) : '')
+                                  + '</span><b>' + cashEuro(m.amount) + '</b></div>';
+                            }).join('')
+                          + '</details>'
+                        : '<div class="cash-emptying-history"><span class="cash-emptying">Noch keine Leerung dokumentiert.</span></div>';
                     return '<div class="cash-register-card">'
                         + '<div class="cash-register-title"><strong>' + escapeHtmlAuth(s.name) + '</strong><span class="cash-balance">' + cashEuro(s.balance) + '</span></div>'
                         + '<div class="cash-stat-grid">'
@@ -2731,6 +2785,7 @@ function loadFromLocalStorage() {
                         + '<div class="cash-stat"><span>Pfand zurückgegeben</span><b>' + cashEuro(s.depositReturned) + '</b></div>'
                         + '</div>'
                         + '<div class="cash-emptying"><b>Letzte Leerung:</b> ' + emptyText + '</div>'
+                        + emptyingHistory
                         + '</div>';
                 }).join('');
                 loadCashSummaryMini();
@@ -2740,6 +2795,7 @@ function loadFromLocalStorage() {
         }
 
         function showPage(pageId) {
+            decorateCmoaPages();
             var mod = CMOA_PAGE_MODULES[pageId] || null;
             if (mod && !hasModuleRight(mod, 'read')) { alert('Für diesen Bereich hast du keine Leseberechtigung.'); return; }
             normalizeAllBandNames();
