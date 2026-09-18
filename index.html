@@ -1234,6 +1234,62 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
         .event-user-row input{width:20px;height:20px}
         @media(max-width:520px){.event-admin-grid{grid-template-columns:1fr}.event-switcher{align-items:stretch}.event-switcher select{width:100%}}
 
+        /* ===== KASSENÜBERSICHT AUF DER STARTSEITE ===== */
+        .cash-summary-launch {
+            margin-top: 18px;
+            display: flex;
+            justify-content: center;
+        }
+        .cash-summary-button {
+            width: auto;
+            min-width: 190px;
+            padding: 9px 14px;
+            border: 1px solid var(--border);
+            border-radius: 999px;
+            background: var(--card-bg);
+            color: var(--text-main);
+            font-size: .78rem;
+            font-weight: 750;
+            cursor: pointer;
+            box-shadow: 0 3px 10px rgba(0,0,0,.08);
+        }
+        .cash-summary-button:hover { transform: translateY(-1px); }
+        .cash-summary-mini { display:block; margin-top:3px; color:var(--text-muted); font-size:.68rem; font-weight:600; }
+        .cash-summary-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 12000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 12px;
+            background: rgba(0,0,0,.66);
+        }
+        .cash-summary-overlay.show { display:flex; }
+        .cash-summary-dialog {
+            width: min(720px,100%);
+            max-height: 92vh;
+            overflow: auto;
+            border-radius: 16px;
+            padding: 14px;
+            background: var(--bg-main);
+            color: var(--text-main);
+            border: 1px solid var(--border);
+            box-shadow: 0 18px 55px rgba(0,0,0,.35);
+        }
+        .cash-summary-head { display:flex; align-items:center; gap:10px; margin-bottom:12px; }
+        .cash-summary-head h3 { flex:1; margin:0; }
+        .cash-summary-close { border:0; border-radius:10px; padding:8px 11px; cursor:pointer; background:var(--card-bg); color:var(--text-main); font-weight:800; }
+        .cash-register-card { background:var(--card-bg); border:1px solid var(--border); border-radius:13px; padding:12px; margin-bottom:10px; }
+        .cash-register-title { display:flex; justify-content:space-between; gap:10px; align-items:center; margin-bottom:10px; }
+        .cash-register-title strong { font-size:1rem; }
+        .cash-balance { font-size:1.15rem; font-weight:900; color:var(--accent-green); }
+        .cash-stat-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+        .cash-stat { background:var(--bg-main); border:1px solid var(--border); border-radius:10px; padding:9px; }
+        .cash-stat span { display:block; color:var(--text-muted); font-size:.68rem; margin-bottom:3px; }
+        .cash-stat b { font-size:.86rem; }
+        .cash-emptying { margin-top:9px; color:var(--text-muted); font-size:.72rem; line-height:1.4; }
+        @media(max-width:520px){.cash-stat-grid{grid-template-columns:1fr}.cash-summary-dialog{padding:11px}}
 </style>
     <link rel="manifest" href="manifest.json">
 </head>
@@ -1319,6 +1375,24 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
                 <button id="event-admin-btn" type="button" class="btn-subtle permission-hidden" onclick="showPage('events-admin-page')">⚙️ Veranstaltungen verwalten</button>
             </div>
 
+            <div class="cash-summary-launch">
+                <button type="button" class="cash-summary-button" onclick="openCashSummary()">
+                    💶 Kassenübersicht
+                    <span id="cash-summary-mini" class="cash-summary-mini">Wird geladen …</span>
+                </button>
+            </div>
+
+        </div>
+
+        <div id="cash-summary-overlay" class="cash-summary-overlay" onclick="if(event.target===this)closeCashSummary()">
+            <div class="cash-summary-dialog">
+                <div class="cash-summary-head">
+                    <h3>💶 Kassenübersicht · <span id="cash-summary-event-name">Veranstaltung</span></h3>
+                    <button type="button" class="cash-summary-close" onclick="loadCashSummary()">↻</button>
+                    <button type="button" class="cash-summary-close" onclick="closeCashSummary()">✕</button>
+                </div>
+                <div id="cash-summary-content">Kassendaten werden geladen …</div>
+            </div>
         </div>
 
 
@@ -2549,6 +2623,122 @@ function loadFromLocalStorage() {
             if (btn) btn.innerText = isNight ? '☀️ Daymode' : '🌙 Nightmode';
         }
 
+        function cashEuro(value) {
+            return (Number(value) || 0).toLocaleString('de-DE', { style:'currency', currency:'EUR' });
+        }
+
+        function cashDate(value) {
+            if (!value) return 'Noch keine';
+            return new Date(value).toLocaleString('de-DE');
+        }
+
+        async function fetchCashSummaryData() {
+            if (!currentEventId) throw new Error('Keine Veranstaltung ausgewählt.');
+            var results = await Promise.all([
+                _supabase.from('cash_registers').select('id,name,active').eq('event_id', currentEventId).eq('active', true).order('name'),
+                _supabase.from('cash_sales').select('id,register_id,sold_at,total,deposit_charged,deposit_returned,voided').eq('event_id', currentEventId),
+                _supabase.from('cash_sale_items').select('sale_id,quantity').eq('event_id', currentEventId),
+                _supabase.from('cash_movements').select('register_id,movement_type,amount,person_name,created_at,note').eq('event_id', currentEventId).order('created_at')
+            ]);
+            var failed = results.find(function(r){ return r.error; });
+            if (failed) throw failed.error;
+            return {
+                registers: results[0].data || [],
+                sales: results[1].data || [],
+                items: results[2].data || [],
+                movements: results[3].data || []
+            };
+        }
+
+        function buildCashRegisterStats(data) {
+            return data.registers.map(function(register) {
+                var movements = data.movements.filter(function(m){ return m.register_id === register.id; });
+                var closings = movements.filter(function(m){ return m.movement_type === 'closing'; });
+                var lastClosingTime = closings.length ? Math.max.apply(null, closings.map(function(m){ return new Date(m.created_at).getTime(); })) : 0;
+                var periodMovements = movements.filter(function(m){ return new Date(m.created_at).getTime() > lastClosingTime; });
+                var sales = data.sales.filter(function(s){
+                    return s.register_id === register.id && !s.voided && new Date(s.sold_at).getTime() > lastClosingTime;
+                });
+                var saleIds = new Set(sales.map(function(s){ return s.id; }));
+                var drinkCount = data.items.filter(function(i){ return saleIds.has(i.sale_id); }).reduce(function(sum,i){ return sum + Number(i.quantity || 0); }, 0);
+                var opening = periodMovements.filter(function(m){ return m.movement_type === 'opening'; }).reduce(function(sum,m){ return sum + Number(m.amount || 0); }, 0);
+                var emptying = periodMovements.filter(function(m){ return m.movement_type === 'emptying'; }).reduce(function(sum,m){ return sum + Number(m.amount || 0); }, 0);
+                var turnover = sales.reduce(function(sum,s){ return sum + Number(s.total || 0); }, 0);
+                var depositCharged = sales.reduce(function(sum,s){ return sum + Number(s.deposit_charged || 0); }, 0);
+                var depositReturned = sales.reduce(function(sum,s){ return sum + Number(s.deposit_returned || 0); }, 0);
+                var emptyings = movements.filter(function(m){ return m.movement_type === 'emptying'; }).sort(function(a,b){ return new Date(b.created_at)-new Date(a.created_at); });
+                return {
+                    id: register.id,
+                    name: register.name,
+                    balance: opening + turnover - emptying,
+                    drinkCount: drinkCount,
+                    depositCharged: depositCharged,
+                    depositReturned: depositReturned,
+                    lastEmptying: emptyings[0] || null,
+                    lastClosingTime: lastClosingTime
+                };
+            });
+        }
+
+        async function loadCashSummaryMini() {
+            var mini = document.getElementById('cash-summary-mini');
+            if (!mini || !currentEventId || !_supabase) return;
+            mini.textContent = 'Wird geladen …';
+            try {
+                var stats = buildCashRegisterStats(await fetchCashSummaryData());
+                if (!stats.length) { mini.textContent = 'Noch keine Kasse angelegt'; return; }
+                var total = stats.reduce(function(sum,s){ return sum + s.balance; }, 0);
+                mini.textContent = stats.length + (stats.length === 1 ? ' Kasse · ' : ' Kassen · ') + cashEuro(total);
+            } catch (e) {
+                mini.textContent = 'Kassendaten nicht verfügbar';
+            }
+        }
+
+        async function openCashSummary() {
+            var overlay = document.getElementById('cash-summary-overlay');
+            if (overlay) overlay.classList.add('show');
+            await loadCashSummary();
+        }
+
+        function closeCashSummary() {
+            var overlay = document.getElementById('cash-summary-overlay');
+            if (overlay) overlay.classList.remove('show');
+        }
+
+        async function loadCashSummary() {
+            var content = document.getElementById('cash-summary-content');
+            var eventName = document.getElementById('cash-summary-event-name');
+            if (eventName) eventName.textContent = (currentEvent && (currentEvent.short_name || currentEvent.name)) || 'Veranstaltung';
+            if (!content) return;
+            content.innerHTML = '<div class="card">Kassendaten werden geladen …</div>';
+            try {
+                var stats = buildCashRegisterStats(await fetchCashSummaryData());
+                if (!stats.length) {
+                    content.innerHTML = '<div class="card">Für diese Veranstaltung wurde noch keine Kasse angelegt.</div>';
+                    loadCashSummaryMini();
+                    return;
+                }
+                content.innerHTML = stats.map(function(s){
+                    var emptyText = s.lastEmptying
+                        ? cashDate(s.lastEmptying.created_at) + ' · ' + cashEuro(s.lastEmptying.amount) + (s.lastEmptying.person_name ? ' · ' + escapeHtmlAuth(s.lastEmptying.person_name) : '')
+                        : 'Noch keine Zwischenleerung';
+                    return '<div class="cash-register-card">'
+                        + '<div class="cash-register-title"><strong>' + escapeHtmlAuth(s.name) + '</strong><span class="cash-balance">' + cashEuro(s.balance) + '</span></div>'
+                        + '<div class="cash-stat-grid">'
+                        + '<div class="cash-stat"><span>Aktueller Sollbestand</span><b>' + cashEuro(s.balance) + '</b></div>'
+                        + '<div class="cash-stat"><span>Getränke verkauft</span><b>' + s.drinkCount + '</b></div>'
+                        + '<div class="cash-stat"><span>Pfand berechnet</span><b>' + cashEuro(s.depositCharged) + '</b></div>'
+                        + '<div class="cash-stat"><span>Pfand zurückgegeben</span><b>' + cashEuro(s.depositReturned) + '</b></div>'
+                        + '</div>'
+                        + '<div class="cash-emptying"><b>Letzte Leerung:</b> ' + emptyText + '</div>'
+                        + '</div>';
+                }).join('');
+                loadCashSummaryMini();
+            } catch (e) {
+                content.innerHTML = '<div class="card" style="color:#dc2626">Kassendaten konnten nicht geladen werden: ' + escapeHtmlAuth(e.message || String(e)) + '</div>';
+            }
+        }
+
         function showPage(pageId) {
             var mod = CMOA_PAGE_MODULES[pageId] || null;
             if (mod && !hasModuleRight(mod, 'read')) { alert('Für diesen Bereich hast du keine Leseberechtigung.'); return; }
@@ -2572,6 +2762,7 @@ function loadFromLocalStorage() {
             if (pageId === 'akkreditierung-page') renderAkk();
             if (pageId === 'admin-page') loadAdminUsers();
             if (pageId === 'events-admin-page') loadEventsAdminPage();
+            if (pageId === 'main-page') loadCashSummaryMini();
             updateRightsBanner(pageId);
             window.scrollTo(0, 0);
         }
