@@ -1337,6 +1337,15 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
         .activity-row time { font-weight:850; }
         .activity-user { color:var(--accent-blue); font-weight:750; overflow-wrap:anywhere; }
         .activity-detail { color:var(--text-muted); margin-top:2px; font-size:.69rem; }
+        .production-summary { display:grid; grid-template-columns:repeat(3,1fr); gap:9px; }
+        .production-summary-box { border:1px solid var(--border); border-radius:10px; padding:11px; background:var(--input-bg); }
+        .production-summary-box span { display:block; color:var(--text-muted); font-size:.7rem; }
+        .production-summary-box b { display:block; margin-top:4px; font-size:1rem; }
+        .production-form-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:9px; }
+        .production-row { display:grid; grid-template-columns:85px 120px 1.2fr 110px 1.2fr auto; gap:9px; align-items:center; padding:9px 0; border-bottom:1px solid var(--border); font-size:.77rem; }
+        .production-row.income .production-amount { color:var(--accent-green); }
+        .production-row.expense .production-amount { color:#dc2626; }
+        .production-actions { white-space:nowrap; }
         @media(max-width:900px){
             .shuttle-tabs { display:grid!important; grid-template-columns:1fr 1fr; }
             .shuttle-tabs .btn-primary { width:100%; min-height:46px; white-space:normal; }
@@ -1372,6 +1381,15 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
             .shuttle-trip-field input, .shuttle-trip-field select { min-height:44px; font-size:16px; }
             .activity-row { grid-template-columns:54px 1fr; }
             .activity-row > div:last-child { grid-column:1 / -1; }
+            .production-form-grid { grid-template-columns:1fr 1fr; }
+            .production-row { grid-template-columns:1fr 1fr; border:1px solid var(--border); border-radius:10px; margin-bottom:9px; padding:10px; }
+            .production-row > *::before { display:block; color:var(--text-muted); font-size:.62rem; font-weight:800; text-transform:uppercase; margin-bottom:2px; }
+            .production-row .production-date::before { content:'Datum'; }
+            .production-row .production-type::before { content:'Art'; }
+            .production-row .production-desc::before { content:'Bezeichnung'; }
+            .production-row .production-amount::before { content:'Betrag'; }
+            .production-row .production-note::before { content:'Kategorie / Notiz'; }
+            .production-actions { grid-column:1 / -1; }
         }
         @media(max-width:430px){
             .shuttle-tabs { grid-template-columns:1fr; }
@@ -1380,6 +1398,8 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
             .shuttle-vehicle-row { grid-template-columns:1fr; }
             .shuttle-vehicle-actions { grid-column:auto; }
             .shuttle-log-table td { grid-template-columns:88px minmax(0,1fr); }
+            .production-summary, .production-form-grid, .production-row { grid-template-columns:1fr; }
+            .production-actions { grid-column:auto; }
         }
         .cmoa-decorated-page { position:relative; }
         .cmoa-page-logo {
@@ -1444,6 +1464,7 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
                 <button class="menu-btn menu-btn-blue" data-module="catering" onclick="showPage('catering-page')">Catering</button>
                 <button class="menu-btn menu-btn-blue" data-module="accreditation" onclick="showPage('akkreditierung-page')">Akkreditierung</button>
                 <button id="admin-menu-btn" class="menu-btn permission-hidden" data-module="admin" onclick="showPage('admin-page')">⚙️ Benutzer & Rechte</button>
+                <button class="menu-btn" data-module="fees" onclick="showPage('production-costs-page')">💶 Produktionskosten</button>
             </div>
 
             <div class="progress-card">
@@ -1484,11 +1505,11 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
             </div>
 
             <div id="cash-summary-launch" class="cash-summary-launch permission-hidden">
-                <button type="button" class="cash-summary-button" onclick="openCashSummary()">
+                <button id="cash-summary-button" type="button" class="cash-summary-button permission-hidden" onclick="openCashSummary()">
                     💶 Kassenübersicht
                     <span id="cash-summary-mini" class="cash-summary-mini">Wird geladen …</span>
                 </button>
-                <button type="button" class="cash-summary-button" onclick="openActivityLog()">
+                <button id="activity-log-button" type="button" class="cash-summary-button permission-hidden" onclick="openActivityLog()">
                     📋 Log-Bericht
                     <span class="cash-summary-mini">Anmeldungen & Änderungen</span>
                 </button>
@@ -1529,6 +1550,29 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
                 <button type="button" class="btn-primary" onclick="loadAdminUsers()">↻ Benutzer laden</button>
             </div>
             <div id="admin-users-list"></div>
+        </div>
+
+        <!-- PRODUKTIONSKOSTEN -->
+        <div id="production-costs-page" class="page">
+            <button class="btn-back" onclick="showPage('main-page')">← Hauptmenü</button>
+            <div class="card">
+                <h3>💶 Produktionskosten & Einnahmen</h3>
+                <div id="production-summary" class="production-summary"></div>
+            </div>
+            <div class="card">
+                <h3 id="production-form-title">Eintrag hinzufügen</h3>
+                <input type="hidden" id="production-edit-id">
+                <div class="production-form-grid">
+                    <div class="form-group"><label>Art</label><select id="production-type"><option value="expense">Ausgabe</option><option value="income">Einnahme</option></select></div>
+                    <div class="form-group"><label>Kategorie</label><input id="production-category" list="production-categories" placeholder="Kategorie auswählen oder eingeben"><datalist id="production-categories"><option value="Ticketverkauf"><option value="Merchandise"><option value="Sponsoring"><option value="Genehmigungen"><option value="Gebühren"><option value="Bühne"><option value="Security"><option value="Hygiene"><option value="Catering"><option value="Sanitär"><option value="Sound & Licht"><option value="Werbung"><option value="Versicherung"><option value="Personal"><option value="Technik"><option value="Strom"></datalist></div>
+                    <div class="form-group"><label>Bezeichnung</label><input id="production-description" placeholder="z. B. Bühnenmiete"></div>
+                    <div class="form-group"><label>Betrag (€)</label><input id="production-amount" type="number" min="0" step="0.01"></div>
+                    <div class="form-group"><label>Datum</label><input id="production-date" type="date"></div>
+                    <div class="form-group"><label>Notiz</label><input id="production-note" placeholder="optional"></div>
+                </div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;"><button class="btn-primary" onclick="saveProductionEntry()">💾 Speichern</button><button id="production-cancel-btn" class="btn-subtle" style="display:none;" onclick="resetProductionForm()">Abbrechen</button></div>
+            </div>
+            <div class="card"><h3>📋 Alle Einträge</h3><div id="production-list"></div></div>
         </div>
 
         <!-- VERANSTALTUNGEN -->
@@ -2246,7 +2290,10 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
                 <div class="stat-row"><span>Gagen (Netto):</span><span id="stat-gage" class="cost-val">0,00 €</span></div>
                 <div class="stat-row"><span>Steuern (Gesamt):</span><span id="stat-tax" class="cost-val">0,00 €</span></div>
                 <div class="stat-row"><span>Gagen (Brutto):</span><span id="stat-total" class="cost-val">0,00 €</span></div>
-                <div class="stat-row"><span>Alle erfassten Kosten:</span><strong id="stat-all-cost-total" class="cost-val">0,00 €</strong></div>
+                <div class="stat-row"><span>Produktionsausgaben:</span><strong id="stat-production-expense" class="cost-val">0,00 €</strong></div>
+                <div class="stat-row"><span>Weitere Einnahmen:</span><strong id="stat-production-income" style="color:var(--accent-green)">0,00 €</strong></div>
+                <div class="stat-row"><span>Ausgaben insgesamt:</span><strong id="stat-all-expense-total" class="cost-val">0,00 €</strong></div>
+                <div class="stat-row"><span>Kosten nach Gegenrechnung:</span><strong id="stat-all-cost-total" class="cost-val">0,00 €</strong></div>
             </div>
             <div class="card">
                 <h3>Personen & Hotelzimmer</h3>
@@ -2487,6 +2534,7 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
         var hotelCostsList = [];
         var shuttleTripLog = {};
         var shuttleVehicles = [];
+        var productionEntries = [];
         var openShuttleTripId = null;
         var lastLoggedPageId = null;
         var currentBandId = null;
@@ -2532,6 +2580,7 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
             if(module==='todos') return {manualTodos:Array.isArray(manualTodos)?manualTodos:[]};
             if(module==='hotel') return {bands:(bands||[]).map(function(b){return bandSlice(b,module);}),hotelCostsList:Array.isArray(hotelCostsList)?hotelCostsList:[]};
             if(module==='shuttle') return {bands:(bands||[]).map(function(b){return bandSlice(b,module);}),shuttleTripLog:shuttleTripLog||{},shuttleVehicles:Array.isArray(shuttleVehicles)?shuttleVehicles:[]};
+            if(module==='fees') return {bands:(bands||[]).map(function(b){return bandSlice(b,module);}),productionEntries:Array.isArray(productionEntries)?productionEntries:[]};
             return {bands:(bands||[]).map(function(b){return bandSlice(b,module);})};
         }
         function mergeBandPart(part){
@@ -2546,6 +2595,7 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
             if(module==='accreditation'){akkDb=Array.isArray(data.akkDb)?data.akkDb:[];return;}
             if(module==='todos'){manualTodos=Array.isArray(data.manualTodos)?data.manualTodos:[];return;}
             if(module==='hotel' && Array.isArray(data.hotelCostsList)) hotelCostsList=data.hotelCostsList;
+            if(module==='fees' && Array.isArray(data.productionEntries)) productionEntries=data.productionEntries;
             if(module==='shuttle') {
                 shuttleTripLog=data.shuttleTripLog && typeof data.shuttleTripLog==='object' ? data.shuttleTripLog : {};
                 shuttleVehicles=Array.isArray(data.shuttleVehicles) ? data.shuttleVehicles : [];
@@ -2566,7 +2616,7 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
         }
         async function migrateLegacyStateIfNeeded(){ return false; }
         async function loadPhase2CloudData(){
-            bands=[];manualTodos=[];hotelCostsList=[];shuttleTripLog={};shuttleVehicles=[];akkDb=[];
+            bands=[];manualTodos=[];hotelCostsList=[];shuttleTripLog={};shuttleVehicles=[];productionEntries=[];akkDb=[];
             await migrateLegacyStateIfNeeded();
             if(!currentEventId) return;
             var r=await _supabase.from('cmoa_module_state').select('module,data').eq('event_id',currentEventId);
@@ -2595,7 +2645,7 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
                 var designSaved=localStorage.getItem('cmoa_design_v1')||'steel';document.body.setAttribute('data-design',designSaved);updateDesignButtons();
                 var themeSaved=localStorage.getItem('cmoa_theme_v1');if(themeSaved==='night'){document.body.classList.add('night-mode');var btn=document.getElementById('theme-toggle-btn');if(btn)btn.innerText='☀️ Daymode';}
             } catch(e) {}
-            if(!Array.isArray(bands))bands=[];if(!Array.isArray(manualTodos))manualTodos=[];if(!Array.isArray(hotelCostsList))hotelCostsList=[];if(!shuttleTripLog||typeof shuttleTripLog!=='object')shuttleTripLog={};if(!Array.isArray(shuttleVehicles))shuttleVehicles=[];if(!Array.isArray(akkDb))akkDb=[];
+            if(!Array.isArray(bands))bands=[];if(!Array.isArray(manualTodos))manualTodos=[];if(!Array.isArray(hotelCostsList))hotelCostsList=[];if(!shuttleTripLog||typeof shuttleTripLog!=='object')shuttleTripLog={};if(!Array.isArray(shuttleVehicles))shuttleVehicles=[];if(!Array.isArray(productionEntries))productionEntries=[];if(!Array.isArray(akkDb))akkDb=[];
             try{updateMainProgress();renderBandsList();initAkkreditierung();}catch(err){console.error('Init error:',err);}
         };
 
@@ -2692,7 +2742,7 @@ function loadFromLocalStorage() {
         }
 
         function exportBackup() {
-            var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({ bands: bands, manualTodos: manualTodos, hotelCostsList: hotelCostsList, shuttleTripLog: shuttleTripLog, shuttleVehicles: shuttleVehicles, akkDb: akkDb }));
+            var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({ bands: bands, manualTodos: manualTodos, hotelCostsList: hotelCostsList, shuttleTripLog: shuttleTripLog, shuttleVehicles: shuttleVehicles, productionEntries: productionEntries, akkDb: akkDb }));
             var downloadAnchor = document.createElement('a');
             downloadAnchor.setAttribute("href", dataStr);
             downloadAnchor.setAttribute("download", "CMOA_2027_Backup.json");
@@ -2711,7 +2761,7 @@ function loadFromLocalStorage() {
                 try {
                     var imported = JSON.parse(e.target.result);
                     if (Array.isArray(imported)) { bands = imported; normalizeAllBandNames(); }
-                    else if (imported.bands) { bands = imported.bands || []; normalizeAllBandNames(); manualTodos = imported.manualTodos || []; hotelCostsList = imported.hotelCostsList || []; shuttleTripLog = imported.shuttleTripLog || {}; shuttleVehicles = imported.shuttleVehicles || []; akkDb = imported.akkDb || imported.akkreditierung || []; }
+                    else if (imported.bands) { bands = imported.bands || []; normalizeAllBandNames(); manualTodos = imported.manualTodos || []; hotelCostsList = imported.hotelCostsList || []; shuttleTripLog = imported.shuttleTripLog || {}; shuttleVehicles = imported.shuttleVehicles || []; productionEntries = imported.productionEntries || []; akkDb = imported.akkDb || imported.akkreditierung || []; }
                     saveToStorage();
                     alert("✅ Backup erfolgreich geladen!");
                     showPage('main-page');
@@ -2888,7 +2938,10 @@ function loadFromLocalStorage() {
                 hotelTotal += ((Number(b.hotelEzCount || 0) * Number(costs.ezCost || 0)) + (Number(b.hotelDzCount || 0) * Number(costs.dzCost || 0))) * nights;
             });
             var shuttleTotal = getShuttleCostTotals().total;
-            return { feesGross: feesGross, hotelTotal: hotelTotal, shuttleTotal: shuttleTotal, total: feesGross + hotelTotal + shuttleTotal };
+            var production=getProductionTotals();
+            var expenseTotal=feesGross+hotelTotal+shuttleTotal+production.expense;
+            var netTotal=expenseTotal-production.income;
+            return { feesGross:feesGross, hotelTotal:hotelTotal, shuttleTotal:shuttleTotal, productionExpense:production.expense, productionIncome:production.income, expenseTotal:expenseTotal, total:netTotal };
         }
 
         function buildCashEventFinancials(data) {
@@ -2943,14 +2996,14 @@ function loadFromLocalStorage() {
         }
 
         async function openActivityLog() {
-            if(!canViewCashSummary())return;
+            if(!canViewActivityLog())return;
             var overlay=document.getElementById('activity-log-overlay');
             if(overlay)overlay.classList.add('show');
             await loadActivityLog();
         }
 
         async function loadActivityLog() {
-            if(!canViewCashSummary()){closeActivityLog();return;}
+            if(!canViewActivityLog()){closeActivityLog();return;}
             var content=document.getElementById('activity-log-content'),eventName=document.getElementById('activity-log-event-name');
             if(eventName)eventName.textContent=(currentEvent&&(currentEvent.short_name||currentEvent.name))||'Veranstaltung';
             if(!content)return;
@@ -3050,8 +3103,11 @@ function loadFromLocalStorage() {
                     + '<div class="cash-finance-row"><span>Bandgagen brutto</span><b>' + cashEuro(finance.costs.feesGross) + '</b></div>'
                     + '<div class="cash-finance-row"><span>Hotelkosten</span><b>' + cashEuro(finance.costs.hotelTotal) + '</b></div>'
                     + '<div class="cash-finance-row"><span>Shuttlekosten</span><b>' + cashEuro(finance.costs.shuttleTotal) + '</b></div>'
-                    + '<div class="cash-finance-row cash-finance-total"><span>Erfasste Gesamtkosten</span><b>' + cashEuro(finance.costs.total) + '</b></div>'
-                    + '<div class="cash-finance-row cash-finance-result ' + (finance.result >= 0 ? 'positive' : 'negative') + '"><span>Getränkeeinnahmen minus Gesamtkosten</span><b>' + cashEuro(finance.result) + '</b></div>'
+                    + '<div class="cash-finance-row"><span>Produktionsausgaben</span><b>' + cashEuro(finance.costs.productionExpense) + '</b></div>'
+                    + '<div class="cash-finance-row cash-finance-total"><span>Ausgaben gesamt</span><b>' + cashEuro(finance.costs.expenseTotal) + '</b></div>'
+                    + '<div class="cash-finance-row"><span>Weitere Einnahmen (Tickets, Merchandise usw.)</span><b style="color:var(--accent-green)">− ' + cashEuro(finance.costs.productionIncome) + '</b></div>'
+                    + '<div class="cash-finance-row cash-finance-total"><span>Veranstaltungskosten nach Gegenrechnung</span><b>' + cashEuro(finance.costs.total) + '</b></div>'
+                    + '<div class="cash-finance-row cash-finance-result ' + (finance.result >= 0 ? 'positive' : 'negative') + '"><span>Alle Einnahmen minus alle Ausgaben</span><b>' + cashEuro(finance.result) + '</b></div>'
                     + '<div class="cash-finance-note">Cateringkosten sind nicht enthalten, weil dafür in dieser HTML noch keine Euro-Preise erfasst werden.</div>'
                     + '</div>';
                 loadCashSummaryMini();
@@ -3082,6 +3138,7 @@ function loadFromLocalStorage() {
             if (pageId === 'catering-page') renderCateringPage();
             if (pageId === 'overview-page') renderOverview();
             if (pageId === 'fees-page') renderFees();
+            if (pageId === 'production-costs-page') renderProductionCosts();
             if (pageId === 'shuttle-page') renderShuttle();
             if (pageId === 'hotel-page') renderHotel();
             if (pageId === 'ro-page') renderRO();
@@ -5368,7 +5425,7 @@ function loadFromLocalStorage() {
         }
 
         function exportSelectedJSON(selectedBands) {
-            var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({ bands: selectedBands, manualTodos: manualTodos, hotelCostsList: hotelCostsList, shuttleTripLog: shuttleTripLog, shuttleVehicles: shuttleVehicles, akkDb: akkDb }));
+            var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({ bands: selectedBands, manualTodos: manualTodos, hotelCostsList: hotelCostsList, shuttleTripLog: shuttleTripLog, shuttleVehicles: shuttleVehicles, productionEntries: productionEntries, akkDb: akkDb }));
             var downloadAnchor = document.createElement('a');
             downloadAnchor.setAttribute("href", dataStr);
             downloadAnchor.setAttribute("download", "CMOA_2027_Export.json");
@@ -5780,7 +5837,12 @@ function loadFromLocalStorage() {
             setTxt('stat-rooms-total', ez + ' EZ / ' + dz + ' DZ (Gesamt: ' + (ez + dz) + ')');
             setTxt('stat-hotel-cost-total', totalHotelCost.toLocaleString('de-DE', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' €');
             setTxt('stat-shuttle-cost-total', getShuttleCostTotals().total.toLocaleString('de-DE', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' €');
-            setTxt('stat-all-cost-total', ((net + taxSum) + totalHotelCost + getShuttleCostTotals().total).toLocaleString('de-DE', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' €');
+            var productionTotals=getProductionTotals();
+            var allExpenses=(net+taxSum)+totalHotelCost+getShuttleCostTotals().total+productionTotals.expense;
+            setTxt('stat-production-expense', productionTotals.expense.toLocaleString('de-DE', {minimumFractionDigits:2,maximumFractionDigits:2})+' €');
+            setTxt('stat-production-income', productionTotals.income.toLocaleString('de-DE', {minimumFractionDigits:2,maximumFractionDigits:2})+' €');
+            setTxt('stat-all-expense-total', allExpenses.toLocaleString('de-DE', {minimumFractionDigits:2,maximumFractionDigits:2})+' €');
+            setTxt('stat-all-cost-total', (allExpenses-productionTotals.income).toLocaleString('de-DE', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' €');
             setTxt('stat-shuttle-count', shuttleCnt);
         }
 
@@ -5820,6 +5882,70 @@ function loadFromLocalStorage() {
 
             tableHtml += '</tbody></table>';
             c.innerHTML = tableHtml;
+        }
+
+        function getProductionTotals() {
+            var income=0,expense=0;
+            (productionEntries||[]).forEach(function(e){var amount=Number(e.amount||0);if(e.type==='income')income+=amount;else expense+=amount;});
+            return {income:income,expense:expense,net:expense-income};
+        }
+
+        function resetProductionForm() {
+            ['production-edit-id','production-category','production-description','production-amount','production-date','production-note'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});
+            var type=document.getElementById('production-type');if(type)type.value='expense';
+            var title=document.getElementById('production-form-title');if(title)title.textContent='Eintrag hinzufügen';
+            var cancel=document.getElementById('production-cancel-btn');if(cancel)cancel.style.display='none';
+        }
+
+        async function saveProductionEntry() {
+            if(!hasModuleRight('fees','write')){alert('Du hast für Finanzen nur Leserechte.');return;}
+            var id=(document.getElementById('production-edit-id').value||'').trim();
+            var entry={
+                id:id||('production_'+Date.now()),
+                type:document.getElementById('production-type').value,
+                category:(document.getElementById('production-category').value||'').trim(),
+                description:(document.getElementById('production-description').value||'').trim(),
+                amount:Number(document.getElementById('production-amount').value||0),
+                date:document.getElementById('production-date').value||'',
+                note:(document.getElementById('production-note').value||'').trim(),
+                updatedAt:new Date().toISOString()
+            };
+            if(!entry.category||!entry.description||entry.amount<=0){alert('Bitte Art, Kategorie, Bezeichnung und einen Betrag größer als 0 angeben.');return;}
+            var index=(productionEntries||[]).findIndex(function(e){return e.id===entry.id;});
+            if(index>=0)productionEntries[index]=entry;else productionEntries.push(entry);
+            try{await writeDataModule('fees');logCmoaActivity(index>=0?'Produktionseintrag bearbeitet':'Produktionseintrag angelegt',entry.description+' · '+cashEuro(entry.amount),'fees');resetProductionForm();renderProductionCosts();renderOverview();}
+            catch(e){alert('Eintrag konnte nicht gespeichert werden: '+e.message);}
+        }
+
+        function editProductionEntry(id) {
+            var e=(productionEntries||[]).find(function(x){return x.id===id;});if(!e)return;
+            document.getElementById('production-edit-id').value=e.id;
+            document.getElementById('production-type').value=e.type||'expense';
+            document.getElementById('production-category').value=e.category||'';
+            document.getElementById('production-description').value=e.description||'';
+            document.getElementById('production-amount').value=Number(e.amount||0);
+            document.getElementById('production-date').value=e.date||'';
+            document.getElementById('production-note').value=e.note||'';
+            document.getElementById('production-form-title').textContent='Eintrag bearbeiten';
+            document.getElementById('production-cancel-btn').style.display='inline-block';
+            window.scrollTo({top:0,behavior:'smooth'});
+        }
+
+        async function deleteProductionEntry(id) {
+            if(!hasModuleRight('fees','write')){alert('Du hast für Finanzen nur Leserechte.');return;}
+            var entry=(productionEntries||[]).find(function(e){return e.id===id;});if(!entry||!confirm('Eintrag „'+entry.description+'“ wirklich löschen?'))return;
+            productionEntries=productionEntries.filter(function(e){return e.id!==id;});
+            try{await writeDataModule('fees');logCmoaActivity('Produktionseintrag gelöscht',entry.description+' · '+cashEuro(entry.amount),'fees');renderProductionCosts();renderOverview();}
+            catch(e){alert('Eintrag konnte nicht gelöscht werden: '+e.message);}
+        }
+
+        function renderProductionCosts() {
+            var summary=document.getElementById('production-summary'),list=document.getElementById('production-list');if(!summary||!list)return;
+            var totals=getProductionTotals();
+            summary.innerHTML='<div class="production-summary-box"><span>Einnahmen</span><b style="color:var(--accent-green)">'+cashEuro(totals.income)+'</b></div><div class="production-summary-box"><span>Ausgaben</span><b style="color:#dc2626">'+cashEuro(totals.expense)+'</b></div><div class="production-summary-box"><span>Saldo (Ausgaben − Einnahmen)</span><b>'+cashEuro(totals.net)+'</b></div>';
+            var entries=(productionEntries||[]).slice().sort(function(a,b){return String(b.date||b.updatedAt||'').localeCompare(String(a.date||a.updatedAt||''));});
+            list.innerHTML=entries.map(function(e){return '<div class="production-row '+(e.type==='income'?'income':'expense')+'"><span class="production-date">'+(e.date?formatDateDE(e.date):'—')+'</span><b class="production-type">'+(e.type==='income'?'Einnahme':'Ausgabe')+'</b><span class="production-desc"><b>'+escapeHtmlAuth(e.description)+'</b></span><b class="production-amount">'+(e.type==='income'?'+ ':'− ')+cashEuro(e.amount)+'</b><span class="production-note">'+escapeHtmlAuth(e.category)+(e.note?' · '+escapeHtmlAuth(e.note):'')+'</span><span class="production-actions"><button class="btn-subtle" style="padding:5px 7px" onclick="editProductionEntry(\''+e.id+'\')">✎</button> <button class="btn-danger" style="padding:5px 7px" onclick="deleteProductionEntry(\''+e.id+'\')">🗑</button></span></div>';}).join('');
+            if(!entries.length)list.innerHTML='<div style="text-align:center;color:var(--text-muted);padding:14px;">Noch keine Einnahmen oder Ausgaben erfasst.</div>';
         }
 
         function toggleShuttleView(view) {
@@ -7217,7 +7343,7 @@ function loadFromLocalStorage() {
           'overview-page':'overview','bands-page':'bands','band-view-page':'bands','band-detail-page':'bands',
           'hotel-page':'hotel','shuttle-page':'shuttle','ro-page':'running_order','payment-terms-page':'payments',
           'fees-page':'fees','misc-page':'todos','catering-page':'catering','akkreditierung-page':'accreditation',
-          'band-notes-page':'documents','export-page':'export','admin-page':'admin','events-admin-page':'admin'
+          'band-notes-page':'documents','export-page':'export','admin-page':'admin','events-admin-page':'admin','production-costs-page':'fees'
         };
         var ROLE_PRESETS = {
           admin:{label:'Administrator', rights:'all'},
@@ -7252,6 +7378,7 @@ function loadFromLocalStorage() {
           var p=effectivePermissions(currentUserProfile);
           return CMOA_MODULES.filter(function(m){return m[0]!=='admin';}).every(function(m){return rightRank(p[m[0]])>=rightRank('write');});
         }
+        function canViewActivityLog(){return !!(currentUserProfile&&currentUserProfile.role==='admin');}
         function showAuthError(msg){var e=document.getElementById('auth-error');if(e)e.textContent=msg||'';}
         async function initCmoaAuth(){
           try{
@@ -7275,8 +7402,11 @@ function loadFromLocalStorage() {
           var label=document.getElementById('auth-user-label'); if(label)label.textContent=(currentAuthUser&&currentAuthUser.email?currentAuthUser.email:'')+' · '+((ROLE_PRESETS[currentUserProfile.role]||{}).label||currentUserProfile.role);
           document.querySelectorAll('[data-module]').forEach(function(el){var m=el.getAttribute('data-module');el.classList.toggle('permission-hidden',!hasModuleRight(m,'read'));});
           var ab=document.getElementById('admin-menu-btn');if(ab)ab.classList.toggle('permission-hidden',!hasModuleRight('admin','read')); var eb=document.getElementById('event-admin-btn');if(eb)eb.classList.toggle('permission-hidden',currentUserProfile.role!=='admin');
-          var cashLaunch=document.getElementById('cash-summary-launch');if(cashLaunch)cashLaunch.classList.toggle('permission-hidden',!canViewCashSummary());
-          if(!canViewCashSummary()){closeCashSummary();closeActivityLog();}
+          var cashLaunch=document.getElementById('cash-summary-launch'),cashButton=document.getElementById('cash-summary-button'),logButton=document.getElementById('activity-log-button');
+          if(cashLaunch)cashLaunch.classList.toggle('permission-hidden',!canViewCashSummary()&&!canViewActivityLog());
+          if(cashButton)cashButton.classList.toggle('permission-hidden',!canViewCashSummary());
+          if(logButton)logButton.classList.toggle('permission-hidden',!canViewActivityLog());
+          if(!canViewCashSummary())closeCashSummary();if(!canViewActivityLog())closeActivityLog();
         }
         function updateRightsBanner(pageId){
           var b=document.getElementById('rights-banner'); if(!b)return; var m=CMOA_PAGE_MODULES[pageId];
