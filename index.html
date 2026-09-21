@@ -275,6 +275,21 @@
             background-color: var(--accent-green);
             transition: width 0.4s ease, background-color 0.4s ease;
         }
+        .festival-countdown-card { margin-top:14px; padding:15px; border-radius:14px; border:1px solid rgba(249,115,22,.42); background:linear-gradient(135deg,rgba(255,247,237,.96),rgba(254,215,170,.42)); box-shadow:0 5px 16px rgba(234,88,12,.12); }
+        body.night-mode .festival-countdown-card { background:linear-gradient(135deg,rgba(124,45,18,.30),rgba(194,65,12,.18)); }
+        .festival-countdown-head { display:flex; justify-content:space-between; gap:12px; align-items:center; font-weight:900; color:#c2410c; }
+        body.night-mode .festival-countdown-head { color:#fb923c; }
+        .festival-countdown-head strong { font-size:1.05rem; white-space:nowrap; }
+        .festival-countdown-track { height:18px; margin-top:9px; border-radius:999px; overflow:hidden; background:rgba(124,45,18,.13); border:1px solid rgba(194,65,12,.28); }
+        .festival-countdown-fill { height:100%; width:0; border-radius:999px; background:linear-gradient(90deg,#f59e0b,#f97316,#ea580c); box-shadow:0 0 12px rgba(249,115,22,.5); transition:width .6s ease; }
+        .festival-countdown-sub { margin-top:7px; color:var(--text-muted); text-align:center; font-size:.76rem; font-weight:700; }
+        .fees-table { table-layout:fixed; }
+        .fees-table th:first-child,.fees-table td:first-child { width:30%; text-align:left; }
+        .fees-table .num { text-align:right; font-variant-numeric:tabular-nums; vertical-align:middle; }
+        .fees-table .fee-tax-rate { display:inline-block; min-width:58px; text-align:right; }
+        .fees-table .tax-active { color:#dc2626; font-weight:850; }
+        .fees-table tfoot td { border-top:3px solid var(--accent-blue); background:var(--input-bg); font-weight:900; padding-top:12px; padding-bottom:12px; }
+        @media(max-width:650px){.fees-table{font-size:.72rem}.fees-table th,.fees-table td{padding:7px 4px}.fees-table th:first-child,.fees-table td:first-child{width:25%}.fees-table .fee-tax-rate{min-width:0}}
 
         .backup-section {
             margin-top: 14px;
@@ -1511,7 +1526,7 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
                 <button class="menu-btn" data-module="running_order" onclick="showPage('ro-page')">Running Order</button>
                 <button class="menu-btn" data-module="payments" onclick="showPage('payment-terms-page')">Zahlungsziel / Zahlungsweise</button>
                 <button class="menu-btn" data-module="fees" onclick="showPage('fees-page')">Gagen</button>
-                <button class="menu-btn" data-module="todos" onclick="showPage('misc-page')">To-Do</button>
+                <button id="todo-menu-btn" class="menu-btn" data-module="todos" onclick="showPage('misc-page')">To-Do</button>
                 <button class="menu-btn menu-btn-blue" data-module="catering" onclick="showPage('catering-page')">Catering</button>
                 <button class="menu-btn menu-btn-blue" data-module="accreditation" onclick="showPage('akkreditierung-page')">Akkreditierung</button>
                 <button id="admin-menu-btn" class="menu-btn permission-hidden" data-module="admin" onclick="showPage('admin-page')">⚙️ Benutzer & Rechte</button>
@@ -1519,15 +1534,17 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
             </div>
 
             <div class="progress-card">
-                <div class="progress-header">
-                    <span>Gesamtfortschritt</span>
-                    <span id="main-progress-text">0%</span>
-                </div>
-                <div class="progress-bar-bg">
-                    <div id="main-progress-fill" class="progress-bar-fill"></div>
-                </div>
-                <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 6px; text-align: center;" id="main-progress-sub">
-                    0 Bands angelegt
+                <div id="main-progress-section">
+                    <div class="progress-header">
+                        <span>Gesamtfortschritt</span>
+                        <span id="main-progress-text">0%</span>
+                    </div>
+                    <div class="progress-bar-bg">
+                        <div id="main-progress-fill" class="progress-bar-fill"></div>
+                    </div>
+                    <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 6px; text-align: center;" id="main-progress-sub">
+                        0 Bands angelegt
+                    </div>
                 </div>
 
                 <div class="backup-section">
@@ -1537,6 +1554,11 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
                     <button class="btn-subtle" onclick="importBackup()">📥 Backup Laden</button>
                     <input type="file" id="backup-file-input" style="display:none;" accept=".json" onchange="handleFileImport(event)">
                 </div>
+            </div>
+            <div id="festival-countdown-card" class="festival-countdown-card">
+                <div class="festival-countdown-head"><span>⏳ Zeit bis zum Festival</span><strong id="festival-countdown-value">–</strong></div>
+                <div class="festival-countdown-track"><div id="festival-countdown-fill" class="festival-countdown-fill"></div></div>
+                <div id="festival-countdown-sub" class="festival-countdown-sub">Festivaltermin wird geladen …</div>
             </div>
             <div class="design-picker">
                 <div class="design-picker-title">🎨 Design auswählen · Darkmode funktioniert mit jedem Design</div>
@@ -2875,6 +2897,7 @@ function loadFromLocalStorage() {
         }
 
         function updateMainProgress() {
+            updateFestivalCountdown();
             var fill = document.getElementById('main-progress-fill');
             var text = document.getElementById('main-progress-text');
             var sub = document.getElementById('main-progress-sub');
@@ -2904,6 +2927,25 @@ function loadFromLocalStorage() {
             fill.style.width = pct + '%';
             text.innerText = pct + '%';
             if (sub) sub.innerText = bands.length + ' Band(s) angelegt (' + filled + '/' + total + ' Felder)';
+        }
+
+        function updateFestivalCountdown(){
+            var fill=document.getElementById('festival-countdown-fill'),value=document.getElementById('festival-countdown-value'),sub=document.getElementById('festival-countdown-sub');
+            if(!fill||!value||!sub)return;
+            var startRaw=currentEvent&&currentEvent.start_date,endRaw=currentEvent&&currentEvent.end_date;
+            if(!startRaw){fill.style.width='0%';value.textContent='Termin offen';sub.textContent='Für diese Veranstaltung ist noch kein Beginn eingetragen.';return;}
+            var start=new Date(startRaw+'T00:00:00'),today=new Date();today.setHours(0,0,0,0);
+            var days=Math.ceil((start-today)/86400000),pct=Math.max(0,Math.min(100,(days/365)*100));
+            fill.style.width=pct+'%';
+            var dateText=start.toLocaleDateString('de-DE',{day:'2-digit',month:'long',year:'numeric'});
+            if(days>1){value.textContent=days+' Tage';sub.textContent='Noch '+days+' Tage bis zum Festivalbeginn am '+dateText+'.';}
+            else if(days===1){value.textContent='Noch 1 Tag';sub.textContent='Morgen beginnt das Festival · '+dateText;}
+            else if(days===0){fill.style.width='100%';value.textContent='Heute!';sub.textContent='Das Festival beginnt heute · '+dateText;}
+            else {
+                var end=endRaw?new Date(endRaw+'T23:59:59'):start;
+                if(today<=end){fill.style.width='100%';value.textContent='Festival läuft';sub.textContent='Die Veranstaltung findet gerade statt.';}
+                else {fill.style.width='100%';value.textContent='Beendet';sub.textContent='Festivalbeginn war am '+dateText+'.';}
+            }
         }
 
         function updateDesignButtons() {
@@ -3216,6 +3258,7 @@ function loadFromLocalStorage() {
 
         function showPage(pageId) {
             decorateCmoaPages();
+            if(pageId==='misc-page'&&typeof canViewPlanningControl==='function'&&!canViewPlanningControl()){alert('To-Do ist nur für Administratoren oder Benutzer mit vollständigen Berechtigungen sichtbar.');return;}
             var mod = CMOA_PAGE_MODULES[pageId] || null;
             if (mod && !hasModuleRight(mod, 'read')) { alert('Für diesen Bereich hast du keine Leseberechtigung.'); return; }
             normalizeAllBandNames();
@@ -6264,12 +6307,16 @@ function loadFromLocalStorage() {
                 return;
             }
 
-            var tableHtml = '<table class="ro-modern-table">' +
+            var feeMoney=function(v){return Number(v||0).toLocaleString('de-DE',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';};
+            var totalNet=0,totalTax=0,totalGross=0;
+            var tableHtml = '<table class="ro-modern-table fees-table">' +
                 '<thead>' +
                     '<tr>' +
-                        '<th style="width: 35%;">Band / Act</th>' +
-                        '<th style="width: 25%;">Netto / Steuer</th>' +
-                        '<th style="width: 40%; text-align: right;">Gesamtbrutto</th>' +
+                        '<th>Band / Act</th>' +
+                        '<th class="num">Netto</th>' +
+                        '<th class="num">Steuer</th>' +
+                        '<th class="num">Steuerbetrag</th>' +
+                        '<th class="num">Brutto</th>' +
                     '</tr>' +
                 '</thead>' +
                 '<tbody>';
@@ -6280,15 +6327,18 @@ function loadFromLocalStorage() {
                 var tr = Number(b.taxRate) || 0;
                 var t = g * (tr / 100);
                 var brutto = g + t;
+                totalNet+=g;totalTax+=t;totalGross+=brutto;
 
                 tableHtml += '<tr>' +
                     '<td><strong style="font-size: 0.98rem; text-transform: uppercase;">' + b.name + '</strong></td>' +
-                    '<td>' + g.toFixed(2) + ' € <span style="font-size:0.75rem; color:#dc2626; font-weight:700;">(' + tr + '%)</span></td>' +
-                    '<td style="text-align: right;"><strong class="cost-val" style="font-size: 1rem;">' + brutto.toFixed(2) + ' €</strong></td>' +
+                    '<td class="num">'+feeMoney(g)+'</td>'+
+                    '<td class="num"><span class="fee-tax-rate '+(tr!==0?'tax-active':'')+'">'+tr.toLocaleString('de-DE',{maximumFractionDigits:2})+' %</span></td>'+
+                    '<td class="num"><span class="'+(tr!==0?'tax-active':'')+'">'+feeMoney(t)+'</span></td>'+
+                    '<td class="num"><strong class="cost-val">'+feeMoney(brutto)+'</strong></td>'+
                 '</tr>';
             }
 
-            tableHtml += '</tbody></table>';
+            tableHtml += '</tbody><tfoot><tr><td>GESAMTSUMME</td><td class="num">'+feeMoney(totalNet)+'</td><td class="num">—</td><td class="num"><span class="'+(totalTax!==0?'tax-active':'')+'">'+feeMoney(totalTax)+'</span></td><td class="num"><strong class="cost-val">'+feeMoney(totalGross)+'</strong></td></tr></tfoot></table>';
             c.innerHTML = tableHtml;
         }
 
@@ -7787,6 +7837,12 @@ function loadFromLocalStorage() {
           return CMOA_MODULES.filter(function(m){return m[0]!=='admin';}).every(function(m){return rightRank(p[m[0]])>=rightRank('write');});
         }
         function canViewActivityLog(){return !!(currentUserProfile&&currentUserProfile.role==='admin');}
+        function canViewPlanningControl(){
+          if(!currentUserProfile)return false;
+          if(currentUserProfile.role==='admin')return true;
+          var p=effectivePermissions(currentUserProfile);
+          return CMOA_MODULES.filter(function(m){return m[0]!=='admin';}).every(function(m){return rightRank(p[m[0]])>=rightRank('write');});
+        }
         function showAuthError(msg){var e=document.getElementById('auth-error');if(e)e.textContent=msg||'';}
         async function initCmoaAuth(){
           try{
@@ -7810,6 +7866,9 @@ function loadFromLocalStorage() {
           var label=document.getElementById('auth-user-label'); if(label)label.textContent=(currentAuthUser&&currentAuthUser.email?currentAuthUser.email:'')+' · '+((ROLE_PRESETS[currentUserProfile.role]||{}).label||currentUserProfile.role);
           document.querySelectorAll('[data-module]').forEach(function(el){var m=el.getAttribute('data-module');el.classList.toggle('permission-hidden',!hasModuleRight(m,'read'));});
           var ab=document.getElementById('admin-menu-btn');if(ab)ab.classList.toggle('permission-hidden',!hasModuleRight('admin','read')); var eb=document.getElementById('event-admin-btn');if(eb)eb.classList.toggle('permission-hidden',currentUserProfile.role!=='admin');
+          var planningAllowed=canViewPlanningControl(),todoBtn=document.getElementById('todo-menu-btn'),progress=document.getElementById('main-progress-section');
+          if(todoBtn)todoBtn.classList.toggle('permission-hidden',!planningAllowed);
+          if(progress)progress.classList.toggle('permission-hidden',!planningAllowed);
           var cashLaunch=document.getElementById('cash-summary-launch'),cashButton=document.getElementById('cash-summary-button'),logButton=document.getElementById('activity-log-button');
           if(cashLaunch)cashLaunch.classList.toggle('permission-hidden',!canViewCashSummary()&&!canViewActivityLog());
           if(cashButton)cashButton.classList.toggle('permission-hidden',!canViewCashSummary());
