@@ -1411,7 +1411,25 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
         .production-row { display:grid; grid-template-columns:85px 120px 1.2fr 110px 1.2fr auto; gap:9px; align-items:center; padding:9px 0; border-bottom:1px solid var(--border); font-size:.77rem; }
         .production-row.income .production-amount { color:var(--accent-green); }
         .production-row.expense .production-amount { color:#dc2626; }
-        .production-actions { white-space:nowrap; }
+        .production-actions { white-space:nowrap; display:flex; gap:5px; justify-content:flex-end; }
+        .production-search-wrap { position:relative; margin:10px 0 12px; }
+        .production-search-wrap input { width:100%; padding-left:40px; }
+        .production-search-icon { position:absolute; left:13px; top:50%; transform:translateY(-50%); pointer-events:none; }
+        .production-search-result { margin:-4px 0 10px; color:var(--text-muted); font-size:.74rem; font-weight:700; }
+        .production-view-grid { display:grid; grid-template-columns:1fr 1fr; gap:9px; margin:14px 0; }
+        .production-view-field { padding:10px; border:1px solid var(--border); border-radius:10px; background:var(--input-bg); min-width:0; }
+        .production-view-field span { display:block; color:var(--text-muted); font-size:.68rem; font-weight:800; text-transform:uppercase; margin-bottom:4px; }
+        .production-view-field b { display:block; overflow-wrap:anywhere; }
+        .production-view-field.full { grid-column:1 / -1; }
+        #production-view-title { flex:1; min-width:0; overflow-wrap:anywhere; }
+        .production-document-head { display:flex; justify-content:space-between; gap:8px; align-items:center; margin:15px 0 7px; }
+        .production-document-head h3 { margin:0; }
+        .production-doc-upload { display:flex; flex-direction:column; gap:7px; padding:10px; border:1px dashed var(--accent-blue); border-radius:10px; background:rgba(37,99,235,.06); }
+        .production-doc-upload button { width:100%; }
+        .production-doc-status { min-height:18px; color:var(--text-muted); font-size:.74rem; overflow-wrap:anywhere; }
+        .production-doc-status.uploading { color:var(--accent-blue); font-weight:800; }
+        .production-doc-status.success { color:var(--accent-green); font-weight:800; }
+        .production-doc-status.error { color:var(--accent-red); font-weight:800; }
         @media(max-width:900px){
             .shuttle-tabs { display:grid!important; grid-template-columns:1fr 1fr; }
             .shuttle-tabs .btn-primary { width:100%; min-height:46px; white-space:normal; }
@@ -1466,6 +1484,8 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
             .shuttle-log-table td { grid-template-columns:88px minmax(0,1fr); }
             .production-summary, .production-form-grid, .production-row { grid-template-columns:1fr; }
             .production-actions { grid-column:auto; }
+            .production-view-grid { grid-template-columns:1fr; }
+            .production-view-field.full { grid-column:auto; }
         }
         .cmoa-decorated-page { position:relative; }
         .cmoa-page-logo {
@@ -1731,7 +1751,27 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
                 </div>
                 <div style="display:flex;gap:8px;flex-wrap:wrap;"><button class="btn-primary" onclick="saveProductionEntry()">💾 Speichern</button><button id="production-cancel-btn" class="btn-subtle" style="display:none;" onclick="resetProductionForm()">Abbrechen</button></div>
             </div>
-            <div class="card"><h3>📋 Alle Einträge</h3><div id="production-list"></div></div>
+            <div class="card">
+                <h3>📋 Alle Einträge</h3>
+                <div class="production-search-wrap"><span class="production-search-icon">🔎</span><input id="production-search" type="search" placeholder="Einträge durchsuchen, z. B. Bühne" oninput="renderProductionCosts()"></div>
+                <div id="production-search-result" class="production-search-result"></div>
+                <div id="production-list"></div>
+            </div>
+        </div>
+
+        <div id="production-view-overlay" class="akk-check-overlay" onclick="if(event.target===this)closeProductionEntryView()">
+            <div class="akk-check-dialog">
+                <div class="cash-summary-head"><h2 id="production-view-title" class="akk-check-title" style="text-align:left;font-size:1.35rem;">Eintrag</h2><button type="button" class="cash-summary-close" onclick="closeProductionEntryView()">✕</button></div>
+                <div id="production-view-content"></div>
+                <div class="production-document-head"><h3>📎 Dokumente</h3><span id="production-document-count" class="badge">0</span></div>
+                <div id="production-doc-upload-box" class="production-doc-upload">
+                    <input type="file" id="production-document-upload" accept=".pdf,image/jpeg,image/png,image/webp" multiple style="display:none;" onchange="uploadProductionDocuments(this)">
+                    <button type="button" class="btn-primary" onclick="document.getElementById('production-document-upload').click()">⬆️ Dokumente hochladen</button>
+                    <div id="production-document-status" class="production-doc-status">PDF oder Bild auswählen – mehrere Dateien sind möglich.</div>
+                </div>
+                <div id="production-document-list" class="document-manager-list"></div>
+                <button type="button" class="akk-result-back" onclick="closeProductionEntryView()">Schließen</button>
+            </div>
         </div>
 
         <!-- VERANSTALTUNGEN -->
@@ -2742,6 +2782,7 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
         var shuttleTripLog = {};
         var shuttleVehicles = [];
         var productionEntries = [];
+        var currentProductionEntryId = null;
         var openShuttleTripId = null;
         var lastLoggedPageId = null;
         var currentBandId = null;
@@ -6445,6 +6486,7 @@ function loadFromLocalStorage() {
         async function saveProductionEntry() {
             if(!hasModuleRight('fees','write')){alert('Du hast für Finanzen nur Leserechte.');return;}
             var id=(document.getElementById('production-edit-id').value||'').trim();
+            var existing=(productionEntries||[]).find(function(e){return e.id===id;});
             var entry={
                 id:id||('production_'+Date.now()),
                 type:document.getElementById('production-type').value,
@@ -6453,6 +6495,7 @@ function loadFromLocalStorage() {
                 amount:Number(document.getElementById('production-amount').value||0),
                 date:document.getElementById('production-date').value||'',
                 note:(document.getElementById('production-note').value||'').trim(),
+                documents:existing&&Array.isArray(existing.documents)?existing.documents:[],
                 updatedAt:new Date().toISOString()
             };
             if(!entry.party||!entry.description||entry.amount<=0){alert('Bitte Art, Empfänger beziehungsweise Absender, Bezeichnung und einen Betrag größer als 0 angeben.');return;}
@@ -6479,18 +6522,55 @@ function loadFromLocalStorage() {
         async function deleteProductionEntry(id) {
             if(!hasModuleRight('fees','write')){alert('Du hast für Finanzen nur Leserechte.');return;}
             var entry=(productionEntries||[]).find(function(e){return e.id===id;});if(!entry||!confirm('Eintrag „'+entry.description+'“ wirklich löschen?'))return;
+            var storedPaths=(Array.isArray(entry.documents)?entry.documents:[]).map(function(d){return getStoredDocumentPath(d&&d.url);}).filter(Boolean);
+            if(storedPaths.length&&_supabase){var rm=await _supabase.storage.from(BAND_DOCUMENT_BUCKET).remove(storedPaths);if(rm.error&&!confirm('Die zugehörigen Dokumentdateien konnten nicht gelöscht werden. Den Eintrag trotzdem löschen?'))return;}
             productionEntries=productionEntries.filter(function(e){return e.id!==id;});
-            try{await writeDataModule('fees');logCmoaActivity('Produktionseintrag gelöscht',entry.description+' · '+cashEuro(entry.amount),'fees');renderProductionCosts();renderOverview();}
+            try{await writeDataModule('fees');logCmoaActivity('Produktionseintrag gelöscht',entry.description+' · '+cashEuro(entry.amount),'fees');if(currentProductionEntryId===id)closeProductionEntryView();renderProductionCosts();renderOverview();}
             catch(e){alert('Eintrag konnte nicht gelöscht werden: '+e.message);}
+        }
+
+        function getProductionEntry(id){return (productionEntries||[]).find(function(e){return e.id===id;})||null;}
+        function getProductionDocuments(entry){return entry&&Array.isArray(entry.documents)?entry.documents.filter(function(d){return d&&d.url;}):[];}
+        function setProductionDocumentStatus(text,state){var el=document.getElementById('production-document-status');if(!el)return;el.textContent=text;el.className='production-doc-status'+(state?' '+state:'');}
+        function openProductionEntryView(id){currentProductionEntryId=id;var overlay=document.getElementById('production-view-overlay');if(overlay)overlay.classList.add('show');renderProductionEntryView();}
+        function closeProductionEntryView(){currentProductionEntryId=null;var overlay=document.getElementById('production-view-overlay');if(overlay)overlay.classList.remove('show');}
+        function renderProductionEntryView(){
+            var entry=getProductionEntry(currentProductionEntryId),title=document.getElementById('production-view-title'),content=document.getElementById('production-view-content'),list=document.getElementById('production-document-list'),count=document.getElementById('production-document-count'),uploadBox=document.getElementById('production-doc-upload-box');if(!entry||!title||!content||!list)return;
+            var docs=getProductionDocuments(entry),isIncome=entry.type==='income';title.textContent=entry.description||'Eintrag';
+            content.innerHTML='<div class="production-view-grid"><div class="production-view-field"><span>Art</span><b>'+(isIncome?'Einnahme':'Ausgabe')+'</b></div><div class="production-view-field"><span>Betrag</span><b style="color:'+(isIncome?'var(--accent-green)':'#dc2626')+'">'+(isIncome?'+ ':'− ')+cashEuro(entry.amount)+'</b></div><div class="production-view-field"><span>Datum</span><b>'+(entry.date?formatDateDE(entry.date):'—')+'</b></div><div class="production-view-field"><span>Empfänger / Absender</span><b>'+escapeHtmlAuth(entry.party||entry.category||'—')+'</b></div><div class="production-view-field full"><span>Notiz</span><b>'+escapeHtmlAuth(entry.note||'—')+'</b></div></div>';
+            if(count)count.textContent=String(docs.length);
+            if(uploadBox)uploadBox.style.display=hasModuleRight('fees','write')?'flex':'none';
+            list.innerHTML=docs.length?docs.map(function(doc,index){return '<div class="document-manager-item"><div class="document-manager-item-info"><div class="document-manager-item-name">'+escapeHtmlAuth(doc.name||documentFileName(doc.url)||'Dokument')+'</div><div class="document-manager-item-date">'+(doc.uploadedAt?('Hochgeladen: '+new Date(doc.uploadedAt).toLocaleString('de-DE')):'Hinterlegtes Dokument')+'</div></div><div class="document-manager-actions"><button type="button" class="btn-primary" onclick="openProductionDocument(\''+entry.id+'\','+index+')">👁️ Öffnen</button>'+(hasModuleRight('fees','write')?'<button type="button" class="btn-danger" onclick="deleteProductionDocument(\''+entry.id+'\','+index+')">🗑️</button>':'')+'</div></div>';}).join(''):'<div class="akk-empty">Noch keine Dokumente hinterlegt.</div>';
+            setProductionDocumentStatus(docs.length?'Weitere PDF- oder Bilddateien können ergänzt werden.':'PDF oder Bild auswählen – mehrere Dateien sind möglich.','');
+        }
+        async function uploadProductionDocuments(fileInput){
+            var entry=getProductionEntry(currentProductionEntryId),files=Array.from(fileInput&&fileInput.files||[]);if(!entry||!files.length)return;
+            try{
+                if(!currentEventId||!currentAuthUser)throw new Error('Keine Veranstaltung ausgewählt oder Anmeldung abgelaufen.');
+                if(!hasModuleRight('fees','write'))throw new Error('Keine Schreibberechtigung für Finanzen.');
+                files.forEach(function(file){var ext=(file.name.split('.').pop()||'').toLowerCase();if(['application/pdf','image/jpeg','image/png','image/webp'].indexOf(file.type)<0&&['pdf','jpg','jpeg','png','webp'].indexOf(ext)<0)throw new Error('Erlaubt sind PDF, JPG, PNG und WEBP.');if(file.size>15*1024*1024)throw new Error(file.name+' ist größer als 15 MB.');});
+                setProductionDocumentStatus('⏳ '+files.length+' Datei(en) werden hochgeladen …','uploading');var docs=getProductionDocuments(entry);
+                for(var i=0;i<files.length;i++){var file=files[i],path=currentEventId+'/production/'+safeStoragePart(entry.id)+'/'+Date.now()+'_'+i+'_'+safeStoragePart(file.name),up=await _supabase.storage.from(BAND_DOCUMENT_BUCKET).upload(path,file,{cacheControl:'3600',upsert:false,contentType:file.type||undefined});if(up.error)throw up.error;docs.push({id:'production_doc_'+Date.now()+'_'+i,name:file.name,url:'storage://'+BAND_DOCUMENT_BUCKET+'/'+path,uploadedAt:new Date().toISOString()});}
+                entry.documents=docs;entry.updatedAt=new Date().toISOString();await writeDataModule('fees');logCmoaActivity('Produktionsdokumente hochgeladen',files.length+' Datei(en) · '+entry.description,'fees');renderProductionEntryView();renderProductionCosts();setProductionDocumentStatus('✅ '+files.length+' Datei(en) erfolgreich hochgeladen.','success');
+            }catch(err){setProductionDocumentStatus('❌ Upload fehlgeschlagen: '+(err.message||err),'error');alert('Upload fehlgeschlagen: '+(err.message||err));}
+            finally{if(fileInput)fileInput.value='';}
+        }
+        async function openProductionDocument(entryId,index){var entry=getProductionEntry(entryId),doc=getProductionDocuments(entry)[index];if(!doc)return;try{var url=await resolveDocumentOpenUrl(doc.url);if(!url)throw new Error('Kein gültiger Dateipfad.');window.open(url,'_blank','noopener');}catch(err){alert('Dokument konnte nicht geöffnet werden: '+(err.message||err));}}
+        async function deleteProductionDocument(entryId,index){
+            if(!hasModuleRight('fees','write'))return;var entry=getProductionEntry(entryId),docs=getProductionDocuments(entry),doc=docs[index];if(!entry||!doc||!confirm('„'+(doc.name||'Dokument')+'“ wirklich löschen?'))return;
+            try{var path=getStoredDocumentPath(doc.url);if(path){var rm=await _supabase.storage.from(BAND_DOCUMENT_BUCKET).remove([path]);if(rm.error)throw rm.error;}docs.splice(index,1);entry.documents=docs;entry.updatedAt=new Date().toISOString();await writeDataModule('fees');logCmoaActivity('Produktionsdokument gelöscht',(doc.name||'Dokument')+' · '+entry.description,'fees');renderProductionEntryView();renderProductionCosts();}
+            catch(err){alert('Dokument konnte nicht gelöscht werden: '+(err.message||err));}
         }
 
         function renderProductionCosts() {
             var summary=document.getElementById('production-summary'),list=document.getElementById('production-list');if(!summary||!list)return;
             var totals=getProductionTotals();
             summary.innerHTML='<div class="production-summary-box"><span>Einnahmen</span><b style="color:var(--accent-green)">'+cashEuro(totals.income)+'</b></div><div class="production-summary-box"><span>Ausgaben</span><b style="color:#dc2626">'+cashEuro(totals.expense)+'</b></div><div class="production-summary-box"><span>Saldo (Ausgaben − Einnahmen)</span><b>'+cashEuro(totals.net)+'</b></div>';
-            var entries=(productionEntries||[]).slice().sort(function(a,b){return String(b.date||b.updatedAt||'').localeCompare(String(a.date||a.updatedAt||''));});
-            list.innerHTML=entries.map(function(e){return '<div class="production-row '+(e.type==='income'?'income':'expense')+'"><span class="production-date">'+(e.date?formatDateDE(e.date):'—')+'</span><b class="production-type">'+(e.type==='income'?'Einnahme':'Ausgabe')+'</b><span class="production-desc"><b>'+escapeHtmlAuth(e.description)+'</b></span><b class="production-amount">'+(e.type==='income'?'+ ':'− ')+cashEuro(e.amount)+'</b><span class="production-note">'+escapeHtmlAuth(e.party||e.category||'—')+(e.note?' · '+escapeHtmlAuth(e.note):'')+'</span><span class="production-actions"><button class="btn-subtle" style="padding:5px 7px" onclick="editProductionEntry(\''+e.id+'\')">✎</button> <button class="btn-danger" style="padding:5px 7px" onclick="deleteProductionEntry(\''+e.id+'\')">🗑</button></span></div>';}).join('');
-            if(!entries.length)list.innerHTML='<div style="text-align:center;color:var(--text-muted);padding:14px;">Noch keine Einnahmen oder Ausgaben erfasst.</div>';
+            var allEntries=(productionEntries||[]).slice().sort(function(a,b){return String(b.date||b.updatedAt||'').localeCompare(String(a.date||a.updatedAt||''));}),search=document.getElementById('production-search'),query=String(search&&search.value||'').trim().toLocaleLowerCase('de-DE');
+            var entries=query?allEntries.filter(function(e){return [e.description,e.party,e.category,e.note,e.type==='income'?'einnahme':'ausgabe',e.date,String(e.amount||'')].join(' ').toLocaleLowerCase('de-DE').indexOf(query)>=0;}):allEntries;
+            var result=document.getElementById('production-search-result');if(result)result.textContent=query?(entries.length+' von '+allEntries.length+' Einträgen gefunden'):allEntries.length+' Einträge insgesamt';
+            list.innerHTML=entries.map(function(e){var docs=getProductionDocuments(e);return '<div class="production-row '+(e.type==='income'?'income':'expense')+'"><span class="production-date">'+(e.date?formatDateDE(e.date):'—')+'</span><b class="production-type">'+(e.type==='income'?'Einnahme':'Ausgabe')+'</b><span class="production-desc"><b>'+escapeHtmlAuth(e.description)+'</b>'+(docs.length?'<small style="display:block;color:var(--accent-blue);margin-top:3px;">📎 '+docs.length+' Dokument'+(docs.length===1?'':'e')+'</small>':'')+'</span><b class="production-amount">'+(e.type==='income'?'+ ':'− ')+cashEuro(e.amount)+'</b><span class="production-note">'+escapeHtmlAuth(e.party||e.category||'—')+(e.note?' · '+escapeHtmlAuth(e.note):'')+'</span><span class="production-actions"><button class="btn-primary" style="padding:5px 7px" onclick="openProductionEntryView(\''+e.id+'\')">👁 View</button><button class="btn-subtle" style="padding:5px 7px" onclick="editProductionEntry(\''+e.id+'\')">✎</button><button class="btn-danger" style="padding:5px 7px" onclick="deleteProductionEntry(\''+e.id+'\')">🗑</button></span></div>';}).join('');
+            if(!entries.length)list.innerHTML='<div style="text-align:center;color:var(--text-muted);padding:14px;">'+(query?'Keine passenden Einträge gefunden.':'Noch keine Einnahmen oder Ausgaben erfasst.')+'</div>';
         }
 
         function toggleShuttleView(view) {
