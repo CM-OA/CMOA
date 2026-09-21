@@ -836,6 +836,9 @@
         .document-manager-item-name { font-weight:800; overflow-wrap:anywhere; }
         .document-manager-item-date { color:var(--text-muted); font-size:.72rem; margin-top:2px; }
         .document-manager-actions { display:flex; gap:6px; flex-wrap:wrap; }
+        .deal-text-meta { color:var(--text-muted); font-size:.75rem; margin:-5px 0 12px; text-align:center; overflow-wrap:anywhere; }
+        .deal-text-view { margin:0; padding:16px; max-height:58vh; overflow:auto; white-space:pre-wrap; overflow-wrap:anywhere; font-family:ui-monospace,SFMono-Regular,Consolas,monospace; font-size:.9rem; line-height:1.6; color:var(--text-main); background:var(--input-bg); border:1px solid var(--border); border-left:4px solid var(--accent-blue); border-radius:10px; }
+        .deal-text-actions { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:12px; }
         .document-inline-list { color:var(--text-muted); font-size:.76rem; }
         @media(max-width:520px){.band-view-doc-buttons{grid-template-columns:1fr}.document-manager-item{align-items:flex-start;flex-direction:column}.document-manager-actions{width:100%}.document-manager-actions button{flex:1}}
         .akk-action-btn.check { border-color: var(--accent-green); background: rgba(16, 185, 129, 0.08); color: var(--accent-green); }
@@ -2333,6 +2336,16 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
                 <h2 id="band-document-manager-title" class="akk-check-title">Dokumente</h2>
                 <div id="band-document-manager-list" class="document-manager-list"></div>
                 <button type="button" class="akk-result-back" onclick="closeBandDocumentManager()">Schließen</button>
+            </div>
+        </div>
+
+        <div id="deal-text-overlay" class="akk-check-overlay" onclick="if(event.target===this)closeDealTextViewer()">
+            <div class="akk-check-dialog">
+                <div class="cash-summary-head"><h2 id="deal-text-title" class="akk-check-title" style="text-align:left;font-size:1.25rem;">🤝 Deal</h2><button type="button" class="cash-summary-close" onclick="closeDealTextViewer()">✕</button></div>
+                <div id="deal-text-meta" class="deal-text-meta"></div>
+                <pre id="deal-text-content" class="deal-text-view"></pre>
+                <div class="deal-text-actions"><button type="button" class="btn-subtle" onclick="copyDealText()">📋 Text kopieren</button><button type="button" class="btn-primary" onclick="downloadDealText()">⬇️ TXT herunterladen</button></div>
+                <button type="button" class="akk-result-back" onclick="closeDealTextViewer()">Schließen</button>
             </div>
         </div>
 
@@ -4890,19 +4903,19 @@ function loadFromLocalStorage() {
 
         function getBandDocumentOverviewHtml(b, type) {
             var isContract = type === 'contract';
+            var docs=getBandDocumentRecords(b,type);
             var status = isContract
                 ? (b.contractDocStatus || ((b.contractReceived || b.contractSigned) ? 'vorhanden' : 'offen'))
                 : (b.riderDocStatus || ((b.riderReceived || b.riderChecked) ? 'vorhanden' : 'offen'));
-            var url = normalizeDocumentUrl(isContract ? b.contractDocUrl : b.riderDocUrl);
             var label = getBandDocumentStatusLabel(status, type);
             var icon = isContract ? '📑 ' : '🎛️ ';
 
-            if (status === 'vorhanden' && url) {
+            if (docs.length) {
                 return '<button type="button" class="badge doc-quick-open" ' +
                     'style="background:var(--card-bg); color:var(--text-main); border:1px solid var(--accent-green); cursor:pointer; padding:5px 8px;" ' +
-                    'title="' + (isContract ? 'Vertrag' : 'Rider') + ' direkt öffnen" ' +
-                    'onclick="event.stopPropagation(); openStoredBandDocument(\'' + b.id + '\', \'' + type + '\')">' +
-                    icon + label + '</button>';
+                    'title="' + (isContract ? 'Verträge' : 'Rider') + ' auswählen" ' +
+                    'onclick="event.stopPropagation(); showBandDocumentManager(\'' + b.id + '\', \'' + type + '\', false)">' +
+                    icon + (isContract?'Vertrag':'Rider') + ' ('+docs.length+')</button>';
             }
 
             return '<span class="badge" style="background:var(--card-bg); color:var(--text-main); border:1px solid var(--border);">' +
@@ -5046,9 +5059,17 @@ function loadFromLocalStorage() {
         async function openBandDocumentRecord(url){
             try{var openUrl=await resolveDocumentOpenUrl(url);if(!openUrl)throw new Error('Kein gültiger Dateipfad.');window.open(openUrl,'_blank','noopener');}catch(err){alert('Dokument konnte nicht geöffnet werden: '+(err.message||err));}
         }
+        var currentDealTextDoc=null;
+        function showDealTextViewer(doc){
+            currentDealTextDoc=doc||null;var overlay=document.getElementById('deal-text-overlay'),title=document.getElementById('deal-text-title'),meta=document.getElementById('deal-text-meta'),content=document.getElementById('deal-text-content');if(!overlay||!content||!doc)return;
+            title.textContent='🤝 Deal-Dokument';meta.textContent=(doc.name||'Deal.txt')+(doc.uploadedAt?' · hochgeladen '+new Date(doc.uploadedAt).toLocaleString('de-DE'):'');content.textContent=String(doc.content||'');overlay.classList.add('show');
+        }
+        function closeDealTextViewer(){var overlay=document.getElementById('deal-text-overlay');if(overlay)overlay.classList.remove('show');currentDealTextDoc=null;}
+        async function copyDealText(){if(!currentDealTextDoc)return;try{await navigator.clipboard.writeText(String(currentDealTextDoc.content||''));alert('Deal-Text wurde kopiert.');}catch(e){alert('Text konnte nicht kopiert werden.');}}
+        function downloadDealText(){if(!currentDealTextDoc)return;var blob=new Blob([String(currentDealTextDoc.content||'')],{type:'text/plain;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=currentDealTextDoc.name||'Deal.txt';document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(url);},1000);}
         function openBandDocumentItem(bandId,type,index){
             var b=getBandById(bandId),doc=getBandDocumentRecords(b,type)[index];if(!doc)return;
-            if(doc.content!==undefined){var blob=new Blob([String(doc.content||'')],{type:'text/plain;charset=utf-8'}),url=URL.createObjectURL(blob),win=window.open(url,'_blank');if(win)win.opener=null;else alert('Bitte Pop-ups erlauben, um die TXT-Datei anzuzeigen.');setTimeout(function(){URL.revokeObjectURL(url);},60000);return;}
+            if(doc.content!==undefined){showDealTextViewer(doc);return;}
             openBandDocumentRecord(doc.url);
         }
         function showBandDocumentManager(bandId,type,editable){
@@ -7167,7 +7188,7 @@ function loadFromLocalStorage() {
             count.textContent=globalDocumentSearchResults.length+' von '+all.length+' Dokumenten gefunden';
             container.innerHTML=globalDocumentSearchResults.length?globalDocumentSearchResults.map(function(doc,index){return '<div class="global-doc-item"><span class="global-doc-icon">'+doc.icon+'</span><div class="global-doc-info"><strong>'+escapeHtmlAuth(doc.name)+'</strong><span>'+escapeHtmlAuth(doc.typeLabel)+' · '+escapeHtmlAuth(doc.owner)+(doc.detail?' · '+escapeHtmlAuth(doc.detail):'')+(doc.uploadedAt?' · '+new Date(doc.uploadedAt).toLocaleDateString('de-DE'):'')+'</span></div><button type="button" class="btn-primary" onclick="openGlobalDocumentSearchResult('+index+')">👁️ Öffnen</button></div>';}).join(''):'<div class="akk-empty">Keine passenden Dokumente gefunden.</div>';
         }
-        async function openGlobalDocumentSearchResult(index){var doc=globalDocumentSearchResults[index];if(!doc)return;if(doc.content!==undefined){var blob=new Blob([String(doc.content||'')],{type:'text/plain;charset=utf-8'}),inlineUrl=URL.createObjectURL(blob),win=window.open(inlineUrl,'_blank');if(win)win.opener=null;else alert('Bitte Pop-ups erlauben, um die TXT-Datei anzuzeigen.');setTimeout(function(){URL.revokeObjectURL(inlineUrl);},60000);return;}try{var url=await resolveDocumentOpenUrl(doc.url);if(!url)throw new Error('Kein gültiger Dateipfad.');window.open(url,'_blank','noopener');}catch(err){alert('Dokument konnte nicht geöffnet werden: '+(err.message||err));}}
+        async function openGlobalDocumentSearchResult(index){var doc=globalDocumentSearchResults[index];if(!doc)return;if(doc.content!==undefined){showDealTextViewer(doc);return;}try{var url=await resolveDocumentOpenUrl(doc.url);if(!url)throw new Error('Kein gültiger Dateipfad.');window.open(url,'_blank','noopener');}catch(err){alert('Dokument konnte nicht geöffnet werden: '+(err.message||err));}}
 
         function toggleShuttleView(view) {
             var timeline = document.getElementById('shuttle-view-timeline');
