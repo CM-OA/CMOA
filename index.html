@@ -5609,9 +5609,19 @@ function loadFromLocalStorage() {
                 for (var f = 0; f < targetBands.length; f++) {
                     var bf = targetBands[f];
                     var gage = Number(bf.gage) || 0, tax = gage * ((Number(bf.taxRate) || 0) / 100), brutto = gage + tax;
+                    var isSplitPayment=bf.paymentTermsMainMode==='split';
+                    var splitPct=Math.min(100,Math.max(0,Number(bf.ptSplitPct)||50));
+                    var advanceAmount=brutto*(splitPct/100), remainderAmount=Math.max(0,brutto-advanceAmount);
                     html += '<div class="view-section"><strong class="export-band-name-title">' + bf.name + '</strong>' +
                         '<div class="view-row"><span class="view-label">Gage Brutto:</span><span class="view-value export-highlight-amount">' + brutto.toFixed(2) + ' €</span></div>' +
-                        '<div class="view-row"><span class="view-label">Modus:</span><span class="view-value">' + getPtText(bf.paymentTermsType) + '</span></div></div>';
+                        '<div class="view-row"><span class="view-label">Zahlungsweise:</span><span class="view-value">' + getPtText(bf.paymentTermsType) + (bf.noInvoice?' · Ohne Rechnung':'') + '</span></div>';
+                    if(isSplitPayment){
+                        html+=exportPaymentLine('Anzahlung · '+splitPct.toFixed(0)+' %',advanceAmount,bf.advDueDate,!!bf.statusAdvPaid,bf.advDate)+
+                            exportPaymentLine('Restzahlung · '+(100-splitPct).toFixed(0)+' %',remainderAmount,bf.restDueDate,!!bf.statusRestPaid,bf.fullPaidDate);
+                    } else {
+                        html+=exportPaymentLine('Gesamtzahlung · 100 %',brutto,bf.fullDueDate,!!bf.statusFullPaid,bf.fullPaidDate);
+                    }
+                    html+='</div>';
                 }
                 html += '</div>';
             }
@@ -5693,11 +5703,29 @@ function loadFromLocalStorage() {
                 '.report-head{text-align:center;border-bottom:3px solid #2563eb;padding-bottom:9px;margin-bottom:16px}.report-head h1{font-size:19pt;margin:0 0 4px}.report-head p{font-size:8.5pt;color:#64748b;margin:0}'+
                 '.export-unified-card{border:1px solid #cbd5e1;border-left:6px solid #2563eb;border-radius:7px;padding:13px 15px;margin:0 0 13px;break-inside:auto;page-break-inside:auto;background:#fff}.export-unified-card h3{font-size:13pt;margin:0 0 10px;color:#1e3a8a;break-after:avoid;page-break-after:avoid}'+
                 '.view-section{padding:8px 0;border-bottom:1px solid #e2e8f0;page-break-inside:avoid}.view-section:last-child{border-bottom:0}.view-row{display:flex;gap:10px;padding:4px 0;border-bottom:1px solid #f1f5f9}.view-label{font-weight:700;min-width:36%}.view-value{flex:1}.export-band-name-title{display:block;font-size:11pt;color:#0f172a;margin-bottom:3px}.export-highlight-amount{color:#b91c1c;font-weight:800}'+
+                '.payment-line{display:grid;grid-template-columns:1.25fr .7fr 1fr auto;gap:9px;align-items:center;margin-top:7px;padding:8px 9px;border:1px solid #cbd5e1;border-radius:6px;background:#f8fafc}.payment-name{font-weight:800}.payment-amount{font-weight:900;color:#0f172a}.payment-dates{font-size:8.5pt;line-height:1.4;color:#475569}.payment-status{display:inline-block;min-width:92px;text-align:center;border-radius:999px;padding:5px 8px;font-size:8pt;font-weight:900;white-space:nowrap}.payment-status.paid{color:#065f46;background:#d1fae5;border:1px solid #34d399}.payment-status.overdue,.payment-status.today{color:#991b1b;background:#fee2e2;border:1px solid #f87171}.payment-status.soon{color:#92400e;background:#fef3c7;border:1px solid #fbbf24}.payment-status.open{color:#1e40af;background:#dbeafe;border:1px solid #60a5fa}.payment-status.nodate{color:#475569;background:#e2e8f0;border:1px solid #94a3b8}'+
                 '.shuttle-highlight{margin-top:7px;padding:8px 10px;border:1px solid #60a5fa;border-left:5px solid #2563eb;border-radius:6px;background:#eff6ff;color:#1e3a8a;line-height:1.55}.shuttle-highlight-title{font-weight:900;color:#1d4ed8;margin-bottom:2px}.shuttle-none{margin-top:5px;color:#64748b;font-size:8.5pt}.shuttle-overview{border-left-color:#0ea5e9}'+
                 '.hotel-summary-box{margin-top:12px;border:2px solid #2563eb;border-radius:7px;padding:10px;background:#f8fafc;page-break-inside:avoid}.hotel-summary-title{font-size:9pt;font-weight:900;color:#1d4ed8;margin-bottom:6px}.hotel-summary-row,.hotel-summary-total{display:grid;grid-template-columns:1fr 2fr auto;gap:10px;padding:5px 3px;border-bottom:1px solid #dbeafe;align-items:center}.hotel-summary-total{border-bottom:0;border-top:2px solid #2563eb;margin-top:4px;padding-top:7px;color:#1e3a8a}'+
+                '@media(max-width:650px){.payment-line{grid-template-columns:1fr 1fr}.payment-status{justify-self:end}}'+
                 '</style></head><body><header class="report-head"><h1>CHRONICAL MOSHERS OPEN AIR 2027</h1><p>'+akkEscape(subtitle)+'</p></header>'+reportHtml+'</body></html>');
             d.close();
             setTimeout(function(){ try{frame.contentWindow.focus();frame.contentWindow.print();}catch(e){alert('Die Druckansicht konnte nicht geöffnet werden.');} setTimeout(function(){frame.remove();},1500); },350);
+        }
+
+        function exportPaymentStatus(dueDate, isPaid) {
+            if(isPaid)return {cls:'paid',text:'✓ BEZAHLT'};
+            var days=getPaymentDaysRemaining(dueDate);
+            if(days===null)return {cls:'nodate',text:'TERMIN OFFEN'};
+            if(days<0)return {cls:'overdue',text:'⚠ '+Math.abs(days)+' TAGE ÜBERFÄLLIG'};
+            if(days===0)return {cls:'today',text:'HEUTE FÄLLIG'};
+            if(days<=7)return {cls:'soon',text:'NOCH '+days+' TAG'+(days===1?'':'E')};
+            return {cls:'open',text:'OFFEN · '+days+' TAGE'};
+        }
+        function exportPaymentLine(label, amount, dueDate, isPaid, paidDate) {
+            var status=exportPaymentStatus(dueDate,isPaid);
+            var due=dueDate?formatDateDESafe(dueDate):'nicht festgelegt';
+            var paid=isPaid?(paidDate?formatDateDESafe(paidDate):'Datum nicht erfasst'):'—';
+            return '<div class="payment-line"><div class="payment-name">'+label+'</div><div class="payment-amount">'+Number(amount||0).toLocaleString('de-DE',{minimumFractionDigits:2,maximumFractionDigits:2})+' €</div><div class="payment-dates"><b>Fällig:</b> '+due+'<br><b>Bezahlt am:</b> '+paid+'</div><span class="payment-status '+status.cls+'">'+status.text+'</span></div>';
         }
 
         function renderBandNotesPage() {
