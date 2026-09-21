@@ -1952,7 +1952,7 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
             <div class="card">
                 <h2>🔎 Globale Dokumentensuche</h2>
                 <p style="color:var(--text-muted);font-size:.8rem;">Durchsucht Verträge, Rider, Bandrechnungen und Dokumente der Produktionskosten.</p>
-                <div class="global-doc-toolbar"><input id="global-document-search" type="search" placeholder="Band, Empfänger oder Dateiname …" oninput="renderGlobalDocumentSearch()"><select id="global-document-type" onchange="renderGlobalDocumentSearch()"><option value="all">Alle Dokumentarten</option><option value="contract">Verträge</option><option value="rider">Rider</option><option value="invoice">Bandrechnungen</option><option value="production">Produktionsdokumente</option></select></div>
+                <div class="global-doc-toolbar"><input id="global-document-search" type="search" placeholder="Band, Empfänger oder Dateiname …" oninput="renderGlobalDocumentSearch()"><select id="global-document-type" onchange="renderGlobalDocumentSearch()"><option value="all">Alle Dokumentarten</option><option value="deal">Deals (TXT)</option><option value="contract">Verträge</option><option value="rider">Rider</option><option value="invoice">Bandrechnungen</option><option value="production">Produktionsdokumente</option></select></div>
                 <div id="global-document-result-count" class="global-doc-result-count"></div>
                 <div id="global-document-results" class="global-doc-list"></div>
             </div>
@@ -2319,6 +2319,7 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
                     <button class="btn-primary" id="view-print-btn" style="width:100%;background:linear-gradient(135deg,#059669,#047857);color:#fff;border:none;">🖨️ Drucken</button>
                 </div>
                 <div class="band-view-doc-buttons">
+                    <button type="button" class="btn-subtle" id="view-deal-btn">🤝 Deal</button>
                     <button type="button" class="btn-subtle" id="view-contract-btn">📑 Vertrag</button>
                     <button type="button" class="btn-subtle" id="view-rider-btn">🎛️ Rider</button>
                     <button type="button" class="btn-subtle" id="view-invoice-btn">🧾 Rechnungen</button>
@@ -2348,6 +2349,12 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
                 <div class="form-group" style="margin-top:8px;">
                     <label>Deal Notizen:</label>
                     <input type="text" id="band-deal-text" placeholder="z. B. 1500€ Festpreis + Catering">
+                </div>
+                <div class="document-upload-box">
+                    <input type="file" id="band-deal-upload" accept=".txt,text/plain" multiple style="display:none;" onchange="uploadMultipleBandDocuments('deal',this)">
+                    <button type="button" class="btn-primary" onclick="document.getElementById('band-deal-upload').click()">⬆️ Deal als TXT hochladen</button>
+                    <button type="button" class="btn-danger" onclick="showBandDocumentManager(currentBandId,'deal',true)">📚 Deal-Dateien verwalten</button>
+                    <div id="band-deal-upload-status" class="document-upload-status">Noch keine Deal-Datei hochgeladen.</div>
                 </div>
             </div>
 
@@ -2489,9 +2496,9 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
                     </div>
                     <div id="band-contract-doc-fields" style="display:none;">
                         <div class="document-upload-box">
-                            <input type="file" id="band-contract-upload" accept=".pdf,image/jpeg,image/png,image/webp" style="display:none;" onchange="uploadBandDocument('contract',this)">
-                            <button type="button" class="btn-primary" onclick="document.getElementById('band-contract-upload').click()">⬆️ Vertrag hochladen</button>
-                            <button type="button" class="btn-danger" onclick="deleteBandDocument('contract')">🗑️ Datei löschen</button>
+                            <input type="file" id="band-contract-upload" accept=".pdf,image/jpeg,image/png,image/webp" multiple style="display:none;" onchange="uploadMultipleBandDocuments('contract',this)">
+                            <button type="button" class="btn-primary" onclick="document.getElementById('band-contract-upload').click()">⬆️ Vertrag/Verträge hochladen</button>
+                            <button type="button" class="btn-danger" onclick="showBandDocumentManager(currentBandId,'contract',true)">📚 Verträge verwalten</button>
                             <div id="band-contract-upload-status" class="document-upload-status">Noch keine Datei hochgeladen.</div>
                         </div>
                         <div class="form-group">
@@ -2499,7 +2506,7 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
                             <input type="text" id="band-contract-doc-url" placeholder="documents/vertraege/bandname-vertrag.pdf">
                         </div>
                         <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:8px;">
-                            <button type="button" class="btn-sm" style="flex:1 1 180px;" onclick="openBandDocument('contract')">📄 Vertrag öffnen</button>
+                            <button type="button" class="btn-sm" style="flex:1 1 180px;" onclick="showBandDocumentManager(currentBandId,'contract',false)">📄 Alle Verträge anzeigen</button>
                         </div>
                         <div class="checkbox-group">
                             <input type="checkbox" id="band-contract-received">
@@ -2535,7 +2542,7 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
                             <input type="text" id="band-rider-doc-url" placeholder="documents/rider/bandname-rider.pdf">
                         </div>
                         <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:8px;">
-                            <button type="button" class="btn-sm" style="flex:1 1 180px;" onclick="openBandDocument('rider')">🎛️ Rider öffnen</button>
+                            <button type="button" class="btn-sm" style="flex:1 1 180px;" onclick="showBandDocumentManager(currentBandId,'rider',false)">🎛️ Alle Rider anzeigen</button>
                         </div>
                         <div class="checkbox-group">
                             <input type="checkbox" id="band-rider-received">
@@ -3063,7 +3070,7 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
             shuttle:['id','shuttleNeeded','shuttleDate','shuttleTime','shuttleAirport','shuttleFlightNum','shuttlePax','shuttleDriver','shuttleVehicle','shuttleRetDate','shuttleRetTime','shuttleRetAirport','shuttleRetFlightNum'],
             running_order:['id','roStart','roEnd','roChangeover'],
             catering:['id','paxCount','vipGuests','cateringDays','drinks','extraFood','extraSpecials','cateringDrinkNames','meatCount','vegetarianCount','veganCount'],
-            documents:['id','contractDocStatus','contractDocUrl','contractReceived','contractSigned','riderDocStatus','riderDocUrl','riderDocuments','riderReceived','riderChecked','invoiceDocuments','bandNotes','notesList','dealText'],
+            documents:['id','dealDocuments','contractDocStatus','contractDocUrl','contractDocuments','contractReceived','contractSigned','riderDocStatus','riderDocUrl','riderDocuments','riderReceived','riderChecked','invoiceDocuments','bandNotes','notesList','dealText'],
             todos:['id']
         };
         function bandSlice(b, module){
@@ -4853,7 +4860,7 @@ function loadFromLocalStorage() {
                 id: newId, name: name.trim().toUpperCase(), dealDone: false, gage: 0, taxRate: 0, showday: '', notesList: [], paymentTermsMainMode: 'full', paymentTermsType: '1a', paymentTermsLocked: false,
                 shuttleNeeded: 'offen', hotelNeeded: 'offen', paxCount: 5, nightsCount: 0, vipGuests: 0, extraFood: [], extraSpecials: [{ text: '', comment: '' }], drinks: {},
                 statusAdvPaid: false, statusRestPaid: false, statusFullPaid: false,
-                contractDocStatus: 'offen', contractDocUrl: '',
+                dealDocuments: [], contractDocStatus: 'offen', contractDocUrl: '', contractDocuments: [],
                 riderDocStatus: 'offen', riderDocUrl: '', riderDocuments: [], invoiceDocuments: []
             });
 
@@ -4921,7 +4928,7 @@ function loadFromLocalStorage() {
 
             if (contractFields) contractFields.style.display = contractStatusEl && contractStatusEl.value !== 'nicht_vorhanden' && contractStatusEl.value !== 'nicht_noetig' ? 'block' : 'none';
             if (riderFields) riderFields.style.display = riderStatusEl && riderStatusEl.value !== 'nicht_vorhanden' && riderStatusEl.value !== 'nicht_noetig' ? 'block' : 'none';
-            updateBandDocumentUploadUi('contract'); updateBandDocumentUploadUi('rider'); updateBandDocumentUploadUi('invoice');
+            updateBandDocumentUploadUi('deal'); updateBandDocumentUploadUi('contract'); updateBandDocumentUploadUi('rider'); updateBandDocumentUploadUi('invoice');
         }
 
         function normalizeDocumentUrl(value) {
@@ -4945,10 +4952,11 @@ function loadFromLocalStorage() {
             el.textContent=text; el.className='document-upload-status'+(state?' '+state:'');
         }
         function updateBandDocumentUploadUi(type){
-            if(type==='rider'||type==='invoice'){
+            if(type==='deal'||type==='contract'||type==='rider'||type==='invoice'){
                 var b=getBandById(currentBandId), docs=b?getBandDocumentRecords(b,type):[];
-                var word=type==='rider'?'Rider':'Rechnung';
-                setDocumentUploadStatus(type,docs.length?('✅ '+docs.length+' '+word+(docs.length===1?'':'en')+' hinterlegt.'):(type==='rider'?'Noch kein Rider hochgeladen.':'Noch keine Rechnung hochgeladen.'),docs.length?'success':'');
+                var word=type==='deal'?'Deal-Datei':type==='contract'?'Vertrag':type==='rider'?'Rider':'Rechnung';
+                var plural=type==='deal'?'Deal-Dateien':type==='contract'?'Verträge':type==='rider'?'Rider':'Rechnungen';
+                setDocumentUploadStatus(type,docs.length?('✅ '+docs.length+' '+(docs.length===1?word:plural)+' hinterlegt.'):'Noch keine '+word+' hinterlegt.',docs.length?'success':'');
                 var inline=document.getElementById('band-invoice-list');if(type==='invoice'&&inline)inline.textContent=docs.length?docs.map(function(d){return d.name||documentFileName(d.url)||'Rechnung';}).join(' · '):'';
                 return;
             }
@@ -4996,22 +5004,24 @@ function loadFromLocalStorage() {
         }
         function getBandDocumentRecords(b,type){
             if(!b)return [];
-            if(type==='contract')return b.contractDocUrl?[{name:documentFileName(b.contractDocUrl)||'Vertrag',url:b.contractDocUrl,uploadedAt:''}]:[];
-            var key=type==='rider'?'riderDocuments':'invoiceDocuments', arr=Array.isArray(b[key])?b[key].slice():[];
+            var key=type==='deal'?'dealDocuments':type==='contract'?'contractDocuments':type==='rider'?'riderDocuments':'invoiceDocuments', arr=Array.isArray(b[key])?b[key].slice():[];
+            if(type==='contract'&&b.contractDocUrl&&!arr.some(function(x){return x&&x.url===b.contractDocUrl;}))arr.unshift({id:'legacy-contract',name:documentFileName(b.contractDocUrl)||'Vertrag',url:b.contractDocUrl,uploadedAt:''});
             if(type==='rider'&&b.riderDocUrl&&!arr.some(function(x){return x&&x.url===b.riderDocUrl;}))arr.unshift({id:'legacy-rider',name:documentFileName(b.riderDocUrl)||'Rider',url:b.riderDocUrl,uploadedAt:''});
             return arr.filter(function(x){return x&&x.url;});
         }
         function storeBandDocumentRecords(b,type,docs){
-            if(type==='rider'){b.riderDocuments=docs;b.riderDocUrl=docs[0]?docs[0].url:'';b.riderDocStatus=docs.length?'vorhanden':'offen';b.riderReceived=docs.length>0;}
+            if(type==='deal'){b.dealDocuments=docs;b.dealDone=docs.length>0||!!b.dealDone;}
+            else if(type==='contract'){b.contractDocuments=docs;b.contractDocUrl=docs[0]?docs[0].url:'';b.contractDocStatus=docs.length?'vorhanden':'offen';b.contractReceived=docs.length>0;}
+            else if(type==='rider'){b.riderDocuments=docs;b.riderDocUrl=docs[0]?docs[0].url:'';b.riderDocStatus=docs.length?'vorhanden':'offen';b.riderReceived=docs.length>0;}
             else {b.invoiceDocuments=docs;}
         }
         async function uploadMultipleBandDocuments(type,fileInput){
-            var files=Array.from(fileInput&&fileInput.files||[]), label=type==='rider'?'Rider':'Rechnung'; if(!files.length)return;
+            var files=Array.from(fileInput&&fileInput.files||[]), label=type==='deal'?'Deal':type==='contract'?'Vertrag':type==='rider'?'Rider':'Rechnung'; if(!files.length)return;
             try{
                 if(!currentEventId||!currentBandId)throw new Error('Keine Veranstaltung oder Band ausgewählt.');
                 if(!currentAuthUser)throw new Error('Bitte erneut anmelden.');
                 if(!hasModuleRight('documents','write'))throw new Error('Keine Schreibberechtigung für Dokumente.');
-                files.forEach(function(file){var ext=(file.name.split('.').pop()||'').toLowerCase();if(['application/pdf','image/jpeg','image/png','image/webp'].indexOf(file.type)<0&&['pdf','jpg','jpeg','png','webp'].indexOf(ext)<0)throw new Error('Erlaubt sind PDF, JPG, PNG und WEBP.');if(file.size>15*1024*1024)throw new Error(file.name+' ist größer als 15 MB.');});
+                files.forEach(function(file){var ext=(file.name.split('.').pop()||'').toLowerCase();if(type==='deal'){if(file.type!=='text/plain'&&ext!=='txt')throw new Error('Für Deals sind ausschließlich TXT-Dateien erlaubt.');}else if(['application/pdf','image/jpeg','image/png','image/webp'].indexOf(file.type)<0&&['pdf','jpg','jpeg','png','webp'].indexOf(ext)<0)throw new Error('Erlaubt sind PDF, JPG, PNG und WEBP.');if(file.size>15*1024*1024)throw new Error(file.name+' ist größer als 15 MB.');});
                 setDocumentUploadStatus(type,'⏳ '+files.length+' Datei(en) werden hochgeladen …','uploading');
                 var b=getBandById(currentBandId), docs=getBandDocumentRecords(b,type), uploaded=[];
                 for(var i=0;i<files.length;i++){
@@ -5021,7 +5031,8 @@ function loadFromLocalStorage() {
                     uploaded.push({id:'doc_'+Date.now()+'_'+i,name:file.name,url:'storage://'+BAND_DOCUMENT_BUCKET+'/'+path,uploadedAt:new Date().toISOString()});
                 }
                 docs=docs.concat(uploaded);storeBandDocumentRecords(b,type,docs);await writeDataModule('documents');
-                if(type==='rider'){var status=document.getElementById('band-rider-doc-status');if(status)status.value='vorhanden';var url=document.getElementById('band-rider-doc-url');if(url)url.value=b.riderDocUrl||'';var received=document.getElementById('band-rider-received');if(received)received.checked=true;}
+                if(type==='deal'){var done=document.getElementById('band-deal-done');if(done)done.checked=true;}
+                if(type==='contract'||type==='rider'){var status=document.getElementById('band-'+type+'-doc-status');if(status)status.value='vorhanden';var url=document.getElementById('band-'+type+'-doc-url');if(url)url.value=type==='contract'?(b.contractDocUrl||''):(b.riderDocUrl||'');var received=document.getElementById('band-'+type+'-received');if(received)received.checked=true;}
                 updateBandDocumentUploadUi(type);renderBandsList();logCmoaActivity('Dokumente hochgeladen',files.length+' '+label+' · '+b.name,'documents');
             }catch(err){setDocumentUploadStatus(type,'❌ Upload fehlgeschlagen: '+(err.message||err),'error');alert('Upload fehlgeschlagen: '+(err.message||err));}
             finally{if(fileInput)fileInput.value='';}
@@ -5031,7 +5042,7 @@ function loadFromLocalStorage() {
         }
         function showBandDocumentManager(bandId,type,editable){
             var b=getBandById(bandId);if(!b)return;var docs=getBandDocumentRecords(b,type), overlay=document.getElementById('band-document-overlay'), list=document.getElementById('band-document-manager-list'), title=document.getElementById('band-document-manager-title');
-            var labels={contract:'Vertrag',rider:'Rider',invoice:'Rechnungen'};title.textContent=(labels[type]||'Dokumente')+' · '+b.name;
+            var labels={deal:'Deal-Dateien',contract:'Verträge',rider:'Rider',invoice:'Rechnungen'};title.textContent=(labels[type]||'Dokumente')+' · '+b.name;
             var mayDelete=!!editable&&hasModuleRight('documents','write');
             list.innerHTML=docs.length?docs.map(function(d,i){return '<div class="document-manager-item"><div class="document-manager-item-info"><div class="document-manager-item-name">'+akkEscape(d.name||documentFileName(d.url)||labels[type])+'</div><div class="document-manager-item-date">'+(d.uploadedAt?('Hochgeladen: '+new Date(d.uploadedAt).toLocaleString('de-DE')):'Hinterlegtes Dokument')+'</div></div><div class="document-manager-actions"><button type="button" class="btn-primary" onclick="openBandDocumentRecord(\''+String(d.url).replace(/'/g,"\\'")+'\')">👁️ Öffnen</button>'+(mayDelete?'<button type="button" class="btn-danger" onclick="deleteBandDocumentItem(\''+bandId+'\',\''+type+'\','+i+')">🗑️</button>':'')+'</div></div>';}).join(''):'<div class="akk-empty">Keine Dokumente hinterlegt.</div>';
             overlay.classList.add('show');
@@ -5039,7 +5050,7 @@ function loadFromLocalStorage() {
         function closeBandDocumentManager(){var o=document.getElementById('band-document-overlay');if(o)o.classList.remove('show');}
         async function deleteBandDocumentItem(bandId,type,index){
             var b=getBandById(bandId),docs=getBandDocumentRecords(b,type),doc=docs[index];if(!b||!doc||!confirm('„'+(doc.name||'Dokument')+'“ wirklich löschen?'))return;
-            try{var path=getStoredDocumentPath(doc.url);if(path){var rm=await _supabase.storage.from(BAND_DOCUMENT_BUCKET).remove([path]);if(rm.error)throw rm.error;}docs.splice(index,1);if(type==='contract'){b.contractDocUrl='';b.contractDocStatus='offen';b.contractReceived=false;b.contractSigned=false;}else storeBandDocumentRecords(b,type,docs);await writeDataModule('documents');updateBandDocumentUploadUi(type);renderBandsList();showBandDocumentManager(bandId,type,true);}
+            try{var path=getStoredDocumentPath(doc.url);if(path){var rm=await _supabase.storage.from(BAND_DOCUMENT_BUCKET).remove([path]);if(rm.error)throw rm.error;}docs.splice(index,1);storeBandDocumentRecords(b,type,docs);if(type==='contract'&&!docs.length)b.contractSigned=false;await writeDataModule('documents');updateBandDocumentUploadUi(type);renderBandsList();showBandDocumentManager(bandId,type,true);}
             catch(err){alert('Dokument konnte nicht gelöscht werden: '+(err.message||err));}
         }
         async function deleteBandDocument(type){
@@ -6856,9 +6867,9 @@ function loadFromLocalStorage() {
                     '<div class="view-section"><h4>🤝 Deal & Dokumente</h4>' +
                     '<div class="view-row"><span class="view-label">Deal-Status:</span> <span class="view-value">' + (b.dealDone ? '✅ Abgelegt' : '❌ Offen') + '</span></div>' +
                     '<div class="view-row"><span class="view-label">Vertrag:</span> <span class="view-value">' + getBandDocumentStatusLabel(b.contractDocStatus || ((b.contractReceived || b.contractSigned) ? 'vorhanden' : 'offen'), 'contract') + (b.contractSigned ? ' · ✅ unterschrieben' : '') + '</span></div>' +
-                    ((b.contractDocStatus === 'vorhanden' || (!b.contractDocStatus && (b.contractReceived || b.contractSigned))) && b.contractDocUrl ? '<div class="view-row"><span class="view-label">Vertrag:</span> <span class="view-value"><button type="button" class="btn-sm" onclick="openStoredBandDocument(\''+b.id+'\',\'contract\')">📄 Dokument öffnen</button></span></div>' : '') +
+                    (getBandDocumentRecords(b,'contract').length ? '<div class="view-row"><span class="view-label">Verträge:</span> <span class="view-value"><button type="button" class="btn-sm" onclick="showBandDocumentManager(\''+b.id+'\',\'contract\',false)">📄 Alle '+getBandDocumentRecords(b,'contract').length+' anzeigen</button></span></div>' : '') +
                     '<div class="view-row"><span class="view-label">Rider:</span> <span class="view-value">' + getBandDocumentStatusLabel(b.riderDocStatus || ((b.riderReceived || b.riderChecked) ? 'vorhanden' : 'offen'), 'rider') + (b.riderChecked ? ' · ✅ geprüft' : '') + '</span></div>' +
-                    ((b.riderDocStatus === 'vorhanden' || (!b.riderDocStatus && (b.riderReceived || b.riderChecked))) && b.riderDocUrl ? '<div class="view-row"><span class="view-label">Rider:</span> <span class="view-value"><button type="button" class="btn-sm" onclick="openStoredBandDocument(\''+b.id+'\',\'rider\')">🎛️ Dokument öffnen</button></span></div>' : '') +
+                    (getBandDocumentRecords(b,'rider').length ? '<div class="view-row"><span class="view-label">Rider:</span> <span class="view-value"><button type="button" class="btn-sm" onclick="showBandDocumentManager(\''+b.id+'\',\'rider\',false)">🎛️ Alle '+getBandDocumentRecords(b,'rider').length+' anzeigen</button></span></div>' : '') +
                     '<div class="view-row"><span class="view-label">Rechnungen:</span><span class="view-value"><b>'+getBandDocumentRecords(b,'invoice').length+'</b> Datei(en) hinterlegt</span></div>'+
                     '</div>' +
 
@@ -6887,7 +6898,7 @@ function loadFromLocalStorage() {
             if (pdfBtn) pdfBtn.onclick = function() { exportBandPdf(id); };
             var printBtn = document.getElementById('view-print-btn');
             if (printBtn) printBtn.onclick = function() { printBandPdf(id); };
-            [['contract','view-contract-btn','📑 Vertrag'],['rider','view-rider-btn','🎛️ Rider'],['invoice','view-invoice-btn','🧾 Rechnungen']].forEach(function(cfg){var btn=document.getElementById(cfg[1]),count=getBandDocumentRecords(b,cfg[0]).length;if(btn){btn.textContent=cfg[2]+' ('+count+')';btn.disabled=!count;btn.onclick=count?function(){showBandDocumentManager(id,cfg[0],false);}:null;}});
+            [['deal','view-deal-btn','🤝 Deal'],['contract','view-contract-btn','📑 Verträge'],['rider','view-rider-btn','🎛️ Rider'],['invoice','view-invoice-btn','🧾 Rechnungen']].forEach(function(cfg){var btn=document.getElementById(cfg[1]),count=getBandDocumentRecords(b,cfg[0]).length;if(btn){btn.textContent=cfg[2]+' ('+count+')';btn.disabled=!count;btn.onclick=count?function(){showBandDocumentManager(id,cfg[0],false);}:null;}});
             showPage('band-view-page');
         }
 
@@ -7131,7 +7142,7 @@ function loadFromLocalStorage() {
         function collectGlobalDocuments(){
             var rows=[];
             if(hasModuleRight('documents','read'))(bands||[]).forEach(function(b){
-                [{type:'contract',label:'Vertrag',icon:'📑'},{type:'rider',label:'Rider',icon:'🎛️'},{type:'invoice',label:'Bandrechnung',icon:'🧾'}].forEach(function(kind){
+                [{type:'deal',label:'Deal',icon:'🤝'},{type:'contract',label:'Vertrag',icon:'📑'},{type:'rider',label:'Rider',icon:'🎛️'},{type:'invoice',label:'Bandrechnung',icon:'🧾'}].forEach(function(kind){
                     getBandDocumentRecords(b,kind.type).forEach(function(doc){rows.push({type:kind.type,typeLabel:kind.label,icon:kind.icon,owner:String(b.name||'Band').toUpperCase(),detail:'Banddokument',name:doc.name||documentFileName(doc.url)||kind.label,url:doc.url,uploadedAt:doc.uploadedAt||''});});
                 });
             });
