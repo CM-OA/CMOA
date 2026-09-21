@@ -1825,9 +1825,20 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
             <div class="card">
                 <h3>⚙️ Benutzer & Rechte</h3>
                 <button type="button" class="btn-subtle" style="margin-bottom:10px" onclick="showPage('events-admin-page')">🎪 Veranstaltungen verwalten</button>
-                <p style="font-size:.82rem;color:var(--text-muted);">Benutzerkonten werden in Supabase Auth angelegt. Hier legst du Rolle und Rechte der bereits vorhandenen Konten fest.</p>
+                <p style="font-size:.82rem;color:var(--text-muted);">Hier kannst du neue Benutzer einladen sowie Rollen, Rechte und Veranstaltungszugriffe verwalten.</p>
                 <button type="button" class="btn-primary" onclick="loadAdminUsers()">↻ Benutzer laden</button>
             </div>
+            <details id="admin-create-user-card" class="card" open>
+                <summary style="cursor:pointer;font-weight:800;font-size:1rem;">➕ Neuen Benutzer anlegen</summary>
+                <div style="margin-top:14px;">
+                    <div class="form-group"><label>E-Mail-Adresse</label><input id="admin-new-user-email" type="email" autocomplete="off" placeholder="name@beispiel.de"></div>
+                    <div class="form-group"><label>Startrolle</label><select id="admin-new-user-role"><option value="viewer">Nur Lesen</option><option value="management">Festivalleitung</option><option value="bandcare">Bandbetreuung</option><option value="catering">Catering</option><option value="shuttle">Shuttle</option><option value="entrance">Einlass / Akkreditierung</option><option value="admin">Administrator</option></select></div>
+                    <div class="form-group"><label>Zugriff auf Veranstaltungen</label><div id="admin-new-user-events"><span style="font-size:.82rem;color:var(--text-muted);">Veranstaltungen werden geladen …</span></div></div>
+                    <p style="font-size:.78rem;color:var(--text-muted);margin:8px 0 12px;">Der Benutzer erhält eine sichere Einladungs-E-Mail und legt sein Passwort selbst fest.</p>
+                    <button id="admin-create-user-btn" type="button" class="btn-primary" style="width:100%;" onclick="createAdminUser()">✉️ Benutzer einladen</button>
+                    <div id="admin-create-user-status" style="font-size:.82rem;margin-top:9px;"></div>
+                </div>
+            </details>
             <div id="admin-users-list"></div>
         </div>
 
@@ -8369,6 +8380,7 @@ function loadFromLocalStorage() {
           var label=document.getElementById('auth-user-label'); if(label)label.textContent=(currentAuthUser&&currentAuthUser.email?currentAuthUser.email:'')+' · '+((ROLE_PRESETS[currentUserProfile.role]||{}).label||currentUserProfile.role);
           document.querySelectorAll('[data-module]').forEach(function(el){var m=el.getAttribute('data-module');el.classList.toggle('permission-hidden',!hasModuleRight(m,'read'));});
           var ab=document.getElementById('admin-menu-btn');if(ab)ab.classList.toggle('permission-hidden',!hasModuleRight('admin','read')); var eb=document.getElementById('event-admin-btn');if(eb)eb.classList.toggle('permission-hidden',currentUserProfile.role!=='admin');
+          var createUserCard=document.getElementById('admin-create-user-card');if(createUserCard)createUserCard.classList.toggle('permission-hidden',currentUserProfile.role!=='admin');
           var planningAllowed=canViewPlanningControl(),todoBtn=document.getElementById('todo-menu-btn'),progress=document.getElementById('main-progress-section');
           if(todoBtn)todoBtn.classList.toggle('permission-hidden',!planningAllowed);
           if(progress)progress.classList.toggle('permission-hidden',!planningAllowed);
@@ -8432,8 +8444,32 @@ function loadFromLocalStorage() {
         }
         async function loadAdminUsers(){
           if(!hasModuleRight('admin','read'))return; var c=document.getElementById('admin-users-list'); if(!c)return; c.innerHTML='<div class="card">Lade Benutzer…</div>';
+          renderAdminNewUserEvents();
           var r=await _supabase.from('profiles').select('*').order('email'); if(r.error){c.innerHTML='<div class="card">Fehler: '+escapeHtmlAuth(r.error.message)+'</div>';return;}
           c.innerHTML=''; (r.data||[]).forEach(function(u){c.insertAdjacentHTML('beforeend',renderAdminUser(u));});
+        }
+        function renderAdminNewUserEvents(){
+          var box=document.getElementById('admin-new-user-events');if(!box)return;
+          if(!availableEvents.length){box.innerHTML='<span style="font-size:.82rem;color:var(--text-muted);">Keine Veranstaltung verfügbar.</span>';return;}
+          box.innerHTML=availableEvents.map(function(e){return '<label class="event-user-row"><input type="checkbox" data-admin-new-user-event="'+escapeHtmlAuth(e.id)+'" '+(e.id===currentEventId?'checked':'')+'><span>'+escapeHtmlAuth(e.short_name||e.name)+'</span></label>';}).join('');
+        }
+        async function createAdminUser(){
+          if(!currentUserProfile||currentUserProfile.role!=='admin'){alert('Nur Administratoren dürfen neue Benutzer anlegen.');return;}
+          var email=(document.getElementById('admin-new-user-email').value||'').trim().toLowerCase(),role=document.getElementById('admin-new-user-role').value||'viewer',status=document.getElementById('admin-create-user-status'),btn=document.getElementById('admin-create-user-btn');
+          if(!email||email.indexOf('@')<1){alert('Bitte eine gültige E-Mail-Adresse eingeben.');return;}
+          var eventIds=[];document.querySelectorAll('[data-admin-new-user-event]:checked').forEach(function(el){eventIds.push(el.getAttribute('data-admin-new-user-event'));});
+          if(!confirm('Benutzer „'+email+'“ mit der Rolle „'+((ROLE_PRESETS[role]||{}).label||role)+'“ einladen?'))return;
+          btn.disabled=true;btn.textContent='Einladung wird versendet …';status.style.color='var(--text-muted)';status.textContent='Benutzerkonto wird sicher angelegt.';
+          try{
+            var redirectTo=location.origin+location.pathname;
+            var result=await _supabase.functions.invoke('admin-create-user',{body:{email:email,role:role,eventIds:eventIds,redirectTo:redirectTo}});
+            if(result.error){var detail='';try{detail=result.data&&result.data.error?result.data.error:'';}catch(ignore){}throw new Error(detail||result.error.message||'Edge Function nicht erreichbar.');}
+            if(result.data&&result.data.error)throw new Error(result.data.error);
+            status.style.color='var(--accent-green)';status.textContent='✅ Einladung wurde an '+email+' versendet.';
+            document.getElementById('admin-new-user-email').value='';document.getElementById('admin-new-user-role').value='viewer';
+            await loadAdminUsers();
+          }catch(e){status.style.color='var(--accent-red)';status.textContent='Fehler: '+(e.message||e);}
+          finally{btn.disabled=false;btn.textContent='✉️ Benutzer einladen';}
         }
         function escapeHtmlAuth(v){return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
         function renderAdminUser(u){
