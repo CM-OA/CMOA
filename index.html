@@ -764,6 +764,13 @@
         .band-view-chip.food { background:rgba(217,119,6,.10); border-color:rgba(217,119,6,.28); }
         .band-view-specials { margin-top:9px; padding:9px; border-radius:8px; background:rgba(220,38,38,.09); border:1px solid rgba(220,38,38,.3); color:#dc2626; }
         .band-view-special { margin-top:4px; font-size:.8rem; font-weight:700; }
+        .document-upload-box { display:grid; grid-template-columns:1fr auto; gap:8px; align-items:center; margin:8px 0 12px; padding:11px; border:1px dashed var(--accent-blue); border-radius:10px; background:rgba(37,99,235,.06); }
+        .document-upload-box .btn-primary,.document-upload-box .btn-danger { min-height:42px; }
+        .document-upload-status { grid-column:1 / -1; color:var(--text-muted); font-size:.76rem; overflow-wrap:anywhere; }
+        .document-upload-status.uploading { color:var(--accent-blue); font-weight:800; }
+        .document-upload-status.success { color:var(--accent-green); font-weight:800; }
+        .document-upload-status.error { color:var(--accent-red); font-weight:800; }
+        @media(max-width:520px){.document-upload-box{grid-template-columns:1fr}.document-upload-status{grid-column:auto}.document-upload-box .btn-primary,.document-upload-box .btn-danger{width:100%}}
         .akk-action-btn.check { border-color: var(--accent-green); background: rgba(16, 185, 129, 0.08); color: var(--accent-green); }
         .akk-action-btn.del { border-color: var(--accent-red); background: rgba(239, 68, 68, 0.08); color: var(--accent-red); }
 
@@ -2082,7 +2089,7 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
             <div class="card">
                 <h3>📄 Dokumente</h3>
                 <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:12px;">
-                    PDFs können im GitHub-Repository liegen. Hier wird nur der Link bzw. relative Dateipfad gespeichert, z. B. <strong>documents/vertraege/bandname-vertrag.pdf</strong>.
+                    PDF oder Bild direkt hochladen. Alternativ kann weiterhin ein vorhandener Link oder GitHub-Pfad eingetragen werden.
                 </p>
 
                 <div class="pay-mode-box" style="margin-bottom:12px;">
@@ -2097,8 +2104,14 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
                         </select>
                     </div>
                     <div id="band-contract-doc-fields" style="display:none;">
+                        <div class="document-upload-box">
+                            <input type="file" id="band-contract-upload" accept=".pdf,image/jpeg,image/png,image/webp" style="display:none;" onchange="uploadBandDocument('contract',this)">
+                            <button type="button" class="btn-primary" onclick="document.getElementById('band-contract-upload').click()">⬆️ Vertrag hochladen</button>
+                            <button type="button" class="btn-danger" onclick="deleteBandDocument('contract')">🗑️ Datei löschen</button>
+                            <div id="band-contract-upload-status" class="document-upload-status">Noch keine Datei hochgeladen.</div>
+                        </div>
                         <div class="form-group">
-                            <label>PDF-Link / GitHub-Pfad:</label>
+                            <label>Dateipfad oder externer Link:</label>
                             <input type="text" id="band-contract-doc-url" placeholder="documents/vertraege/bandname-vertrag.pdf">
                         </div>
                         <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:8px;">
@@ -2127,8 +2140,14 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
                         </select>
                     </div>
                     <div id="band-rider-doc-fields" style="display:none;">
+                        <div class="document-upload-box">
+                            <input type="file" id="band-rider-upload" accept=".pdf,image/jpeg,image/png,image/webp" style="display:none;" onchange="uploadBandDocument('rider',this)">
+                            <button type="button" class="btn-primary" onclick="document.getElementById('band-rider-upload').click()">⬆️ Rider hochladen</button>
+                            <button type="button" class="btn-danger" onclick="deleteBandDocument('rider')">🗑️ Datei löschen</button>
+                            <div id="band-rider-upload-status" class="document-upload-status">Noch keine Datei hochgeladen.</div>
+                        </div>
                         <div class="form-group">
-                            <label>PDF-Link / GitHub-Pfad:</label>
+                            <label>Dateipfad oder externer Link:</label>
                             <input type="text" id="band-rider-doc-url" placeholder="documents/rider/bandname-rider.pdf">
                         </div>
                         <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:8px;">
@@ -4100,9 +4119,11 @@ function loadFromLocalStorage() {
             openBandDetail(newId);
         }
 
-        function deleteBand(id) {
+        async function deleteBand(id) {
             var b = getBandById(id);
             if (b && confirm('Möchtest du "' + b.name + '" wirklich löschen?')) {
+                var storedPaths=[getStoredDocumentPath(b.contractDocUrl),getStoredDocumentPath(b.riderDocUrl)].filter(Boolean);
+                if(storedPaths.length&&_supabase){var rm=await _supabase.storage.from(BAND_DOCUMENT_BUCKET).remove(storedPaths);if(rm.error&&!confirm('Dokumentdateien konnten nicht gelöscht werden. Band trotzdem löschen?'))return;}
                 bands = bands.filter(function(x) { return x.id !== id; });
                 saveToStorage();
                 renderBandsList();
@@ -4137,15 +4158,15 @@ function loadFromLocalStorage() {
                 icon + label + '</span>';
         }
 
-        function openStoredBandDocument(bandId, type) {
+        async function openStoredBandDocument(bandId, type) {
             var b = getBandById(bandId);
             if (!b) return;
-            var url = normalizeDocumentUrl(type === 'contract' ? b.contractDocUrl : b.riderDocUrl);
-            if (!url) {
+            var value=type === 'contract' ? b.contractDocUrl : b.riderDocUrl;
+            if (!value) {
                 alert('Für dieses Dokument ist noch kein PDF-Link oder GitHub-Pfad hinterlegt.');
                 return;
             }
-            window.open(url, '_blank', 'noopener');
+            try{var url=await resolveDocumentOpenUrl(value);if(!url)throw new Error('Kein gültiger Dateipfad.');window.open(url,'_blank','noopener');}catch(err){alert('Dokument konnte nicht geöffnet werden: '+(err.message||err));}
         }
 
         function toggleBandDocumentFields() {
@@ -4154,8 +4175,9 @@ function loadFromLocalStorage() {
             var contractFields = document.getElementById('band-contract-doc-fields');
             var riderFields = document.getElementById('band-rider-doc-fields');
 
-            if (contractFields) contractFields.style.display = contractStatusEl && contractStatusEl.value === 'vorhanden' ? 'block' : 'none';
-            if (riderFields) riderFields.style.display = riderStatusEl && riderStatusEl.value === 'vorhanden' ? 'block' : 'none';
+            if (contractFields) contractFields.style.display = contractStatusEl && contractStatusEl.value !== 'nicht_vorhanden' && contractStatusEl.value !== 'nicht_noetig' ? 'block' : 'none';
+            if (riderFields) riderFields.style.display = riderStatusEl && riderStatusEl.value !== 'nicht_vorhanden' && riderStatusEl.value !== 'nicht_noetig' ? 'block' : 'none';
+            updateBandDocumentUploadUi('contract'); updateBandDocumentUploadUi('rider');
         }
 
         function normalizeDocumentUrl(value) {
@@ -4165,15 +4187,87 @@ function loadFromLocalStorage() {
             return url.replace(/^\.?\//, '');
         }
 
-        function openBandDocument(type) {
+        var BAND_DOCUMENT_BUCKET='band-documents';
+        function getStoredDocumentPath(value){
+            var prefix='storage://'+BAND_DOCUMENT_BUCKET+'/';
+            value=String(value||''); return value.indexOf(prefix)===0?value.slice(prefix.length):'';
+        }
+        function documentFileName(value){
+            var path=getStoredDocumentPath(value); if(!path)return '';
+            var name=path.split('/').pop()||''; return name.replace(/^\d+_/, '');
+        }
+        function setDocumentUploadStatus(type,text,state){
+            var el=document.getElementById('band-'+type+'-upload-status'); if(!el)return;
+            el.textContent=text; el.className='document-upload-status'+(state?' '+state:'');
+        }
+        function updateBandDocumentUploadUi(type){
+            var input=document.getElementById('band-'+type+'-doc-url'); if(!input)return;
+            var value=input.value||'', stored=getStoredDocumentPath(value), label=type==='contract'?'Vertrag':'Rider';
+            if(stored)setDocumentUploadStatus(type,'✅ '+label+' gespeichert: '+(documentFileName(value)||'Datei'),'success');
+            else if(value)setDocumentUploadStatus(type,'🔗 Externer Link / GitHub-Pfad hinterlegt.','success');
+            else setDocumentUploadStatus(type,'Noch keine Datei hochgeladen.','');
+        }
+        function safeStoragePart(value){return String(value||'datei').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-zA-Z0-9._-]+/g,'_').replace(/^_+|_+$/g,'').slice(0,100)||'datei';}
+        async function resolveDocumentOpenUrl(value){
+            var stored=getStoredDocumentPath(value);
+            if(!stored)return normalizeDocumentUrl(value);
+            if(!_supabase)throw new Error('Keine Verbindung zu Supabase.');
+            var result=await _supabase.storage.from(BAND_DOCUMENT_BUCKET).createSignedUrl(stored,600);
+            if(result.error)throw result.error;
+            return result.data&&result.data.signedUrl?result.data.signedUrl:'';
+        }
+        async function uploadBandDocument(type,fileInput){
+            var label=type==='contract'?'Vertrag':'Rider', file=fileInput&&fileInput.files?fileInput.files[0]:null;
+            if(!file)return;
+            try{
+                if(!currentEventId||!currentBandId)throw new Error('Keine Veranstaltung oder Band ausgewählt.');
+                if(!currentAuthUser)throw new Error('Bitte erneut anmelden.');
+                if(typeof hasModuleRight==='function'&&!hasModuleRight('documents','write'))throw new Error('Keine Schreibberechtigung für Dokumente.');
+                var allowed=['application/pdf','image/jpeg','image/png','image/webp'];
+                var ext=(file.name.split('.').pop()||'').toLowerCase();
+                if(allowed.indexOf(file.type)<0&&['pdf','jpg','jpeg','png','webp'].indexOf(ext)<0)throw new Error('Erlaubt sind PDF, JPG, PNG und WEBP.');
+                if(file.size>15*1024*1024)throw new Error('Die Datei ist größer als 15 MB.');
+                setDocumentUploadStatus(type,'⏳ '+label+' wird hochgeladen …','uploading');
+                var path=currentEventId+'/'+safeStoragePart(currentBandId)+'/'+type+'/'+Date.now()+'_'+safeStoragePart(file.name);
+                var up=await _supabase.storage.from(BAND_DOCUMENT_BUCKET).upload(path,file,{cacheControl:'3600',upsert:false,contentType:file.type||undefined});
+                if(up.error)throw up.error;
+                var urlInput=document.getElementById('band-'+type+'-doc-url'), oldValue=urlInput?urlInput.value:'';
+                if(urlInput)urlInput.value='storage://'+BAND_DOCUMENT_BUCKET+'/'+path;
+                var status=document.getElementById('band-'+type+'-doc-status'); if(status)status.value='vorhanden';
+                var received=document.getElementById('band-'+type+'-received'); if(received)received.checked=true;
+                var b=getBandById(currentBandId);
+                if(b){if(type==='contract'){b.contractDocStatus='vorhanden';b.contractDocUrl='storage://'+BAND_DOCUMENT_BUCKET+'/'+path;b.contractReceived=true;}else{b.riderDocStatus='vorhanden';b.riderDocUrl='storage://'+BAND_DOCUMENT_BUCKET+'/'+path;b.riderReceived=true;} await writeDataModule('documents');logCmoaActivity('Dokument hochgeladen',label+' · '+b.name,'documents');}
+                var oldPath=getStoredDocumentPath(oldValue); if(oldPath&&oldPath!==path)await _supabase.storage.from(BAND_DOCUMENT_BUCKET).remove([oldPath]);
+                setDocumentUploadStatus(type,'✅ '+label+' erfolgreich hochgeladen: '+file.name,'success');
+                toggleBandDocumentFields(); renderBandsList();
+            }catch(err){setDocumentUploadStatus(type,'❌ Upload fehlgeschlagen: '+(err.message||err),'error');alert('Upload fehlgeschlagen: '+(err.message||err));}
+            finally{if(fileInput)fileInput.value='';}
+        }
+        async function deleteBandDocument(type){
+            var label=type==='contract'?'Vertrag':'Rider', input=document.getElementById('band-'+type+'-doc-url'), value=input?input.value:'';
+            if(!value){alert('Es ist keine Datei hinterlegt.');return;}
+            if(typeof hasModuleRight==='function'&&!hasModuleRight('documents','write')){alert('Keine Schreibberechtigung für Dokumente.');return;}
+            if(!confirm(label+' wirklich löschen bzw. entfernen?'))return;
+            try{
+                var path=getStoredDocumentPath(value);
+                if(path){var rm=await _supabase.storage.from(BAND_DOCUMENT_BUCKET).remove([path]);if(rm.error)throw rm.error;}
+                if(input)input.value='';
+                var status=document.getElementById('band-'+type+'-doc-status');if(status)status.value='offen';
+                var received=document.getElementById('band-'+type+'-received');if(received)received.checked=false;
+                var b=getBandById(currentBandId);if(b){if(type==='contract'){b.contractDocStatus='offen';b.contractDocUrl='';b.contractReceived=false;b.contractSigned=false;}else{b.riderDocStatus='offen';b.riderDocUrl='';b.riderReceived=false;b.riderChecked=false;}await writeDataModule('documents');logCmoaActivity('Dokument gelöscht',label+' · '+b.name,'documents');}
+                toggleBandDocumentFields();renderBandsList();setDocumentUploadStatus(type,'Datei gelöscht.','');
+            }catch(err){alert('Datei konnte nicht gelöscht werden: '+(err.message||err));setDocumentUploadStatus(type,'❌ Löschen fehlgeschlagen.','error');}
+        }
+
+        async function openBandDocument(type) {
             var id = type === 'contract' ? 'band-contract-doc-url' : 'band-rider-doc-url';
             var el = document.getElementById(id);
-            var url = normalizeDocumentUrl(el ? el.value : '');
-            if (!url) {
+            var value=el ? el.value : '';
+            if (!value) {
                 alert('Bitte zuerst einen PDF-Link oder GitHub-Dateipfad eintragen.');
                 return;
             }
-            window.open(url, '_blank', 'noopener');
+            try{var url=await resolveDocumentOpenUrl(value);if(!url)throw new Error('Kein gültiger Dateipfad.');window.open(url,'_blank','noopener');}catch(err){alert('Dokument konnte nicht geöffnet werden: '+(err.message||err));}
         }
 
         function openBandDetail(id) {
@@ -5961,9 +6055,9 @@ function loadFromLocalStorage() {
                     '<div class="view-section"><h4>🤝 Deal & Dokumente</h4>' +
                     '<div class="view-row"><span class="view-label">Deal-Status:</span> <span class="view-value">' + (b.dealDone ? '✅ Abgelegt' : '❌ Offen') + '</span></div>' +
                     '<div class="view-row"><span class="view-label">Vertrag:</span> <span class="view-value">' + getBandDocumentStatusLabel(b.contractDocStatus || ((b.contractReceived || b.contractSigned) ? 'vorhanden' : 'offen'), 'contract') + (b.contractSigned ? ' · ✅ unterschrieben' : '') + '</span></div>' +
-                    ((b.contractDocStatus === 'vorhanden' || (!b.contractDocStatus && (b.contractReceived || b.contractSigned))) && b.contractDocUrl ? '<div class="view-row"><span class="view-label">Vertrag PDF:</span> <span class="view-value"><a href="' + normalizeDocumentUrl(b.contractDocUrl) + '" target="_blank" rel="noopener" style="color:var(--accent-blue);">📄 Öffnen</a></span></div>' : '') +
+                    ((b.contractDocStatus === 'vorhanden' || (!b.contractDocStatus && (b.contractReceived || b.contractSigned))) && b.contractDocUrl ? '<div class="view-row"><span class="view-label">Vertrag:</span> <span class="view-value"><button type="button" class="btn-sm" onclick="openStoredBandDocument(\''+b.id+'\',\'contract\')">📄 Dokument öffnen</button></span></div>' : '') +
                     '<div class="view-row"><span class="view-label">Rider:</span> <span class="view-value">' + getBandDocumentStatusLabel(b.riderDocStatus || ((b.riderReceived || b.riderChecked) ? 'vorhanden' : 'offen'), 'rider') + (b.riderChecked ? ' · ✅ geprüft' : '') + '</span></div>' +
-                    ((b.riderDocStatus === 'vorhanden' || (!b.riderDocStatus && (b.riderReceived || b.riderChecked))) && b.riderDocUrl ? '<div class="view-row"><span class="view-label">Rider PDF:</span> <span class="view-value"><a href="' + normalizeDocumentUrl(b.riderDocUrl) + '" target="_blank" rel="noopener" style="color:var(--accent-blue);">🎛️ Öffnen</a></span></div>' : '') +
+                    ((b.riderDocStatus === 'vorhanden' || (!b.riderDocStatus && (b.riderReceived || b.riderChecked))) && b.riderDocUrl ? '<div class="view-row"><span class="view-label">Rider:</span> <span class="view-value"><button type="button" class="btn-sm" onclick="openStoredBandDocument(\''+b.id+'\',\'rider\')">🎛️ Dokument öffnen</button></span></div>' : '') +
                     '</div>' +
 
                     '<div class="view-section"><h4>💶 Gage & Abrechnung</h4>' +
