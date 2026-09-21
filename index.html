@@ -1381,6 +1381,26 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
         }
         .cash-summary-button:hover { transform: translateY(-1px); }
         .cash-summary-mini { display:block; margin-top:3px; color:var(--text-muted); font-size:.68rem; font-weight:600; }
+        .final-report-card {
+            margin: 24px auto 0;
+            max-width: 720px;
+            padding: 13px 15px;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            background: var(--card-bg);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 14px;
+            box-shadow: 0 2px 8px rgba(0,0,0,.04);
+        }
+        .final-report-card strong { display:block; font-size:.84rem; }
+        .final-report-card span { display:block; margin-top:3px; color:var(--text-muted); font-size:.7rem; line-height:1.35; }
+        .final-report-card button { flex:0 0 auto; }
+        @media(max-width:520px){
+            .final-report-card { align-items:stretch; flex-direction:column; }
+            .final-report-card button { width:100%; min-height:44px; }
+        }
         .cash-summary-overlay {
             position: fixed;
             inset: 0;
@@ -1804,6 +1824,14 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
                     📋 Log-Bericht
                     <span class="cash-summary-mini">Anmeldungen & Änderungen</span>
                 </button>
+            </div>
+
+            <div class="final-report-card" data-module="export">
+                <div>
+                    <strong>📊 Abschlussbericht &amp; Auswertung</strong>
+                    <span>Zusammenfassung von Finanzen, Akkreditierungen, Getränken, Hotel und Shuttle als PDF.</span>
+                </div>
+                <button type="button" class="btn-subtle" onclick="generateFestivalFinalReport()">PDF erstellen</button>
             </div>
 
         </div>
@@ -3507,6 +3535,115 @@ function loadFromLocalStorage() {
                 costs: costs,
                 result: beverageRevenue - costs.total
             };
+        }
+
+        async function generateFestivalFinalReport() {
+            if (!hasModuleRight('export','read')) { alert('Für den Abschlussbericht fehlt die Export-Berechtigung.'); return; }
+            if (!window.jspdf || !window.jspdf.jsPDF) { alert('PDF-Modul konnte nicht geladen werden. Bitte Internetverbindung prüfen.'); return; }
+
+            var cashData=null, cashNote='';
+            try { cashData=await fetchCashSummaryData(); }
+            catch(e) { cashNote='Kassendaten konnten nicht geladen werden: '+(e.message||String(e)); }
+
+            var costs=calculateFestivalCosts();
+            var finance=cashData?buildCashEventFinancials(cashData):null;
+            var production=getProductionTotals();
+            var beverageRevenue=finance?finance.beverageRevenue:0;
+            var incomeTotal=production.income+beverageRevenue;
+            var expenseTotal=costs.expenseTotal;
+            var balance=incomeTotal-expenseTotal;
+            var eventTitle=(currentEvent&&(currentEvent.short_name||currentEvent.name))||'CMOA';
+            var eventPeriod='';
+            if(currentEvent&&currentEvent.start_date) eventPeriod=formatDateDE(currentEvent.start_date)+(currentEvent.end_date?' bis '+formatDateDE(currentEvent.end_date):'');
+
+            var bandList=Array.isArray(bands)?bands:[];
+            var accreditationList=Array.isArray(akkDb)?akkDb:[];
+            var accreditedChecked=accreditationList.filter(function(r){return !!r.chk;}).length;
+            var accreditedFree=accreditationList.filter(function(r){return Number(r.amt||0)===0;}).length;
+            var accreditedAmount=accreditationList.reduce(function(sum,r){return sum+Number(r.amt||0);},0);
+            var artistPersons=bandList.reduce(function(sum,b){return sum+Number(b.paxCount||0)+Number(b.vipGuests||0);},0);
+            var hotelBands=bandList.filter(function(b){return b.hotelNeeded==='ja'||b.hotelNeeded===true;});
+            var hotelRooms=0,hotelRoomNights=0;
+            hotelBands.forEach(function(b){
+                var rooms=Number(b.hotelEzCount||0)+Number(b.hotelDzCount||0),nights=1;
+                if(b.hotelFrom&&b.hotelTo){var diff=Math.ceil(Math.abs(new Date(b.hotelTo)-new Date(b.hotelFrom))/86400000);if(diff>0)nights=diff;}
+                hotelRooms+=rooms;hotelRoomNights+=rooms*nights;
+            });
+            var shuttleBands=bandList.filter(function(b){return b.shuttleNeeded==='ja'||b.shuttleNeeded===true;});
+            var shuttleRides=getShuttleLogRides(),shuttleTotals=getShuttleCostTotals();
+            var drinkRows=finance?finance.drinks:[];
+            var drinkCount=drinkRows.reduce(function(sum,d){return sum+Number(d.quantity||0);},0);
+
+            var doc=new window.jspdf.jsPDF({orientation:'portrait',unit:'mm',format:'a4'}),W=210,H=297,M=15,y=18,pageNo=1;
+            function safeText(v){return String(v==null?'':v).replace(/[–—]/g,'-');}
+            function money(v){return Number(v||0).toLocaleString('de-DE',{minimumFractionDigits:2,maximumFractionDigits:2})+' EUR';}
+            function pageHeader(){
+                doc.setFillColor(30,41,59);doc.rect(0,0,W,13,'F');doc.setTextColor(255);doc.setFont('helvetica','bold');doc.setFontSize(9);doc.text(safeText(eventTitle)+' - Abschlussbericht',M,8.5);
+                doc.setTextColor(15,23,42);y=20;
+            }
+            function pageFooter(){
+                doc.setDrawColor(220);doc.line(M,H-12,W-M,H-12);doc.setTextColor(100);doc.setFont('helvetica','normal');doc.setFontSize(7);
+                doc.text('Erstellt am '+new Date().toLocaleString('de-DE'),M,H-7);doc.text('Seite '+pageNo,W-M,H-7,{align:'right'});
+            }
+            function newPage(){pageFooter();doc.addPage();pageNo++;pageHeader();}
+            function ensure(space){if(y+space>H-17)newPage();}
+            function section(title){ensure(14);y+=3;doc.setFillColor(241,245,249);doc.roundedRect(M,y,W-2*M,9,2,2,'F');doc.setTextColor(30,41,59);doc.setFont('helvetica','bold');doc.setFontSize(10);doc.text(safeText(title),M+4,y+6);y+=13;}
+            function row(label,value,accent){
+                ensure(8);doc.setFontSize(8.5);doc.setFont('helvetica','normal');doc.setTextColor(71,85,105);doc.text(safeText(label),M,y);
+                doc.setFont('helvetica','bold');doc.setTextColor(accent==='green'?22:accent==='red'?185:15,accent==='green'?101:accent==='red'?28:23,accent==='green'?52:accent==='red'?28:42);doc.text(safeText(value),W-M,y,{align:'right'});
+                doc.setDrawColor(232);doc.line(M,y+2,W-M,y+2);y+=7;
+            }
+            function note(text){
+                ensure(12);doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor(100);var lines=doc.splitTextToSize(safeText(text),W-2*M);doc.text(lines,M,y);y+=lines.length*4+3;
+            }
+            function listLine(left,right){
+                ensure(7);doc.setFontSize(7.7);doc.setFont('helvetica','normal');doc.setTextColor(30);var l=doc.splitTextToSize(safeText(left),125);doc.text(l,M,y);doc.setFont('helvetica','bold');doc.text(safeText(right||''),W-M,y,{align:'right'});y+=Math.max(5,l.length*3.6+1);
+            }
+
+            pageHeader();
+            try { if(typeof AKK_PDF_LOGO_2027==='string'&&AKK_PDF_LOGO_2027)doc.addImage(AKK_PDF_LOGO_2027,'PNG',W/2-13,18,26,25); } catch(ignore) {}
+            y=48;doc.setFont('helvetica','bold');doc.setFontSize(19);doc.setTextColor(15,23,42);doc.text('Abschlussbericht & Auswertung',W/2,y,{align:'center'});
+            y+=7;doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(100);doc.text(safeText(eventTitle+(eventPeriod?' | '+eventPeriod:'')),W/2,y,{align:'center'});y+=7;
+
+            section('Kennzahlen');
+            row('Bands / Acts',String(bandList.length));row('Erfasste Artist- und VIP-Personen',String(artistPersons));
+            row('Akkreditierungen',String(accreditationList.length));row('Davon eingecheckt',accreditedChecked+' von '+accreditationList.length);
+            row('Freie Akkreditierungen',String(accreditedFree));row('Akkreditierungsbetraege',money(accreditedAmount));
+
+            section('Finanzielle Auswertung');
+            row('Getraenkeumsatz',money(beverageRevenue),'green');row('Weitere Einnahmen',money(production.income),'green');row('Einnahmen gesamt',money(incomeTotal),'green');
+            row('Bandgagen brutto',money(costs.feesGross));row('Hotelkosten',money(costs.hotelTotal));row('Shuttlekosten',money(costs.shuttleTotal));row('Produktionsausgaben',money(costs.productionExpense));row('Ausgaben gesamt',money(expenseTotal),'red');
+            row('Ergebnis / Budgetabweichung',money(balance),balance>=0?'green':'red');
+            note('Es ist kein separates Planbudget hinterlegt. Die ausgewiesene Budgetabweichung entspricht deshalb den erfassten Einnahmen abzüglich der erfassten Ausgaben. Cateringkosten ohne hinterlegten Euro-Preis sind nicht enthalten.');
+            if(cashNote)note(cashNote);
+
+            section('Hotel');
+            row('Bands mit Hotelbedarf',String(hotelBands.length));row('Gebuchte Zimmer',String(hotelRooms));row('Zimmernaechte',String(hotelRoomNights));row('Erfasste Hotelkosten',money(costs.hotelTotal));
+            hotelBands.forEach(function(b){listLine((b.name||'Band')+' | '+(b.hotelName||'Hotel nicht angegeben'),Number(b.hotelEzCount||0)+' EZ / '+Number(b.hotelDzCount||0)+' DZ');});
+
+            section('Shuttle');
+            row('Bands mit Shuttlebedarf',String(shuttleBands.length));row('Geplante Fahrten',String(shuttleRides.length));row('Erfasste Kilometer',shuttleTotals.kilometers.toLocaleString('de-DE')+' km');row('Shuttlekosten gesamt',money(shuttleTotals.total));
+            shuttleRides.forEach(function(r){listLine((r.bandName||r.band||'Band')+' | '+(r.type||'Fahrt')+' | '+formatDateDE(r.date)+' '+(r.time||''),(r.route||'-'));});
+
+            section('Getraenke');
+            row('Verkaufte Getraenke gesamt',String(drinkCount));row('Getraenkeumsatz',money(beverageRevenue));
+            if(drinkRows.length)drinkRows.forEach(function(d){listLine(d.name,Number(d.quantity||0).toLocaleString('de-DE')+' Stk. | '+money(d.revenue));});
+            else note('Keine Kassendaten oder Getraenkeverkaeufe fuer diese Auswertung vorhanden.');
+
+            section('Akkreditierungen nach Berechtigung');
+            var permissionCounts={};accreditationList.forEach(function(r){var key=r.perm||'Ohne Angabe';if(!permissionCounts[key])permissionCounts[key]={total:0,checked:0};permissionCounts[key].total++;if(r.chk)permissionCounts[key].checked++;});
+            var permissionNames=Object.keys(permissionCounts).sort(function(a,b){return a.localeCompare(b,'de');});
+            if(permissionNames.length)permissionNames.forEach(function(name){var p=permissionCounts[name];listLine(name,p.checked+' eingecheckt / '+p.total+' gesamt');});else note('Keine Akkreditierungen vorhanden.');
+
+            section('Produktionskosten und weitere Einnahmen');
+            var entries=(productionEntries||[]).slice().sort(function(a,b){return String(a.date||'').localeCompare(String(b.date||''));});
+            if(entries.length)entries.forEach(function(e){listLine((e.type==='income'?'Einnahme: ':'Ausgabe: ')+(e.description||'Eintrag')+(e.party?' | '+e.party:''),money(e.amount));});else note('Keine Produktionseintraege vorhanden.');
+
+            pageFooter();
+            var safeName=safeText(eventTitle).replace(/[^a-zA-Z0-9_-]+/g,'_').replace(/^_+|_+$/g,'')||'CMOA';
+            doc.setProperties({title:'Abschlussbericht '+eventTitle,subject:'Festival-Auswertung'});
+            doc.save(safeName+'_Abschlussbericht_'+new Date().toISOString().slice(0,10)+'.pdf');
+            logCmoaActivity('Abschlussbericht exportiert','PDF-Auswertung wurde erstellt.','export');
         }
 
         async function logCmoaActivity(action, details, moduleName) {
