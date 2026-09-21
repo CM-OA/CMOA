@@ -1359,7 +1359,20 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
         .event-bands-choice{border:1px solid var(--border);border-radius:10px;background:var(--input-bg);padding:10px 12px;font-weight:750}
         .event-bands-choice small{display:block;color:var(--text-muted);font-weight:500;margin-top:4px;line-height:1.35}
         .event-bands-hidden{display:none!important}
+        .event-needs-hidden{display:none!important}
+        .needs-form-grid{display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:9px}
+        .needs-progress{height:12px;background:var(--border);border-radius:999px;overflow:hidden;margin:8px 0 4px}
+        .needs-progress-fill{height:100%;background:linear-gradient(90deg,#f59e0b,#22c55e);transition:width .25s ease}
+        .needs-summary-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:9px;margin-top:10px}
+        .needs-person-card{border:1px solid var(--border);border-radius:11px;padding:10px;background:var(--input-bg)}
+        .needs-person-card strong{display:block;margin-bottom:4px}.needs-person-card span{font-size:.72rem;color:var(--text-muted)}
+        .needs-item{border:1px solid var(--border);border-left:5px solid var(--accent-yellow);border-radius:11px;padding:11px;margin-bottom:9px;background:var(--input-bg)}
+        .needs-item.done{border-left-color:var(--accent-green);opacity:.78}
+        .needs-item-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}.needs-item-title{font-weight:850;font-size:.92rem}
+        .needs-item-meta{font-size:.72rem;color:var(--text-muted);margin-top:5px;line-height:1.45}.needs-item-note{font-size:.8rem;margin-top:7px;white-space:pre-wrap}
+        .needs-item-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px}
         @media(max-width:520px){.event-admin-grid{grid-template-columns:1fr}.event-switcher{align-items:stretch}.event-switcher select{width:100%}}
+        @media(max-width:620px){.needs-form-grid{grid-template-columns:1fr}.needs-item-head{display:block}.needs-item-actions button{flex:1;min-height:40px}}
 
         /* ===== KASSENÜBERSICHT AUF DER STARTSEITE ===== */
         .cash-summary-launch {
@@ -1754,16 +1767,17 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
             <div class="menu-grid">
                 <button class="menu-btn menu-btn-overview" data-module="overview" onclick="showPage('overview-page')">Übersicht</button>
                 <button class="menu-btn menu-btn-bands" data-module="bands" data-bands-required="true" onclick="showPage('bands-page')">Bands</button>
-                <button class="menu-btn menu-btn-yellow" data-module="hotel" onclick="showPage('hotel-page')">Hotel</button>
-                <button class="menu-btn menu-btn-yellow" data-module="shuttle" onclick="showPage('shuttle-page')">Shuttle</button>
+                <button class="menu-btn menu-btn-yellow" data-module="hotel" data-bands-required="true" onclick="showPage('hotel-page')">Hotel</button>
+                <button class="menu-btn menu-btn-yellow" data-module="shuttle" data-bands-required="true" onclick="showPage('shuttle-page')">Shuttle</button>
                 <button class="menu-btn" data-module="running_order" data-bands-required="true" onclick="showPage('ro-page')">Running Order</button>
                 <button class="menu-btn" data-module="payments" data-bands-required="true" onclick="showPage('payment-terms-page')">Zahlungsziel / Zahlungsweise</button>
                 <button class="menu-btn" data-module="fees" data-bands-required="true" onclick="showPage('fees-page')">Gagen</button>
-                <button id="todo-menu-btn" class="menu-btn" data-module="todos" onclick="showPage('misc-page')">To-Do</button>
+                <button id="todo-menu-btn" class="menu-btn" data-module="todos" data-bands-required="true" onclick="showPage('misc-page')">To-Do</button>
                 <button class="menu-btn menu-btn-blue" data-module="catering" data-bands-required="true" onclick="showPage('catering-page')">Catering</button>
-                <button class="menu-btn menu-btn-blue" data-module="accreditation" onclick="showPage('akkreditierung-page')">Akkreditierung</button>
+                <button class="menu-btn menu-btn-blue" data-module="accreditation" data-bands-required="true" onclick="showPage('akkreditierung-page')">Akkreditierung</button>
                 <button id="admin-menu-btn" class="menu-btn permission-hidden" data-module="admin" onclick="showPage('admin-page')">⚙️ Benutzer & Rechte</button>
                 <button class="menu-btn" data-module="fees" onclick="showPage('production-costs-page')">💶 Produktionskosten</button>
+                <button class="menu-btn menu-btn-yellow event-needs-hidden" data-module="todos" data-no-bands-only="true" onclick="showPage('event-needs-page')">📋 Bedarf &amp; Aufgaben</button>
             </div>
 
             <section id="festival-cockpit" class="festival-cockpit" data-bands-required="true" aria-labelledby="festival-cockpit-title">
@@ -1790,8 +1804,8 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
 
                 <div class="backup-section">
                     <button class="btn-subtle" data-module="documents" data-bands-required="true" onclick="showPage('band-notes-page')">📝 Notizen / Zusatzvereinbarungen</button>
-                    <button class="btn-subtle" data-module="documents" onclick="showPage('global-documents-page')">🔎 Dokumentensuche</button>
-                    <button class="btn-subtle" data-module="export" onclick="showPage('export-page')">📤 Daten Exportieren</button>
+                    <button class="btn-subtle" data-module="documents" data-bands-required="true" onclick="showPage('global-documents-page')">🔎 Dokumentensuche</button>
+                    <button class="btn-subtle" data-module="export" data-bands-required="true" onclick="showPage('export-page')">📤 Daten Exportieren</button>
                     <button class="btn-subtle" onclick="exportBackup()">💾 Backup Exportieren</button>
                     <button class="btn-subtle" onclick="importBackup()">📥 Backup Laden</button>
                     <input type="file" id="backup-file-input" style="display:none;" accept=".json" onchange="handleFileImport(event)">
@@ -2941,6 +2955,33 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
             </div>
         </div>
 
+        <div id="event-needs-page" class="page">
+            <button class="btn-back" onclick="showPage('main-page')">← Hauptmenü</button>
+            <div class="card">
+                <h3>📋 Bedarf &amp; Aufgaben</h3>
+                <p style="font-size:.8rem;color:var(--text-muted);margin-bottom:12px;">Nur für Veranstaltungen ohne Bands · Aufgaben und benötigte Dinge erfassen und mehreren Personen zuordnen.</p>
+                <input type="hidden" id="needs-edit-id">
+                <div class="needs-form-grid">
+                    <div class="form-group"><label>Bedarf / Aufgabe *</label><input id="needs-title" type="text" placeholder="z. B. Getränkestand vorbereiten"></div>
+                    <div class="form-group"><label>Zuständig – mehrere Namen möglich</label><input id="needs-assignees" type="text" placeholder="z. B. Anna, Tom, Max"></div>
+                    <div class="form-group"><label>Termin</label><input id="needs-due-date" type="date"></div>
+                </div>
+                <div class="form-group"><label>Notiz / Beschreibung</label><textarea id="needs-note" rows="3" placeholder="Weitere Informationen, Mengen oder Absprachen"></textarea></div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                    <button id="needs-save-btn" type="button" class="btn-primary" onclick="saveEventNeed()">＋ Eintrag anlegen</button>
+                    <button type="button" class="btn-subtle" onclick="resetEventNeedForm()">Zurücksetzen</button>
+                </div>
+            </div>
+            <div class="card">
+                <h3>Gesamtübersicht</h3>
+                <div id="needs-overall-text" style="font-size:.82rem;font-weight:800;"></div>
+                <div class="needs-progress"><div id="needs-progress-fill" class="needs-progress-fill" style="width:0%"></div></div>
+                <div id="needs-person-summary" class="needs-summary-grid"></div>
+            </div>
+            <div class="card"><h3 style="color:var(--accent-yellow);">⏳ Offen</h3><div id="needs-open-list"></div></div>
+            <div class="card"><h3 style="color:var(--accent-green);">✅ Erledigt</h3><div id="needs-done-list"></div></div>
+        </div>
+
         <div id="misc-page" class="page">
             <button class="btn-back" onclick="showPage('main-page')">← Hauptmenü</button>
             <div class="card">
@@ -2959,6 +3000,7 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
     <script>
         var bands = [];
         var manualTodos = [];
+        var eventNeeds = [];
         var hotelCostsList = [];
         var shuttleTripLog = {};
         var shuttleVehicles = [];
@@ -3014,14 +3056,14 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
         }
         function payloadForDataModule(module){
             if(module==='accreditation') return {akkDb:Array.isArray(akkDb)?akkDb:[]};
-            if(module==='todos') return {manualTodos:Array.isArray(manualTodos)?manualTodos:[]};
+            if(module==='todos') return {manualTodos:Array.isArray(manualTodos)?manualTodos:[],eventNeeds:Array.isArray(eventNeeds)?eventNeeds:[]};
             if(module==='bands') return {bands:(bands||[]).map(function(b){return bandSlice(b,module);}),bandsEnabled:eventBandsEnabled!==false};
             if(module==='hotel') return {bands:(bands||[]).map(function(b){return bandSlice(b,module);}),hotelCostsList:Array.isArray(hotelCostsList)?hotelCostsList:[]};
             if(module==='shuttle') return {bands:(bands||[]).map(function(b){return bandSlice(b,module);}),shuttleTripLog:shuttleTripLog||{},shuttleVehicles:Array.isArray(shuttleVehicles)?shuttleVehicles:[]};
             if(module==='fees') return {bands:(bands||[]).map(function(b){return bandSlice(b,module);}),productionEntries:Array.isArray(productionEntries)?productionEntries:[]};
             return {bands:(bands||[]).map(function(b){return bandSlice(b,module);})};
         }
-        function moduleHistoryFlat(data){var out={};data=data||{};(data.bands||[]).forEach(function(b){var prefix=String(b.name||b.id||'Band');Object.keys(b||{}).forEach(function(k){if(k!=='id'&&k!=='name'&&typeof b[k]!=='object')out[prefix+' · '+k]=b[k];});});['productionEntries','hotelCostsList','shuttleVehicles','manualTodos','akkDb'].forEach(function(group){(data[group]||[]).forEach(function(x){var prefix=String(x.name||x.description||x.id||group);Object.keys(x||{}).forEach(function(k){if(k!=='id'&&typeof x[k]!=='object')out[prefix+' · '+k]=x[k];});});});return out;}
+        function moduleHistoryFlat(data){var out={};data=data||{};(data.bands||[]).forEach(function(b){var prefix=String(b.name||b.id||'Band');Object.keys(b||{}).forEach(function(k){if(k!=='id'&&k!=='name'&&typeof b[k]!=='object')out[prefix+' · '+k]=b[k];});});['productionEntries','hotelCostsList','shuttleVehicles','manualTodos','eventNeeds','akkDb'].forEach(function(group){(data[group]||[]).forEach(function(x){var prefix=String(x.name||x.title||x.description||x.id||group);Object.keys(x||{}).forEach(function(k){if(k!=='id'&&typeof x[k]!=='object')out[prefix+' · '+k]=x[k];});});});return out;}
         function moduleHistoryDiff(before,after){var a=moduleHistoryFlat(before),b=moduleHistoryFlat(after),keys={};Object.keys(a).forEach(function(k){keys[k]=1;});Object.keys(b).forEach(function(k){keys[k]=1;});var old={},now={},changed=Object.keys(keys).filter(function(k){return JSON.stringify(a[k])!==JSON.stringify(b[k]);}).slice(0,30);changed.forEach(function(k){old[k]=a[k];now[k]=b[k];});return {before:old,after:now,count:changed.length};}
         function mergeBandPart(part){
             if(!part || !part.id) return;
@@ -3035,7 +3077,7 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
             if(module==='event_settings'){eventBandsEnabled=data.bandsEnabled!==false;return;}
             if(module==='bands'&&data.bandsEnabled!==undefined)eventBandsEnabled=data.bandsEnabled!==false;
             if(module==='accreditation'){akkDb=Array.isArray(data.akkDb)?data.akkDb:[];return;}
-            if(module==='todos'){manualTodos=Array.isArray(data.manualTodos)?data.manualTodos:[];return;}
+            if(module==='todos'){manualTodos=Array.isArray(data.manualTodos)?data.manualTodos:[];eventNeeds=Array.isArray(data.eventNeeds)?data.eventNeeds:[];return;}
             if(module==='hotel' && Array.isArray(data.hotelCostsList)) hotelCostsList=data.hotelCostsList;
             if(module==='fees' && Array.isArray(data.productionEntries)) productionEntries=data.productionEntries;
             if(module==='shuttle') {
@@ -3121,7 +3163,7 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
         }
         async function migrateLegacyStateIfNeeded(){ return false; }
         async function loadPhase2CloudData(){
-            bands=[];manualTodos=[];hotelCostsList=[];shuttleTripLog={};shuttleVehicles=[];productionEntries=[];akkDb=[];
+            bands=[];manualTodos=[];eventNeeds=[];hotelCostsList=[];shuttleTripLog={};shuttleVehicles=[];productionEntries=[];akkDb=[];
             eventBandsEnabled=currentEvent&&currentEvent._bandsEnabled===false?false:true;
             await migrateLegacyStateIfNeeded();
             if(!currentEventId) return;
@@ -3154,7 +3196,7 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
                 var designSaved=localStorage.getItem('cmoa_design_v1')||'steel';document.body.setAttribute('data-design',designSaved);updateDesignButtons();
                 var themeSaved=localStorage.getItem('cmoa_theme_v1');if(themeSaved==='night'){document.body.classList.add('night-mode');var btn=document.getElementById('theme-toggle-btn');if(btn)btn.innerText='☀️ Daymode';}
             } catch(e) {}
-            if(!Array.isArray(bands))bands=[];if(!Array.isArray(manualTodos))manualTodos=[];if(!Array.isArray(hotelCostsList))hotelCostsList=[];if(!shuttleTripLog||typeof shuttleTripLog!=='object')shuttleTripLog={};if(!Array.isArray(shuttleVehicles))shuttleVehicles=[];if(!Array.isArray(productionEntries))productionEntries=[];if(!Array.isArray(akkDb))akkDb=[];
+            if(!Array.isArray(bands))bands=[];if(!Array.isArray(manualTodos))manualTodos=[];if(!Array.isArray(eventNeeds))eventNeeds=[];if(!Array.isArray(hotelCostsList))hotelCostsList=[];if(!shuttleTripLog||typeof shuttleTripLog!=='object')shuttleTripLog={};if(!Array.isArray(shuttleVehicles))shuttleVehicles=[];if(!Array.isArray(productionEntries))productionEntries=[];if(!Array.isArray(akkDb))akkDb=[];
             try{updateMainProgress();renderBandsList();initAkkreditierung();}catch(err){console.error('Init error:',err);}
             if(navigator.onLine)syncOfflineQueue();
         };
@@ -3252,7 +3294,7 @@ function loadFromLocalStorage() {
         }
 
         function exportBackup() {
-            var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({ bands: bands, manualTodos: manualTodos, hotelCostsList: hotelCostsList, shuttleTripLog: shuttleTripLog, shuttleVehicles: shuttleVehicles, productionEntries: productionEntries, akkDb: akkDb }));
+            var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({ bands: bands, manualTodos: manualTodos, eventNeeds:eventNeeds, hotelCostsList: hotelCostsList, shuttleTripLog: shuttleTripLog, shuttleVehicles: shuttleVehicles, productionEntries: productionEntries, akkDb: akkDb }));
             var downloadAnchor = document.createElement('a');
             downloadAnchor.setAttribute("href", dataStr);
             downloadAnchor.setAttribute("download", "CMOA_2027_Backup.json");
@@ -3271,7 +3313,7 @@ function loadFromLocalStorage() {
                 try {
                     var imported = JSON.parse(e.target.result);
                     if (Array.isArray(imported)) { bands = imported; normalizeAllBandNames(); }
-                    else if (imported.bands) { bands = imported.bands || []; normalizeAllBandNames(); manualTodos = imported.manualTodos || []; hotelCostsList = imported.hotelCostsList || []; shuttleTripLog = imported.shuttleTripLog || {}; shuttleVehicles = imported.shuttleVehicles || []; productionEntries = imported.productionEntries || []; akkDb = imported.akkDb || imported.akkreditierung || []; }
+                    else if (imported.bands) { bands = imported.bands || []; normalizeAllBandNames(); manualTodos = imported.manualTodos || []; eventNeeds=imported.eventNeeds||[]; hotelCostsList = imported.hotelCostsList || []; shuttleTripLog = imported.shuttleTripLog || {}; shuttleVehicles = imported.shuttleVehicles || []; productionEntries = imported.productionEntries || []; akkDb = imported.akkDb || imported.akkreditierung || []; }
                     saveToStorage();
                     alert("✅ Backup erfolgreich geladen!");
                     showPage('main-page');
@@ -3688,7 +3730,7 @@ function loadFromLocalStorage() {
         }
         async function restoreActivityChange(index){
             if(!canViewActivityLog())return;var c=activityRestoreItems[index];if(!c||!c.before||!confirm('„'+(c.label||'Datensatz')+'“ wirklich wiederherstellen?'))return;
-            try{if(c.entityType==='production'){if(getProductionEntry(c.entityId))throw new Error('Eintrag bereits vorhanden.');productionEntries.push(historyClone(c.before));await writeDataModule('fees');renderProductionCosts();}else if(c.entityType==='accreditation'){if(akkDb.some(function(x){return x.id===c.entityId;}))throw new Error('Akkreditierung bereits vorhanden.');akkDb.push(historyClone(c.before));await writeDataModule('accreditation');renderAkk();}else if(c.entityType==='band'){if(getBandById(c.entityId))throw new Error('Band bereits vorhanden.');bands.push(historyClone(c.before));for(var i=0;i<CMOA_DATA_MODULES.length;i++){var m=CMOA_DATA_MODULES[i];if(m!=='accreditation'&&m!=='todos')await writeDataModule(m);}renderBandsList();}else throw new Error('Datensatztyp nicht wiederherstellbar.');await logCmoaChange('Datensatz wiederhergestellt',c.entityType==='production'?'fees':c.entityType==='accreditation'?'accreditation':'bands',c.entityType,c.entityId,c.label,null,c.before,false);updateMainProgress();await loadActivityLog();}catch(err){alert('Wiederherstellung fehlgeschlagen: '+(err.message||err));}
+            try{if(c.entityType==='production'){if(getProductionEntry(c.entityId))throw new Error('Eintrag bereits vorhanden.');productionEntries.push(historyClone(c.before));await writeDataModule('fees');renderProductionCosts();}else if(c.entityType==='accreditation'){if(akkDb.some(function(x){return x.id===c.entityId;}))throw new Error('Akkreditierung bereits vorhanden.');akkDb.push(historyClone(c.before));await writeDataModule('accreditation');renderAkk();}else if(c.entityType==='event_need'){if((eventNeeds||[]).some(function(x){return x.id===c.entityId;}))throw new Error('Eintrag bereits vorhanden.');eventNeeds.push(historyClone(c.before));await writeDataModule('todos');renderEventNeeds();}else if(c.entityType==='band'){if(getBandById(c.entityId))throw new Error('Band bereits vorhanden.');bands.push(historyClone(c.before));for(var i=0;i<CMOA_DATA_MODULES.length;i++){var m=CMOA_DATA_MODULES[i];if(m!=='accreditation'&&m!=='todos')await writeDataModule(m);}renderBandsList();}else throw new Error('Datensatztyp nicht wiederherstellbar.');await logCmoaChange('Datensatz wiederhergestellt',c.entityType==='production'?'fees':c.entityType==='accreditation'?'accreditation':c.entityType==='event_need'?'todos':'bands',c.entityType,c.entityId,c.label,null,c.before,false);updateMainProgress();await loadActivityLog();}catch(err){alert('Wiederherstellung fehlgeschlagen: '+(err.message||err));}
         }
 
         function recordLoginActivity() {
@@ -3826,7 +3868,8 @@ function loadFromLocalStorage() {
 
         function showPage(pageId) {
             decorateCmoaPages();
-            if(!eventBandsEnabled&&['bands-page','band-view-page','band-detail-page','payment-terms-page','fees-page','catering-page','ro-page','band-notes-page','single-note-page'].indexOf(pageId)>=0){alert('Für diese Veranstaltung wurde „Bands: Nein“ gewählt. Dieser Bereich ist deshalb ausgeblendet.');return;}
+            if(!eventBandsEnabled&&['bands-page','band-view-page','band-detail-page','hotel-page','shuttle-page','payment-terms-page','fees-page','misc-page','catering-page','akkreditierung-page','ro-page','band-notes-page','single-note-page','global-documents-page','export-page'].indexOf(pageId)>=0){alert('Dieser Bereich ist bei Veranstaltungen ohne Bands nicht verfügbar.');return;}
+            if(eventBandsEnabled&&pageId==='event-needs-page'){alert('„Bedarf & Aufgaben“ ist ausschließlich für Veranstaltungen ohne Bands vorgesehen.');return;}
             if(pageId==='misc-page'&&typeof canViewPlanningControl==='function'&&!canViewPlanningControl()){alert('To-Do ist nur für Administratoren oder Benutzer mit vollständigen Berechtigungen sichtbar.');return;}
             var mod = CMOA_PAGE_MODULES[pageId] || null;
             if (mod && !hasModuleRight(mod, 'read')) { alert('Für diesen Bereich hast du keine Leseberechtigung.'); return; }
@@ -3849,6 +3892,7 @@ function loadFromLocalStorage() {
             if (pageId === 'overview-page') renderOverview();
             if (pageId === 'fees-page') renderFees();
             if (pageId === 'production-costs-page') renderProductionCosts();
+            if (pageId === 'event-needs-page') renderEventNeeds();
             if (pageId === 'global-documents-page') renderGlobalDocumentSearch();
             if (pageId === 'shuttle-page') renderShuttle();
             if (pageId === 'hotel-page') renderHotel();
@@ -6373,7 +6417,7 @@ function loadFromLocalStorage() {
         }
 
         function exportSelectedJSON(selectedBands) {
-            var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({ bands: selectedBands, manualTodos: manualTodos, hotelCostsList: hotelCostsList, shuttleTripLog: shuttleTripLog, shuttleVehicles: shuttleVehicles, productionEntries: productionEntries, akkDb: akkDb }));
+            var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({ bands: selectedBands, manualTodos: manualTodos, eventNeeds:eventNeeds, hotelCostsList: hotelCostsList, shuttleTripLog: shuttleTripLog, shuttleVehicles: shuttleVehicles, productionEntries: productionEntries, akkDb: akkDb }));
             var downloadAnchor = document.createElement('a');
             downloadAnchor.setAttribute("href", dataStr);
             downloadAnchor.setAttribute("download", "CMOA_2027_Export.json");
@@ -8099,6 +8143,62 @@ function loadFromLocalStorage() {
             }
         }
 
+        function resetEventNeedForm(){
+            ['needs-edit-id','needs-title','needs-assignees','needs-due-date','needs-note'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});
+            var btn=document.getElementById('needs-save-btn');if(btn)btn.textContent='＋ Eintrag anlegen';
+        }
+
+        function parseNeedAssignees(value){
+            var seen={};return String(value||'').split(/[,;\n]+/).map(function(x){return x.trim();}).filter(function(x){var key=x.toLocaleLowerCase('de-DE');if(!x||seen[key])return false;seen[key]=true;return true;});
+        }
+
+        async function saveEventNeed(){
+            if(eventBandsEnabled){alert('Diese Rubrik ist nur für Veranstaltungen ohne Bands verfügbar.');return;}
+            if(!hasDataModuleWrite('todos')){alert('Du hast für diesen Bereich nur Leserechte.');return;}
+            var title=(document.getElementById('needs-title').value||'').trim();if(!title){alert('Bitte einen Bedarf oder eine Aufgabe eingeben.');return;}
+            var id=document.getElementById('needs-edit-id').value||'',existing=(eventNeeds||[]).find(function(x){return x.id===id;}),before=existing?historyClone(existing):null;
+            var item={
+                id:id||('need_'+Date.now()+'_'+Math.random().toString(36).slice(2,7)),title:title,
+                assignees:parseNeedAssignees(document.getElementById('needs-assignees').value),
+                dueDate:document.getElementById('needs-due-date').value||'',note:(document.getElementById('needs-note').value||'').trim(),
+                done:existing?!!existing.done:false,doneAt:existing&&existing.doneAt||'',createdAt:existing&&existing.createdAt||new Date().toISOString(),updatedAt:new Date().toISOString()
+            };
+            if(existing){var index=eventNeeds.findIndex(function(x){return x.id===id;});eventNeeds[index]=item;}else eventNeeds.push(item);
+            try{await writeDataModule('todos');await logCmoaChange(existing?'Bedarf bearbeitet':'Bedarf angelegt','todos','event_need',item.id,item.title,before,item,false);resetEventNeedForm();renderEventNeeds();}
+            catch(e){alert('Eintrag konnte nicht gespeichert werden: '+(e.message||e));}
+        }
+
+        function editEventNeed(id){
+            if(!hasDataModuleWrite('todos')){alert('Du hast für diesen Bereich nur Leserechte.');return;}
+            var item=(eventNeeds||[]).find(function(x){return x.id===id;});if(!item)return;
+            document.getElementById('needs-edit-id').value=item.id;document.getElementById('needs-title').value=item.title||'';document.getElementById('needs-assignees').value=(item.assignees||[]).join(', ');document.getElementById('needs-due-date').value=item.dueDate||'';document.getElementById('needs-note').value=item.note||'';
+            document.getElementById('needs-save-btn').textContent='💾 Änderungen speichern';window.scrollTo({top:0,behavior:'smooth'});
+        }
+
+        async function toggleEventNeed(id){
+            if(!hasDataModuleWrite('todos')){alert('Du hast für diesen Bereich nur Leserechte.');return;}
+            var item=(eventNeeds||[]).find(function(x){return x.id===id;});if(!item)return;var before=historyClone(item);item.done=!item.done;item.doneAt=item.done?new Date().toISOString():'';item.updatedAt=new Date().toISOString();
+            try{await writeDataModule('todos');await logCmoaChange(item.done?'Bedarf erledigt':'Bedarf wieder geöffnet','todos','event_need',item.id,item.title,before,item,false);renderEventNeeds();}catch(e){Object.assign(item,before);alert('Status konnte nicht gespeichert werden: '+(e.message||e));}
+        }
+
+        async function deleteEventNeed(id){
+            if(!hasDataModuleWrite('todos')){alert('Du hast keine Berechtigung zum Löschen.');return;}
+            var item=(eventNeeds||[]).find(function(x){return x.id===id;});if(!item||!confirm('Eintrag „'+item.title+'“ wirklich löschen?'))return;
+            eventNeeds=eventNeeds.filter(function(x){return x.id!==id;});
+            try{await writeDataModule('todos');await logCmoaChange('Bedarf gelöscht','todos','event_need',item.id,item.title,item,null,true);renderEventNeeds();}catch(e){eventNeeds.push(item);alert('Eintrag konnte nicht gelöscht werden: '+(e.message||e));}
+        }
+
+        function renderEventNeeds(){
+            var openBox=document.getElementById('needs-open-list'),doneBox=document.getElementById('needs-done-list'),summary=document.getElementById('needs-person-summary'),overall=document.getElementById('needs-overall-text'),fill=document.getElementById('needs-progress-fill');if(!openBox||!doneBox||!summary)return;
+            var items=Array.isArray(eventNeeds)?eventNeeds.slice():[],doneCount=items.filter(function(x){return !!x.done;}).length,pct=items.length?Math.round(doneCount/items.length*100):0;
+            if(overall)overall.textContent=items.length+' Einträge · '+(items.length-doneCount)+' offen · '+doneCount+' erledigt · '+pct+' % abgeschlossen';if(fill)fill.style.width=pct+'%';
+            var people={};items.forEach(function(item){var names=item.assignees&&item.assignees.length?item.assignees:['Nicht zugeordnet'];names.forEach(function(name){if(!people[name])people[name]={open:[],done:[]};people[name][item.done?'done':'open'].push(item.title||'Eintrag');});});
+            var personNames=Object.keys(people).sort(function(a,b){if(a==='Nicht zugeordnet')return 1;if(b==='Nicht zugeordnet')return -1;return a.localeCompare(b,'de');});
+            summary.innerHTML=personNames.length?personNames.map(function(name){var p=people[name],openText=p.open.length?p.open.map(function(x){return '• '+escapeHtmlAuth(x);}).join('<br>'):'Keine offenen Aufgaben';return '<div class="needs-person-card"><strong>'+escapeHtmlAuth(name)+'</strong><span>'+p.open.length+' offen · '+p.done.length+' erledigt</span><div style="font-size:.72rem;margin-top:7px;line-height:1.45;">'+openText+'</div></div>';}).join(''):'<div style="color:var(--text-muted);font-size:.8rem;">Noch keine Einträge vorhanden.</div>';
+            function itemHtml(item){var names=item.assignees&&item.assignees.length?item.assignees.join(', '):'Nicht zugeordnet',due=item.dueDate?formatDateDE(item.dueDate):'Kein Termin';return '<div class="needs-item '+(item.done?'done':'')+'"><div class="needs-item-head"><div><div class="needs-item-title">'+escapeHtmlAuth(item.title||'Eintrag')+'</div><div class="needs-item-meta">👤 '+escapeHtmlAuth(names)+' · 📅 '+escapeHtmlAuth(due)+(item.doneAt?' · Erledigt '+escapeHtmlAuth(new Date(item.doneAt).toLocaleDateString('de-DE')):'')+'</div></div><span class="todo-badge '+(item.done?'badge-auto':'badge-manual')+'">'+(item.done?'Erledigt':'Offen')+'</span></div>'+(item.note?'<div class="needs-item-note">'+escapeHtmlAuth(item.note)+'</div>':'')+'<div class="needs-item-actions"><button class="btn-primary btn-sm" onclick="toggleEventNeed(\''+item.id+'\')">'+(item.done?'↩ Wieder öffnen':'✓ Erledigt')+'</button><button class="btn-subtle btn-sm" onclick="editEventNeed(\''+item.id+'\')">✎ Bearbeiten</button><button class="btn-danger btn-sm" onclick="deleteEventNeed(\''+item.id+'\')">🗑</button></div></div>';}
+            var sorted=items.sort(function(a,b){return String(a.dueDate||'9999').localeCompare(String(b.dueDate||'9999'))||String(a.title||'').localeCompare(String(b.title||''),'de');});openBox.innerHTML=sorted.filter(function(x){return !x.done;}).map(itemHtml).join('')||'<div style="color:var(--text-muted);font-size:.8rem;">Keine offenen Einträge.</div>';doneBox.innerHTML=sorted.filter(function(x){return !!x.done;}).map(itemHtml).join('')||'<div style="color:var(--text-muted);font-size:.8rem;">Noch nichts als erledigt markiert.</div>';
+        }
+
 
         /* =========================================================
            ERWEITERUNG CATERING: EDITIERBARE GETRÄNKENAMEN +
@@ -8483,7 +8583,7 @@ function loadFromLocalStorage() {
           'overview-page':'overview','bands-page':'bands','band-view-page':'bands','band-detail-page':'bands',
           'hotel-page':'hotel','shuttle-page':'shuttle','ro-page':'running_order','payment-terms-page':'payments',
           'fees-page':'fees','misc-page':'todos','catering-page':'catering','akkreditierung-page':'accreditation',
-          'band-notes-page':'documents','global-documents-page':'documents','export-page':'export','admin-page':'admin','events-admin-page':'admin','production-costs-page':'fees'
+          'band-notes-page':'documents','global-documents-page':'documents','export-page':'export','admin-page':'admin','events-admin-page':'admin','production-costs-page':'fees','event-needs-page':'todos'
         };
         var ROLE_PRESETS = {
           admin:{label:'Administrator', rights:'all'},
@@ -8515,6 +8615,7 @@ function loadFromLocalStorage() {
         function applyEventBandMode(){
           var enabled=eventBandsEnabled!==false;
           document.querySelectorAll('[data-bands-required="true"]').forEach(function(el){el.classList.toggle('event-bands-hidden',!enabled);});
+          document.querySelectorAll('[data-no-bands-only="true"]').forEach(function(el){el.classList.toggle('event-needs-hidden',enabled);});
         }
         function canViewCashSummary(){
           if(!currentUserProfile)return false;
