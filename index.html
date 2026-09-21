@@ -4,6 +4,8 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <script>
   let _supabase = null;
   
@@ -779,6 +781,15 @@
         .akk-top-actions { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:12px; }
         .akk-top-actions .btn-back { margin:0; }
         .akk-quick-checkin-btn { border:0; border-radius:11px; padding:12px 18px; min-height:46px; color:#fff; background:linear-gradient(135deg,#f97316,#dc2626); box-shadow:0 5px 16px rgba(220,38,38,.30); font-weight:900; letter-spacing:.3px; cursor:pointer; animation:akkCheckPulse 2.2s infinite; }
+        .akk-qr-checkin-btn { border:0; border-radius:11px; padding:12px 18px; min-height:46px; color:#fff; background:linear-gradient(135deg,#2563eb,#1d4ed8); box-shadow:0 5px 16px rgba(37,99,235,.28); font-weight:900; letter-spacing:.3px; cursor:pointer; }
+        .akk-qr-reader { width:100%; margin:12px 0; overflow:hidden; border-radius:12px; background:#000; }
+        .akk-qr-status { min-height:22px; text-align:center; color:var(--text-muted); font-size:.78rem; font-weight:750; }
+        .activity-change { margin-top:8px; padding:8px; border:1px solid var(--border); border-radius:8px; background:var(--input-bg); }
+        .activity-change-row { display:grid; grid-template-columns:minmax(90px,.7fr) 1fr 1fr; gap:7px; padding:4px 0; border-bottom:1px dashed var(--border); font-size:.67rem; }
+        .activity-change-row:last-child { border-bottom:0; }
+        .activity-change-old { color:#dc2626; overflow-wrap:anywhere; }
+        .activity-change-new { color:var(--accent-green); overflow-wrap:anywhere; }
+        .activity-restore-btn { margin-top:8px; width:100%; }
         @keyframes akkCheckPulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.025)} }
         .akk-check-overlay { position:fixed; inset:0; z-index:10050; display:none; align-items:center; justify-content:center; padding:14px; background:rgba(3,7,18,.88); backdrop-filter:blur(5px); }
         .akk-check-overlay.show { display:flex; }
@@ -801,7 +812,7 @@
         .akk-result-check-btn { width:100%; min-height:64px; border:0; border-radius:13px; background:linear-gradient(135deg,#16a34a,#047857); color:#fff; font-size:20px; font-weight:950; cursor:pointer; }
         .akk-result-check-btn:disabled { background:#64748b; cursor:default; }
         .akk-result-back { width:100%; margin-top:9px; border:0; background:transparent; color:var(--text-muted); padding:10px; font-weight:800; cursor:pointer; }
-        @media(max-width:520px){.akk-top-actions{align-items:stretch}.akk-top-actions .btn-back,.akk-quick-checkin-btn{flex:1;padding:10px 8px;font-size:12px}.akk-check-dialog{padding:16px}.akk-code-slot{width:64px;height:68px}.akk-keypad button{min-height:60px}}
+        @media(max-width:520px){.akk-top-actions{align-items:stretch;display:grid;grid-template-columns:1fr 1fr}.akk-top-actions .btn-back{grid-column:1/-1}.akk-top-actions .btn-back,.akk-quick-checkin-btn,.akk-qr-checkin-btn{padding:10px 8px;font-size:12px}.akk-check-dialog{padding:16px}.akk-code-slot{width:64px;height:68px}.akk-keypad button{min-height:60px}.activity-change-row{grid-template-columns:1fr}.activity-change-old::before{content:'Vorher: ';font-weight:800}.activity-change-new::before{content:'Nachher: ';font-weight:800}}
         .band-view-catering { border:1px solid rgba(5,150,105,.35); border-left:5px solid #059669; border-radius:10px; padding:12px; background:rgba(5,150,105,.06); }
         .band-view-catering h4 { color:#059669; margin-top:0; }
         .band-view-chip-list { display:flex; flex-wrap:wrap; gap:5px; }
@@ -1809,15 +1820,15 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
                 <h3 id="production-form-title">Eintrag hinzufügen</h3>
                 <input type="hidden" id="production-edit-id">
                 <div class="production-form-grid">
-                    <div class="form-group"><label>Art</label><select id="production-type"><option value="expense">Ausgabe</option><option value="income">Einnahme</option></select></div>
+                    <div class="form-group"><label>Art</label><select id="production-type" onchange="syncProductionTypeFields()"><option value="expense">Ausgabe</option><option value="income">Einnahme</option></select></div>
                     <div class="form-group"><label>Empfänger / Absender</label><input id="production-party" placeholder="z. B. Stadtverwaltung oder Ticketanbieter"></div>
                     <div class="form-group"><label>Bezeichnung</label><input id="production-description" placeholder="z. B. Bühnenmiete"></div>
                     <div class="form-group"><label>Betrag (€)</label><input id="production-amount" type="number" min="0" step="0.01"></div>
                     <div class="form-group"><label>Datum</label><input id="production-date" type="date"></div>
                     <div class="form-group"><label>Notiz</label><input id="production-note" placeholder="optional"></div>
-                    <div class="form-group"><label>Zahlungsstatus</label><select id="production-payment-status" onchange="syncProductionPaymentDate()"><option value="open">Offen</option><option value="invoice_received">Rechnung erhalten</option><option value="approved">Zur Zahlung freigegeben</option><option value="paid">Bezahlt</option></select></div>
-                    <div class="form-group"><label>Fällig am</label><input id="production-due-date" type="date"></div>
-                    <div class="form-group"><label>Bezahlt am</label><input id="production-paid-date" type="date"></div>
+                    <div id="production-payment-status-group" class="form-group"><label>Zahlungsstatus</label><select id="production-payment-status" onchange="syncProductionPaymentDate()"><option value="open">Offen</option><option value="invoice_received">Rechnung erhalten</option><option value="approved">Zur Zahlung freigegeben</option><option value="paid">Bezahlt</option></select></div>
+                    <div id="production-due-date-group" class="form-group"><label>Fällig am</label><input id="production-due-date" type="date"></div>
+                    <div id="production-paid-date-group" class="form-group"><label>Bezahlt am</label><input id="production-paid-date" type="date"></div>
                 </div>
                 <div style="display:flex;gap:8px;flex-wrap:wrap;"><button class="btn-primary" onclick="saveProductionEntry()">💾 Speichern</button><button id="production-cancel-btn" class="btn-subtle" style="display:none;" onclick="resetProductionForm()">Abbrechen</button></div>
             </div>
@@ -1963,10 +1974,14 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
             <div class="akk-top-actions">
                 <button class="btn-back" onclick="showPage('main-page')">← Hauptmenü</button>
                 <button type="button" class="akk-quick-checkin-btn" onclick="openAkkQuickCheckin()">🔢 SCHNELL-CHECK-IN</button>
+                <button type="button" class="akk-qr-checkin-btn" onclick="openAkkQrScanner()">📷 QR-CODE SCANNEN</button>
             </div>
 
             <div id="akk-quick-overlay" class="akk-check-overlay" onclick="if(event.target===this)closeAkkQuickCheckin()">
                 <div id="akk-quick-dialog" class="akk-check-dialog"></div>
+            </div>
+            <div id="akk-qr-overlay" class="akk-check-overlay" onclick="if(event.target===this)closeAkkQrScanner()">
+                <div class="akk-check-dialog"><h2 class="akk-check-title">QR-Code scannen</h2><div class="akk-check-hint">Kamera auf den QR-Code der Akkreditierung richten</div><div id="akk-qr-reader" class="akk-qr-reader"></div><div id="akk-qr-status" class="akk-qr-status">Kamera wird gestartet …</div><button type="button" class="akk-result-back" onclick="closeAkkQrScanner()">Zurück</button></div>
             </div>
             
             <div class="akk-header">
@@ -2876,6 +2891,9 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
         var selPerm = "";
         var selDay = "";
         var isFree = false;
+        var activityRestoreItems = [];
+        var akkQrScanner = null;
+        var akkQrScanLocked = false;
 
         var DEFAULT_DRINKS = [
             "Bier", "Alkoholfreies Bier", "Wasser", "Bühnenwasser", "Cola", 
@@ -2890,6 +2908,7 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
         var currentEvent = null;
         var availableEvents = [];
         var phase2Channel = null;
+        var moduleHistorySnapshots = {};
         var CMOA_DATA_MODULES = ['bands','fees','payments','hotel','shuttle','running_order','catering','documents','todos','accreditation'];
         var CMOA_FIELD_GROUPS = {
             bands:['id','name','showday','contactName','contactEmail','contactPhone','contactOrg','dealDone'],
@@ -2914,6 +2933,8 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
             if(module==='fees') return {bands:(bands||[]).map(function(b){return bandSlice(b,module);}),productionEntries:Array.isArray(productionEntries)?productionEntries:[]};
             return {bands:(bands||[]).map(function(b){return bandSlice(b,module);})};
         }
+        function moduleHistoryFlat(data){var out={};data=data||{};(data.bands||[]).forEach(function(b){var prefix=String(b.name||b.id||'Band');Object.keys(b||{}).forEach(function(k){if(k!=='id'&&k!=='name'&&typeof b[k]!=='object')out[prefix+' · '+k]=b[k];});});['productionEntries','hotelCostsList','shuttleVehicles','manualTodos','akkDb'].forEach(function(group){(data[group]||[]).forEach(function(x){var prefix=String(x.name||x.description||x.id||group);Object.keys(x||{}).forEach(function(k){if(k!=='id'&&typeof x[k]!=='object')out[prefix+' · '+k]=x[k];});});});return out;}
+        function moduleHistoryDiff(before,after){var a=moduleHistoryFlat(before),b=moduleHistoryFlat(after),keys={};Object.keys(a).forEach(function(k){keys[k]=1;});Object.keys(b).forEach(function(k){keys[k]=1;});var old={},now={},changed=Object.keys(keys).filter(function(k){return JSON.stringify(a[k])!==JSON.stringify(b[k]);}).slice(0,30);changed.forEach(function(k){old[k]=a[k];now[k]=b[k];});return {before:old,after:now,count:changed.length};}
         function mergeBandPart(part){
             if(!part || !part.id) return;
             var target=null;
@@ -2939,6 +2960,7 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
             var row={module:module,event_id:currentEventId,data:payloadForDataModule(module),updated_at:new Date().toISOString(),updated_by:currentAuthUser?currentAuthUser.id:null};
             var r=await _supabase.from('cmoa_module_state').upsert(row,{onConflict:'module,event_id'});
             if(r.error) throw new Error(module+': '+r.error.message);
+            var previous=moduleHistorySnapshots[module],current=historyClone(row.data);if(previous){var diff=moduleHistoryDiff(previous,current);if(diff.count)await logCmoaChange('Änderung gespeichert',module,'module',module,'Bereich: '+module,diff.before,diff.after,false);}moduleHistorySnapshots[module]=current;
         }
         function hasDataModuleWrite(module){
             if(currentUserProfile && currentUserProfile.role==='admin') return true;
@@ -2953,6 +2975,7 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
             var r=await _supabase.from('cmoa_module_state').select('module,data').eq('event_id',currentEventId);
             if(r.error) throw new Error(r.error.message);
             (r.data||[]).forEach(function(row){applyDataModule(row.module,row.data);});
+            moduleHistorySnapshots={};CMOA_DATA_MODULES.forEach(function(module){moduleHistorySnapshots[module]=historyClone(payloadForDataModule(module));});
             normalizeAllBandNames();
             // Fach-Daten werden in Phase 2 nicht mehr im Browser-LocalStorage gehalten.
             ['cmoa_bands_v4','cmoa_manual_todos_v1','cmoa_hotel_costs_v1','cmoa_akkreditierung_v1'].forEach(function(k){try{localStorage.removeItem(k);}catch(e){}});
@@ -3387,6 +3410,21 @@ function loadFromLocalStorage() {
                 });
             } catch(e) { console.log('Protokollierung nicht verfügbar:', e); }
         }
+        function historyClone(value){try{return JSON.parse(JSON.stringify(value==null?null:value));}catch(e){return value;}}
+        async function logCmoaChange(action,moduleName,entityType,entityId,label,before,after,restorable){return logCmoaActivity(action,'CMOA_CHANGE_V1:'+JSON.stringify({version:1,entityType:entityType,entityId:entityId,label:label||entityId,before:historyClone(before),after:historyClone(after),restorable:!!restorable}),moduleName);}
+        function parseCmoaChange(details){var p='CMOA_CHANGE_V1:';if(String(details||'').indexOf(p)!==0)return null;try{return JSON.parse(String(details).slice(p.length));}catch(e){return null;}}
+        function historyDisplayValue(v){if(v===undefined||v===null||v==='')return '—';if(v===true)return 'Ja';if(v===false)return 'Nein';if(Array.isArray(v))return v.length+' Einträge';if(typeof v==='object')return 'Datenblock';return String(v);}
+        function renderHistoryDiff(change){
+            var before=change.before||{},after=change.after||{},labels={name:'Name',org:'Organisation',perm:'Berechtigung',day:'Tag',amt:'Betrag',chk:'Eingecheckt',description:'Bezeichnung',party:'Empfänger / Absender',amount:'Betrag',date:'Datum',note:'Notiz',type:'Art',paymentStatus:'Zahlungsstatus',dueDate:'Fällig am',paidDate:'Bezahlt / erhalten am',gage:'Gage',hotelNeeded:'Hotel',shuttleNeeded:'Shuttle',showday:'Showday'},keys={};
+            Object.keys(before).forEach(function(k){keys[k]=1;});Object.keys(after).forEach(function(k){keys[k]=1;});var changed=Object.keys(keys).filter(function(k){return JSON.stringify(before[k])!==JSON.stringify(after[k])&&['documents','riderDocuments','invoiceDocuments','drinks','extraFood','extraSpecials','notesList'].indexOf(k)<0;}).slice(0,10);
+            var html='<div class="activity-change"><b>'+escapeHtmlAuth(change.label||change.entityId||'Datensatz')+'</b>'+changed.map(function(k){return '<div class="activity-change-row"><b>'+escapeHtmlAuth(labels[k]||k)+'</b><span class="activity-change-old">'+escapeHtmlAuth(historyDisplayValue(before[k]))+'</span><span class="activity-change-new">'+escapeHtmlAuth(historyDisplayValue(after[k]))+'</span></div>';}).join('');
+            if(change.restorable&&change.before){var idx=activityRestoreItems.push(change)-1;html+='<button type="button" class="btn-primary activity-restore-btn" onclick="restoreActivityChange('+idx+')">↩ Gelöschten Datensatz wiederherstellen</button>';}
+            return html+'</div>';
+        }
+        async function restoreActivityChange(index){
+            if(!canViewActivityLog())return;var c=activityRestoreItems[index];if(!c||!c.before||!confirm('„'+(c.label||'Datensatz')+'“ wirklich wiederherstellen?'))return;
+            try{if(c.entityType==='production'){if(getProductionEntry(c.entityId))throw new Error('Eintrag bereits vorhanden.');productionEntries.push(historyClone(c.before));await writeDataModule('fees');renderProductionCosts();}else if(c.entityType==='accreditation'){if(akkDb.some(function(x){return x.id===c.entityId;}))throw new Error('Akkreditierung bereits vorhanden.');akkDb.push(historyClone(c.before));await writeDataModule('accreditation');renderAkk();}else if(c.entityType==='band'){if(getBandById(c.entityId))throw new Error('Band bereits vorhanden.');bands.push(historyClone(c.before));for(var i=0;i<CMOA_DATA_MODULES.length;i++){var m=CMOA_DATA_MODULES[i];if(m!=='accreditation'&&m!=='todos')await writeDataModule(m);}renderBandsList();}else throw new Error('Datensatztyp nicht wiederherstellbar.');await logCmoaChange('Datensatz wiederhergestellt',c.entityType==='production'?'fees':c.entityType==='accreditation'?'accreditation':'bands',c.entityType,c.entityId,c.label,null,c.before,false);updateMainProgress();await loadActivityLog();}catch(err){alert('Wiederherstellung fehlgeschlagen: '+(err.message||err));}
+        }
 
         function recordLoginActivity() {
             if (!currentAuthUser || !currentEventId) return;
@@ -3413,13 +3451,13 @@ function loadFromLocalStorage() {
             if(eventName)eventName.textContent=(currentEvent&&(currentEvent.short_name||currentEvent.name))||'Veranstaltung';
             if(!content)return;
             content.innerHTML='<div class="card">Protokoll wird geladen …</div>';
-            var result=await _supabase.from('cmoa_activity_log').select('created_at,user_email,action,details,module').eq('event_id',currentEventId).order('created_at',{ascending:false}).limit(1000);
+            var result=await _supabase.from('cmoa_activity_log').select('*').eq('event_id',currentEventId).order('created_at',{ascending:false}).limit(1000);
             if(result.error){content.innerHTML='<div class="card" style="color:#dc2626">Der Log-Bericht ist noch nicht verfügbar. Bitte zuerst die mitgelieferte Supabase-SQL-Datei ausführen.<br><small>'+escapeHtmlAuth(result.error.message)+'</small></div>';return;}
             var rows=result.data||[];
             if(!rows.length){content.innerHTML='<div class="card">Noch keine Aktivitäten protokolliert.</div>';return;}
-            var groups={};
+            activityRestoreItems=[];var groups={};
             rows.forEach(function(row){var d=new Date(row.created_at),key=d.toLocaleDateString('de-DE',{year:'numeric',month:'2-digit',day:'2-digit'});if(!groups[key])groups[key]=[];groups[key].push(row);});
-            content.innerHTML=Object.keys(groups).map(function(day){return '<section class="activity-day"><div class="activity-day-title">'+day+'</div>'+groups[day].map(function(row){var d=new Date(row.created_at);return '<div class="activity-row"><time>'+d.toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'})+'</time><div class="activity-user">'+escapeHtmlAuth(row.user_email||'Unbekannter Benutzer')+'</div><div><b>'+escapeHtmlAuth(row.action||'Aktion')+'</b>'+(row.details?'<div class="activity-detail">'+escapeHtmlAuth(row.details)+'</div>':'')+'</div></div>';}).join('')+'</section>';}).join('');
+            content.innerHTML=Object.keys(groups).map(function(day){return '<section class="activity-day"><div class="activity-day-title">'+day+'</div>'+groups[day].map(function(row){var d=new Date(row.created_at),change=parseCmoaChange(row.details);return '<div class="activity-row"><time>'+d.toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'})+'</time><div class="activity-user">'+escapeHtmlAuth(row.user_email||'Unbekannter Benutzer')+'</div><div><b>'+escapeHtmlAuth(row.action||'Aktion')+'</b>'+(change?renderHistoryDiff(change):(row.details?'<div class="activity-detail">'+escapeHtmlAuth(row.details)+'</div>':''))+'</div></div>';}).join('')+'</section>';}).join('');
         }
 
         async function loadCashSummaryMini() {
@@ -3646,7 +3684,7 @@ function loadFromLocalStorage() {
                         return;
                     }
 
-                    akkDb.push({
+                    var newAkkRecord={
                         id: generateID(),
                         name: name,
                         org: org || "—",
@@ -3658,7 +3696,8 @@ function loadFromLocalStorage() {
                         emailSent: false,
                         emailSentAt: '',
                         emailError: ''
-                    });
+                    };
+                    akkDb.push(newAkkRecord);
 
                     document.getElementById('in-name').value = "";
                     document.getElementById('in-org').value = "";
@@ -3671,6 +3710,7 @@ function loadFromLocalStorage() {
                     document.querySelectorAll('#akkreditierung-page .akk-grid-btn').forEach(function(x){ x.classList.remove('selected'); });
 
                     saveToStorage();
+                    logCmoaChange('Akkreditierung angelegt','accreditation','accreditation',newAkkRecord.id,newAkkRecord.name,null,newAkkRecord,false);
                     msg.textContent = "Erfolgreich angelegt!";
                     msg.className = "akk-message show success";
                     setTimeout(function(){ msg.className = "akk-message"; }, 2500);
@@ -3753,12 +3793,17 @@ function loadFromLocalStorage() {
                 } else if (act === 'mail' && id) {
                     prepareAkkEmail(id);
                 } else if (act === 'chk' && id) {
-                    akkDb.forEach(function(r){ if(r.id === id) r.chk = !r.chk; });
+                    var changedAkk=akkDb.find(function(r){return r.id===id;}),beforeAkk=historyClone(changedAkk);
+                    if(changedAkk)changedAkk.chk=!changedAkk.chk;
                     saveToStorage();
+                    if(changedAkk)logCmoaChange('Check-in geändert','accreditation','accreditation',changedAkk.id,changedAkk.name,beforeAkk,changedAkk,false);
                     renderAkk();
                 } else if (act === 'del' && id) {
+                    var deletedAkk=akkDb.find(function(r){return r.id===id;});
+                    if(!deletedAkk||!confirm('Akkreditierung für „'+deletedAkk.name+'“ wirklich löschen?'))return;
                     akkDb = akkDb.filter(function(r){ return r.id !== id; });
                     saveToStorage();
+                    logCmoaChange('Akkreditierung gelöscht','accreditation','accreditation',deletedAkk.id,deletedAkk.name,deletedAkk,null,true);
                     renderAkk();
                 }
             });
@@ -3845,10 +3890,33 @@ function loadFromLocalStorage() {
         }
         function confirmAkkQuickCheckin() {
             var rec=akkDb.find(function(r){return r.id===akkQuickRecordId;}); if(!rec)return;
+            var before=historyClone(rec);
             rec.chk=true; rec.checkedInAt=new Date().toISOString();
             saveToStorage(); renderAkk();
+            logCmoaChange('Per Schnell-/QR-Check-in eingecheckt','accreditation','accreditation',rec.id,rec.name,before,rec,false);
             var dialog=document.getElementById('akk-quick-dialog');
             if(dialog) dialog.innerHTML='<div style="text-align:center;font-size:58px;margin:8px 0">✅</div><div class="akk-result-name">Erfolgreich eingecheckt</div><div class="akk-result-org">'+akkEscape(rec.name||'')+'</div><button type="button" class="akk-result-check-btn" onclick="akkQuickCode=\'\';akkQuickRecordId=\'\';renderAkkQuickKeypad()">NÄCHSTER GAST</button><button type="button" class="akk-result-back" onclick="closeAkkQuickCheckin()">Schließen</button>';
+        }
+
+        function akkQrPayload(rec){return 'CMOA-AKK|'+String(currentEventId||'')+'|'+String(rec&&rec.id||'');}
+        function parseAkkQrPayload(text){var p=String(text||'').split('|');return p.length===3&&p[0]==='CMOA-AKK'?{eventId:p[1],id:p[2]}:null;}
+        async function openAkkQrScanner(){
+            if(!hasModuleRight('checkin','write')){alert('Für den Check-in fehlt die Schreibberechtigung.');return;}
+            if(typeof Html5Qrcode==='undefined'){alert('Der QR-Scanner konnte nicht geladen werden. Bitte Internetverbindung prüfen.');return;}
+            var overlay=document.getElementById('akk-qr-overlay'),status=document.getElementById('akk-qr-status');if(overlay)overlay.classList.add('show');if(status)status.textContent='Kamera wird gestartet …';akkQrScanLocked=false;
+            try{akkQrScanner=new Html5Qrcode('akk-qr-reader');await akkQrScanner.start({facingMode:'environment'},{fps:10,qrbox:{width:230,height:230}},handleAkkQrScan,function(){});if(status)status.textContent='QR-Code in den Rahmen halten.';}catch(err){if(status)status.textContent='Kamera konnte nicht geöffnet werden: '+(err.message||err);}
+        }
+        async function closeAkkQrScanner(){var scanner=akkQrScanner;akkQrScanner=null;akkQrScanLocked=false;if(scanner){try{if(scanner.isScanning)await scanner.stop();}catch(e){}try{scanner.clear();}catch(e){}}var overlay=document.getElementById('akk-qr-overlay');if(overlay)overlay.classList.remove('show');}
+        async function handleAkkQrScan(decodedText){
+            if(akkQrScanLocked)return;akkQrScanLocked=true;var parsed=parseAkkQrPayload(decodedText),status=document.getElementById('akk-qr-status');
+            if(!parsed){if(status)status.textContent='Dieser QR-Code gehört nicht zu einer CMOA-Akkreditierung.';akkQrScanLocked=false;return;}
+            if(parsed.eventId!==String(currentEventId||'')){if(status)status.textContent='Die Akkreditierung gehört zu einer anderen Veranstaltung.';akkQrScanLocked=false;return;}
+            var rec=akkDb.find(function(r){return String(r.id)===parsed.id;});if(!rec){if(status)status.textContent='Akkreditierung nicht gefunden.';akkQrScanLocked=false;return;}
+            await closeAkkQrScanner();akkQuickRecordId=rec.id;akkQuickCode='';var quick=document.getElementById('akk-quick-overlay');if(quick)quick.classList.add('show');renderAkkQuickResult(rec);
+        }
+        function createAkkQrDataUrl(rec){
+            if(typeof QRCode==='undefined')return '';var host=document.createElement('div');host.style.position='fixed';host.style.left='-10000px';document.body.appendChild(host);
+            try{new QRCode(host,{text:akkQrPayload(rec),width:256,height:256,correctLevel:QRCode.CorrectLevel.H});var canvas=host.querySelector('canvas'),img=host.querySelector('img');return canvas?canvas.toDataURL('image/png'):(img?img.src:'');}catch(e){return '';}finally{host.remove();}
         }
 
         function exportAkkListPdf(kind) {
@@ -4102,6 +4170,8 @@ function loadFromLocalStorage() {
 
             // Frisch geliefertes Logo: schwarz auf weiß, groß im freien Bereich rechts neben den Infos.
             try { doc.addImage(AKK_PDF_LOGO_2027,'PNG',119,76,75,72); } catch(e) { console.error('Logo konnte nicht eingefügt werden',e); }
+            var qrData=createAkkQrDataUrl(rec);
+            if(qrData){try{doc.addImage(qrData,'PNG',150,147,36,36);doc.setTextColor(45,115,190);doc.setFont('helvetica','bold');doc.setFontSize(6.8);doc.text('QR-CHECK-IN',168,186,{align:'center'});}catch(e){console.error('QR-Code konnte nicht eingefügt werden',e);}}
 
             doc.setDrawColor(220,220,220); doc.line(16,188,194,188);
             doc.setTextColor(dark[0],dark[1],dark[2]); doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.text('VERANSTALTUNG',16,200);
@@ -4461,6 +4531,7 @@ function loadFromLocalStorage() {
             });
 
             saveToStorage();
+            var newBand=getBandById(newId);if(newBand)logCmoaChange('Band angelegt','bands','band',newBand.id,newBand.name,null,newBand,false);
             if (input) input.value = '';
             renderBandsList();
             openBandDetail(newId);
@@ -4469,10 +4540,9 @@ function loadFromLocalStorage() {
         async function deleteBand(id) {
             var b = getBandById(id);
             if (b && confirm('Möchtest du "' + b.name + '" wirklich löschen?')) {
-                var storedPaths=getBandDocumentRecords(b,'contract').concat(getBandDocumentRecords(b,'rider'),getBandDocumentRecords(b,'invoice')).map(function(d){return getStoredDocumentPath(d.url);}).filter(Boolean);
-                if(storedPaths.length&&_supabase){var rm=await _supabase.storage.from(BAND_DOCUMENT_BUCKET).remove(storedPaths);if(rm.error&&!confirm('Dokumentdateien konnten nicht gelöscht werden. Band trotzdem löschen?'))return;}
                 bands = bands.filter(function(x) { return x.id !== id; });
-                saveToStorage();
+                await saveToStorage();
+                await logCmoaChange('Band gelöscht','bands','band',b.id,b.name,b,null,true);
                 renderBandsList();
             }
         }
@@ -4746,6 +4816,7 @@ function loadFromLocalStorage() {
             if (!currentBandId) return;
             var b = getBandById(currentBandId);
             if (!b) return;
+            var before=historyClone(b);
 
             var getVal = function(elemId) { var el = document.getElementById(elemId); return el ? el.value : ''; };
             var getChk = function(elemId) { var el = document.getElementById(elemId); return el ? el.checked : false; };
@@ -4793,6 +4864,7 @@ function loadFromLocalStorage() {
             }
 
             saveToStorage();
+            logCmoaChange('Band bearbeitet','bands','band',b.id,b.name,before,b,false);
             alert('✅ Änderungen für "' + b.name + '" gespeichert!');
             showPage('bands-page');
         }
@@ -6615,6 +6687,8 @@ function loadFromLocalStorage() {
         }
 
         function syncProductionPaymentDate(){var status=document.getElementById('production-payment-status'),paid=document.getElementById('production-paid-date');if(status&&paid&&status.value==='paid'&&!paid.value){var d=new Date(),m=String(d.getMonth()+1).padStart(2,'0'),day=String(d.getDate()).padStart(2,'0');paid.value=d.getFullYear()+'-'+m+'-'+day;}}
+        function productionToday(){var d=new Date(),m=String(d.getMonth()+1).padStart(2,'0'),day=String(d.getDate()).padStart(2,'0');return d.getFullYear()+'-'+m+'-'+day;}
+        function syncProductionTypeFields(){var type=document.getElementById('production-type'),income=!!(type&&type.value==='income');['production-payment-status-group','production-due-date-group','production-paid-date-group'].forEach(function(id){var el=document.getElementById(id);if(el)el.style.display=income?'none':'block';});var date=document.getElementById('production-date');if(income&&date&&!date.value)date.value=productionToday();}
 
         function resetProductionForm() {
             ['production-edit-id','production-party','production-description','production-amount','production-date','production-note','production-due-date','production-paid-date'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});
@@ -6622,30 +6696,32 @@ function loadFromLocalStorage() {
             var payment=document.getElementById('production-payment-status');if(payment)payment.value='open';
             var title=document.getElementById('production-form-title');if(title)title.textContent='Eintrag hinzufügen';
             var cancel=document.getElementById('production-cancel-btn');if(cancel)cancel.style.display='none';
+            syncProductionTypeFields();
         }
 
         async function saveProductionEntry() {
             if(!hasModuleRight('fees','write')){alert('Du hast für Finanzen nur Leserechte.');return;}
             var id=(document.getElementById('production-edit-id').value||'').trim();
             var existing=(productionEntries||[]).find(function(e){return e.id===id;});
+            var isIncome=document.getElementById('production-type').value==='income';
             var entry={
                 id:id||('production_'+Date.now()),
-                type:document.getElementById('production-type').value,
+                type:isIncome?'income':'expense',
                 party:(document.getElementById('production-party').value||'').trim(),
                 description:(document.getElementById('production-description').value||'').trim(),
                 amount:Number(document.getElementById('production-amount').value||0),
                 date:document.getElementById('production-date').value||'',
                 note:(document.getElementById('production-note').value||'').trim(),
-                paymentStatus:document.getElementById('production-payment-status').value||'open',
-                dueDate:document.getElementById('production-due-date').value||'',
-                paidDate:document.getElementById('production-paid-date').value||'',
+                paymentStatus:isIncome?'received':(document.getElementById('production-payment-status').value||'open'),
+                dueDate:isIncome?'':(document.getElementById('production-due-date').value||''),
+                paidDate:isIncome?(document.getElementById('production-date').value||productionToday()):(document.getElementById('production-paid-date').value||''),
                 documents:existing&&Array.isArray(existing.documents)?existing.documents:[],
                 updatedAt:new Date().toISOString()
             };
             if(!entry.party||!entry.description||entry.amount<=0){alert('Bitte Art, Empfänger beziehungsweise Absender, Bezeichnung und einen Betrag größer als 0 angeben.');return;}
             var index=(productionEntries||[]).findIndex(function(e){return e.id===entry.id;});
             if(index>=0)productionEntries[index]=entry;else productionEntries.push(entry);
-            try{await writeDataModule('fees');logCmoaActivity(index>=0?'Produktionseintrag bearbeitet':'Produktionseintrag angelegt',entry.description+' · '+cashEuro(entry.amount),'fees');resetProductionForm();renderProductionCosts();renderOverview();}
+            try{await writeDataModule('fees');await logCmoaChange(index>=0?'Produktionseintrag bearbeitet':'Produktionseintrag angelegt','fees','production',entry.id,entry.description,existing||null,entry,false);resetProductionForm();renderProductionCosts();renderOverview();}
             catch(e){alert('Eintrag konnte nicht gespeichert werden: '+e.message);}
         }
 
@@ -6661,6 +6737,7 @@ function loadFromLocalStorage() {
             document.getElementById('production-payment-status').value=e.paymentStatus||'open';
             document.getElementById('production-due-date').value=e.dueDate||'';
             document.getElementById('production-paid-date').value=e.paidDate||'';
+            syncProductionTypeFields();
             document.getElementById('production-form-title').textContent='Eintrag bearbeiten';
             document.getElementById('production-cancel-btn').style.display='inline-block';
             window.scrollTo({top:0,behavior:'smooth'});
@@ -6669,16 +6746,14 @@ function loadFromLocalStorage() {
         async function deleteProductionEntry(id) {
             if(!hasModuleRight('fees','write')){alert('Du hast für Finanzen nur Leserechte.');return;}
             var entry=(productionEntries||[]).find(function(e){return e.id===id;});if(!entry||!confirm('Eintrag „'+entry.description+'“ wirklich löschen?'))return;
-            var storedPaths=(Array.isArray(entry.documents)?entry.documents:[]).map(function(d){return getStoredDocumentPath(d&&d.url);}).filter(Boolean);
-            if(storedPaths.length&&_supabase){var rm=await _supabase.storage.from(BAND_DOCUMENT_BUCKET).remove(storedPaths);if(rm.error&&!confirm('Die zugehörigen Dokumentdateien konnten nicht gelöscht werden. Den Eintrag trotzdem löschen?'))return;}
             productionEntries=productionEntries.filter(function(e){return e.id!==id;});
-            try{await writeDataModule('fees');logCmoaActivity('Produktionseintrag gelöscht',entry.description+' · '+cashEuro(entry.amount),'fees');if(currentProductionEntryId===id)closeProductionEntryView();renderProductionCosts();renderOverview();}
+            try{await writeDataModule('fees');await logCmoaChange('Produktionseintrag gelöscht','fees','production',entry.id,entry.description,entry,null,true);if(currentProductionEntryId===id)closeProductionEntryView();renderProductionCosts();renderOverview();}
             catch(e){alert('Eintrag konnte nicht gelöscht werden: '+e.message);}
         }
 
         function getProductionEntry(id){return (productionEntries||[]).find(function(e){return e.id===id;})||null;}
         function getProductionPaymentMeta(entry){
-            var status=entry&&entry.paymentStatus||'open',labels={open:'Offen',invoice_received:'Rechnung erhalten',approved:'Zur Zahlung freigegeben',paid:'Bezahlt'},cls=status==='paid'?'paid':status==='approved'?'approved':'';
+            var status=entry&&entry.type==='income'?'received':(entry&&entry.paymentStatus||'open'),labels={open:'Offen',invoice_received:'Rechnung erhalten',approved:'Zur Zahlung freigegeben',paid:'Bezahlt',received:'Erhalten'},cls=(status==='paid'||status==='received')?'paid':status==='approved'?'approved':'';
             var days=entry&&entry.dueDate?getPaymentDaysRemaining(entry.dueDate):null;if(status!=='paid'&&days!==null&&days<0)cls='overdue';
             return {status:status,label:labels[status]||'Offen',className:cls,days:days};
         }
