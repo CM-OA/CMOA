@@ -283,6 +283,30 @@
         .festival-countdown-track { height:18px; margin-top:9px; border-radius:999px; overflow:hidden; background:rgba(124,45,18,.13); border:1px solid rgba(194,65,12,.28); }
         .festival-countdown-fill { height:100%; width:0; border-radius:999px; background:linear-gradient(90deg,#f59e0b,#f97316,#ea580c); box-shadow:0 0 12px rgba(249,115,22,.5); transition:width .6s ease; }
         .festival-countdown-sub { margin-top:7px; color:var(--text-muted); text-align:center; font-size:.76rem; font-weight:700; }
+        .festival-cockpit { margin-top:14px; padding:15px; border-radius:14px; border:1px solid var(--border); background:var(--card-bg); box-shadow:0 5px 16px rgba(15,23,42,.08); }
+        .festival-cockpit-head { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin-bottom:11px; }
+        .festival-cockpit-head h3 { margin:0; }
+        .festival-cockpit-head p { margin:4px 0 0; color:var(--text-muted); font-size:.75rem; }
+        .festival-cockpit-total { flex:0 0 auto; min-width:42px; height:42px; display:flex; align-items:center; justify-content:center; border-radius:50%; color:#fff; background:#dc2626; font-size:1.05rem; font-weight:950; box-shadow:0 4px 12px rgba(220,38,38,.25); }
+        .festival-cockpit-total.ok { background:#059669; box-shadow:0 4px 12px rgba(5,150,105,.25); }
+        .festival-cockpit-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+        .cockpit-tile { min-width:0; padding:11px; border:1px solid var(--border); border-left:5px solid #d97706; border-radius:11px; background:var(--input-bg); color:var(--text-main); text-align:left; cursor:pointer; }
+        .cockpit-tile:hover,.cockpit-tile:focus-visible { transform:translateY(-1px); filter:brightness(1.03); }
+        .cockpit-tile.urgent { border-left-color:#dc2626; }
+        .cockpit-tile.ok { border-left-color:#059669; }
+        .cockpit-tile strong { display:flex; justify-content:space-between; gap:8px; align-items:center; font-size:.83rem; }
+        .cockpit-tile strong b { font-size:1rem; }
+        .cockpit-tile small { display:block; margin-top:4px; color:var(--text-muted); font-size:.68rem; line-height:1.35; }
+        .cockpit-details { margin-top:10px; display:grid; gap:6px; }
+        .cockpit-issue { display:grid; grid-template-columns:auto minmax(0,1fr) auto; gap:9px; align-items:center; width:100%; padding:9px; border:1px solid var(--border); border-radius:9px; background:transparent; color:var(--text-main); text-align:left; cursor:pointer; }
+        .cockpit-issue:hover,.cockpit-issue:focus-visible { background:var(--input-bg); }
+        .cockpit-issue-icon { font-size:1rem; }
+        .cockpit-issue-text { min-width:0; overflow-wrap:anywhere; font-size:.75rem; line-height:1.35; }
+        .cockpit-issue-text b { display:block; }
+        .cockpit-issue-arrow { color:var(--text-muted); font-weight:900; }
+        .cockpit-all-clear { padding:12px; border:1px solid rgba(5,150,105,.35); border-radius:10px; color:#047857; background:rgba(5,150,105,.08); text-align:center; font-size:.8rem; font-weight:850; }
+        body.night-mode .cockpit-all-clear { color:#6ee7b7; }
+        .cockpit-more { margin-top:7px; text-align:center; color:var(--text-muted); font-size:.7rem; font-weight:700; }
         .fees-table { table-layout:fixed; }
         .fees-table th:first-child,.fees-table td:first-child { width:30%; text-align:left; }
         .fees-table .num { text-align:right; font-variant-numeric:tabular-nums; vertical-align:middle; }
@@ -1571,6 +1595,11 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
             .event-switcher > button { flex:1 1 100%; width:100%; }
             .festival-countdown-head { align-items:flex-start; flex-direction:column; gap:4px; }
             .festival-countdown-head strong { white-space:normal; }
+            .festival-cockpit { padding:12px; }
+            .festival-cockpit-grid { grid-template-columns:1fr 1fr; gap:6px; }
+            .cockpit-tile { padding:9px 8px; }
+            .cockpit-tile strong { align-items:flex-start; flex-direction:column; gap:2px; }
+            .cockpit-issue { grid-template-columns:auto minmax(0,1fr) auto; padding:9px 7px; }
             .cash-summary-launch > button { width:100%; min-width:0; }
             .auth-userbar { align-items:stretch; }
             .auth-userbar > * { min-width:0; }
@@ -1590,6 +1619,7 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
             .menu-grid { gap:6px; }
             .menu-grid > .menu-btn { min-height:56px; font-size:.78rem !important; }
             .band-view-export-actions { grid-template-columns:1fr !important; }
+            .festival-cockpit-grid { grid-template-columns:1fr; }
         }
 </style>
     <link rel="manifest" href="manifest.json">
@@ -1639,6 +1669,16 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
                 <button id="admin-menu-btn" class="menu-btn permission-hidden" data-module="admin" onclick="showPage('admin-page')">⚙️ Benutzer & Rechte</button>
                 <button class="menu-btn" data-module="fees" onclick="showPage('production-costs-page')">💶 Produktionskosten</button>
             </div>
+
+            <section id="festival-cockpit" class="festival-cockpit" aria-labelledby="festival-cockpit-title">
+                <div class="festival-cockpit-head">
+                    <div><h3 id="festival-cockpit-title">🎛️ Festival-Cockpit</h3><p>Zahlungen, Dokumente, Hotel und Shuttle auf einen Blick</p></div>
+                    <div id="festival-cockpit-total" class="festival-cockpit-total" title="Offene Hinweise">0</div>
+                </div>
+                <div id="festival-cockpit-grid" class="festival-cockpit-grid"></div>
+                <div id="festival-cockpit-details" class="cockpit-details"></div>
+                <div id="festival-cockpit-more" class="cockpit-more"></div>
+            </section>
 
             <div class="progress-card">
                 <div id="main-progress-section">
@@ -3026,6 +3066,7 @@ function loadFromLocalStorage() {
 
         function updateMainProgress() {
             updateFestivalCountdown();
+            updateFestivalCockpit();
             var fill = document.getElementById('main-progress-fill');
             var text = document.getElementById('main-progress-text');
             var sub = document.getElementById('main-progress-sub');
@@ -3055,6 +3096,52 @@ function loadFromLocalStorage() {
             fill.style.width = pct + '%';
             text.innerText = pct + '%';
             if (sub) sub.innerText = bands.length + ' Band(s) angelegt (' + filled + '/' + total + ' Felder)';
+        }
+
+        function updateFestivalCockpit(){
+            var cockpit=document.getElementById('festival-cockpit'),grid=document.getElementById('festival-cockpit-grid'),details=document.getElementById('festival-cockpit-details'),totalEl=document.getElementById('festival-cockpit-total'),more=document.getElementById('festival-cockpit-more');
+            if(!cockpit||!grid||!details||!totalEl)return;
+            var categories=[],issues=[],source=Array.isArray(bands)?bands:[];
+            function addCategory(key,label,icon,page,allowed){if(allowed)categories.push({key:key,label:label,icon:icon,page:page,count:0,urgent:0});}
+            function addIssue(key,title,text,page,severity){issues.push({key:key,title:title,text:text,page:page,severity:severity||'warning'});}
+            addCategory('payments','Zahlungen','💳','payment-terms-page',hasModuleRight('payments','read'));
+            addCategory('documents','Dokumente','📄','bands-page',hasModuleRight('documents','read')&&hasModuleRight('bands','read'));
+            addCategory('hotel','Hotel','🏨','hotel-page',hasModuleRight('hotel','read'));
+            addCategory('shuttle','Shuttle','🚐','shuttle-page',hasModuleRight('shuttle','read'));
+            if(!categories.length){cockpit.style.display='none';return;}cockpit.style.display='block';
+            var enabled={};categories.forEach(function(c){enabled[c.key]=true;});
+            source.forEach(function(b){
+                var name=String(b.name||'Band').toUpperCase();
+                if(enabled.payments){
+                    var paymentRows=[];
+                    if(b.paymentTermsMainMode==='split')paymentRows=[{label:'Anzahlung',date:b.advDueDate,paid:!!b.statusAdvPaid},{label:'Restzahlung',date:b.restDueDate,paid:!!b.statusRestPaid}];
+                    else paymentRows=[{label:'Gesamtzahlung',date:b.fullDueDate,paid:!!b.statusFullPaid}];
+                    paymentRows.forEach(function(p){var days=getPaymentDaysRemaining(p.date);if(!p.paid&&p.date&&days!==null&&days<=7){var wording=days<0?('seit '+Math.abs(days)+' Tag'+(Math.abs(days)===1?'':'en')+' überfällig'):(days===0?'heute fällig':(days===1?'morgen fällig':'in '+days+' Tagen fällig'));addIssue('payments',name,p.label+' · '+formatDateDE(p.date)+' · '+wording,'payment-terms-page',days<0?'urgent':'warning');}});
+                }
+                if(enabled.documents){
+                    var missing=[];
+                    var cs=b.contractDocStatus||((b.contractReceived||b.contractSigned)?'vorhanden':'offen'),rs=b.riderDocStatus||((b.riderReceived||b.riderChecked)?'vorhanden':'offen');
+                    if(cs!=='vorhanden'&&cs!=='nicht_noetig')missing.push('Vertrag');
+                    if(rs!=='vorhanden'&&rs!=='nicht_noetig')missing.push('Rider');
+                    if(Number(b.gage||0)>0&&!b.noInvoice&&(!Array.isArray(b.invoiceDocuments)||!b.invoiceDocuments.length))missing.push('Rechnung');
+                    if(missing.length)addIssue('documents',name,'Offen: '+missing.join(', '),'bands-page','warning');
+                }
+                if(enabled.hotel){
+                    if(b.hotelNeeded==='offen'||b.hotelNeeded===undefined||b.hotelNeeded==='')addIssue('hotel',name,'Hotelbedarf noch nicht geklärt','hotel-page','warning');
+                    else if(b.hotelNeeded==='ja'||b.hotelNeeded===true){var hm=[];if(!b.hotelName)hm.push('Hotel');if(!b.hotelFrom)hm.push('Anreise');if(!b.hotelTo)hm.push('Abreise');if(!(Number(b.hotelPersons||0)>0))hm.push('Personenzahl');if(hm.length)addIssue('hotel',name,'Fehlt: '+hm.join(', '),'hotel-page','warning');}
+                }
+                if(enabled.shuttle){
+                    if(b.shuttleNeeded==='offen'||b.shuttleNeeded===undefined||b.shuttleNeeded==='')addIssue('shuttle',name,'Shuttlebedarf noch nicht geklärt','shuttle-page','warning');
+                    else if(b.shuttleNeeded==='ja'||b.shuttleNeeded===true){var sm=[];if(!b.shuttleDate)sm.push('Datum');if(!b.shuttleTime)sm.push('Uhrzeit');if(!b.shuttleAirport)sm.push('Flughafen/Ort');if(!(Number(b.shuttlePax||0)>0))sm.push('Personenzahl');if(sm.length)addIssue('shuttle',name,'Fehlt: '+sm.join(', '),'shuttle-page','warning');}
+                }
+            });
+            categories.forEach(function(c){c.count=issues.filter(function(i){return i.key===c.key;}).length;c.urgent=issues.filter(function(i){return i.key===c.key&&i.severity==='urgent';}).length;});
+            grid.innerHTML=categories.map(function(c){var cls=c.count?(c.urgent?' urgent':''):' ok',hint=c.count?(c.count+' offene'+(c.urgent?' · '+c.urgent+' überfällig':'')):'Alles geklärt';return '<button type="button" class="cockpit-tile'+cls+'" onclick="showPage(\''+c.page+'\')"><strong><span>'+c.icon+' '+c.label+'</span><b>'+c.count+'</b></strong><small>'+hint+'</small></button>';}).join('');
+            issues.sort(function(a,b){if(a.severity!==b.severity)return a.severity==='urgent'?-1:1;return a.key.localeCompare(b.key)||a.title.localeCompare(b.title);});
+            var shown=issues.slice(0,8);
+            details.innerHTML=shown.length?shown.map(function(i){var icon=i.severity==='urgent'?'🔴':({payments:'💳',documents:'📄',hotel:'🏨',shuttle:'🚐'}[i.key]||'⚠️');return '<button type="button" class="cockpit-issue" onclick="showPage(\''+i.page+'\')"><span class="cockpit-issue-icon">'+icon+'</span><span class="cockpit-issue-text"><b>'+escapeHtmlAuth(i.title)+'</b>'+escapeHtmlAuth(i.text)+'</span><span class="cockpit-issue-arrow">›</span></button>';}).join(''):'<div class="cockpit-all-clear">✅ Aktuell gibt es in diesen Bereichen keine offenen Hinweise.</div>';
+            if(more)more.textContent=issues.length>shown.length?('Zusätzlich '+(issues.length-shown.length)+' weitere Hinweise · Bereich oben öffnen'):'';
+            totalEl.textContent=String(issues.length);totalEl.classList.toggle('ok',issues.length===0);totalEl.title=issues.length?issues.length+' offene Hinweise':'Alles geklärt';
         }
 
         function updateFestivalCountdown(){
@@ -3415,7 +3502,7 @@ function loadFromLocalStorage() {
             if (pageId === 'akkreditierung-page') renderAkk();
             if (pageId === 'admin-page') loadAdminUsers();
             if (pageId === 'events-admin-page') loadEventsAdminPage();
-            if (pageId === 'main-page') loadCashSummaryMini();
+            if (pageId === 'main-page') { updateFestivalCockpit(); loadCashSummaryMini(); }
             updateRightsBanner(pageId);
             window.scrollTo(0, 0);
         }
