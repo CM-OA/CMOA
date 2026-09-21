@@ -5593,8 +5593,13 @@ function loadFromLocalStorage() {
                 html += '<div class="export-unified-card"><h3>🎸 Bands & Kontakte</h3>';
                 for (var i = 0; i < targetBands.length; i++) {
                     var b = targetBands[i];
+                    var hasBandShuttle = b.shuttleNeeded === 'ja' || b.shuttleNeeded === true;
                     html += '<div class="view-section"><strong class="export-band-name-title">' + b.name + '</strong>' +
-                        '<div class="view-row"><span class="view-label">Kontakt:</span><span class="view-value">' + (b.contactName || '-') + ' (' + (b.contactPhone || '-') + ' | ' + (b.contactEmail || '-') + ')</span></div></div>';
+                        '<div class="view-row"><span class="view-label">Kontakt:</span><span class="view-value">' + (b.contactName || '-') + ' (' + (b.contactPhone || '-') + ' | ' + (b.contactEmail || '-') + ')</span></div>' +
+                        (hasBandShuttle ? '<div class="shuttle-highlight"><div class="shuttle-highlight-title">🚌 SHUTTLE ERFORDERLICH · ' + (parseInt(b.shuttlePax)||parseInt(b.paxCount)||0) + ' PERSONEN</div>' +
+                            '<div><b>Anreise:</b> ' + (b.shuttleDate ? formatDateDE(b.shuttleDate) : '-') + ' · ' + (b.shuttleTime || '-') + ' Uhr · ' + (b.shuttleAirport || '-') + (b.shuttleFlightNum ? ' · Flug ' + b.shuttleFlightNum : '') + '</div>' +
+                            '<div><b>Rückreise:</b> ' + (b.shuttleRetDate ? formatDateDE(b.shuttleRetDate) : '-') + ' · ' + (b.shuttleRetTime || '-') + ' Uhr · ' + (b.shuttleRetAirport || '-') + (b.shuttleRetFlightNum ? ' · Flug ' + b.shuttleRetFlightNum : '') + '</div>' +
+                            '<div><b>Fahrzeug / Fahrer:</b> ' + (b.shuttleVehicle || '-') + ' / ' + (b.shuttleDriver || '-') + '</div></div>' : '<div class="shuttle-none">Kein Shuttle erforderlich</div>') + '</div>';
                 }
                 html += '</div>';
             }
@@ -5624,13 +5629,44 @@ function loadFromLocalStorage() {
 
             if (expHotel) {
                 html += '<div class="export-unified-card"><h3>🏨 Hotelübersicht</h3>';
+                var hotelSummary = {}, hotelTotalEz=0, hotelTotalDz=0, hotelTotalPersons=0, hotelTotalCost=0, hotelBandCount=0;
                 for (var h = 0; h < targetBands.length; h++) {
                     var bh = targetBands[h];
                     if (bh.hotelNeeded === 'ja' || bh.hotelNeeded === true) {
-                        html += '<div class="view-row" style="padding:4px 0; border-bottom:1px solid var(--border);"><span class="view-label">' + bh.name + ':</span><span class="view-value">' + (bh.hotelName || 'Offen') + ' (' + (bh.hotelEzCount || 0) + ' EZ / ' + (bh.hotelDzCount || 0) + ' DZ)</span></div>';
+                        var hotelName=bh.hotelName||'Offen', hez=parseInt(bh.hotelEzCount)||0, hdz=parseInt(bh.hotelDzCount)||0, hp=parseInt(bh.hotelPersons)||0, hn=0;
+                        if(bh.hotelFrom&&bh.hotelTo){var hd1=new Date(bh.hotelFrom),hd2=new Date(bh.hotelTo);if(!isNaN(hd1)&&!isNaN(hd2))hn=Math.max(0,Math.round((hd2-hd1)/86400000));}
+                        var hc=getCostForHotel(hotelName), hcost=hez*(Number(hc.ezCost)||0)*hn+hdz*(Number(hc.dzCost)||0)*hn;
+                        if(!hotelSummary[hotelName])hotelSummary[hotelName]={bands:0,ez:0,dz:0,persons:0,cost:0};
+                        hotelSummary[hotelName].bands++;hotelSummary[hotelName].ez+=hez;hotelSummary[hotelName].dz+=hdz;hotelSummary[hotelName].persons+=hp;hotelSummary[hotelName].cost+=hcost;
+                        hotelTotalEz+=hez;hotelTotalDz+=hdz;hotelTotalPersons+=hp;hotelTotalCost+=hcost;hotelBandCount++;
+                        html += '<div class="view-section"><strong class="export-band-name-title">' + bh.name + '</strong>'+
+                            '<div class="view-row"><span class="view-label">Hotel:</span><span class="view-value">'+hotelName+'</span></div>'+
+                            '<div class="view-row"><span class="view-label">Zeitraum:</span><span class="view-value">'+(bh.hotelFrom?formatDateDE(bh.hotelFrom):'-')+' – '+(bh.hotelTo?formatDateDE(bh.hotelTo):'-')+' · '+hn+' Nächte</span></div>'+
+                            '<div class="view-row"><span class="view-label">Zimmer / Personen:</span><span class="view-value">'+hez+' EZ · '+hdz+' DZ · '+hp+' Personen</span></div>'+
+                            '<div class="view-row"><span class="view-label">Kosten:</span><span class="view-value export-highlight-amount">'+hcost.toLocaleString('de-DE',{minimumFractionDigits:2,maximumFractionDigits:2})+' €</span></div></div>';
                     }
                 }
+                if(!hotelBandCount) html+='<div class="view-row"><span class="view-value">Keine Hotelbuchungen vorhanden.</span></div>';
+                else {
+                    html+='<div class="hotel-summary-box"><div class="hotel-summary-title">ZUSAMMENFASSUNG PRO HOTEL</div>';
+                    Object.keys(hotelSummary).sort(function(a,b){return a.localeCompare(b,'de');}).forEach(function(name){var hs=hotelSummary[name];html+='<div class="hotel-summary-row"><b>'+name+'</b><span>'+hs.bands+' Bands · '+hs.ez+' EZ · '+hs.dz+' DZ · '+hs.persons+' Personen</span><strong>'+hs.cost.toLocaleString('de-DE',{minimumFractionDigits:2,maximumFractionDigits:2})+' €</strong></div>';});
+                    html+='<div class="hotel-summary-total"><b>GESAMT</b><span>'+hotelBandCount+' Bands · '+hotelTotalEz+' EZ · '+hotelTotalDz+' DZ · '+hotelTotalPersons+' Personen</span><strong>'+hotelTotalCost.toLocaleString('de-DE',{minimumFractionDigits:2,maximumFractionDigits:2})+' €</strong></div></div>';
+                }
                 html += '</div>';
+            }
+
+            if (expShuttle) {
+                html += '<div class="export-unified-card shuttle-overview"><h3>🚌 Shuttleübersicht</h3>';
+                var shuttleFound=false;
+                for(var sh=0;sh<targetBands.length;sh++){
+                    var bs=targetBands[sh]; if(!(bs.shuttleNeeded==='ja'||bs.shuttleNeeded===true))continue; shuttleFound=true;
+                    html+='<div class="view-section"><strong class="export-band-name-title">'+bs.name+'</strong>'+
+                        '<div class="shuttle-highlight"><div class="shuttle-highlight-title">'+(parseInt(bs.shuttlePax)||parseInt(bs.paxCount)||0)+' PERSONEN · '+(bs.shuttleVehicle||'Fahrzeug offen')+' · '+(bs.shuttleDriver||'Fahrer offen')+'</div>'+
+                        '<div><b>Anreise:</b> '+(bs.shuttleDate?formatDateDE(bs.shuttleDate):'-')+' · '+(bs.shuttleTime||'-')+' Uhr · '+(bs.shuttleAirport||'-')+(bs.shuttleFlightNum?' · Flug '+bs.shuttleFlightNum:'')+'</div>'+
+                        '<div><b>Rückreise:</b> '+(bs.shuttleRetDate?formatDateDE(bs.shuttleRetDate):'-')+' · '+(bs.shuttleRetTime||'-')+' Uhr · '+(bs.shuttleRetAirport||'-')+(bs.shuttleRetFlightNum?' · Flug '+bs.shuttleRetFlightNum:'')+'</div></div></div>';
+                }
+                if(!shuttleFound)html+='<div class="view-row"><span class="view-value">Keine Shuttlefahrten erforderlich.</span></div>';
+                html+='</div>';
             }
 
             if (expTodos) {
@@ -5655,8 +5691,10 @@ function loadFromLocalStorage() {
             d.write('<!doctype html><html lang="de"><head><meta charset="utf-8"><title>CMOA 2027 Festival-Report</title><style>'+ 
                 '@page{size:A4 portrait;margin:14mm}*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;color:#0f172a;background:#fff;font-size:10pt}'+
                 '.report-head{text-align:center;border-bottom:3px solid #2563eb;padding-bottom:9px;margin-bottom:16px}.report-head h1{font-size:19pt;margin:0 0 4px}.report-head p{font-size:8.5pt;color:#64748b;margin:0}'+
-                '.export-unified-card{border:1px solid #cbd5e1;border-left:6px solid #2563eb;border-radius:7px;padding:13px 15px;margin:0 0 13px;page-break-inside:avoid;background:#fff}.export-unified-card h3{font-size:13pt;margin:0 0 10px;color:#1e3a8a}'+
+                '.export-unified-card{border:1px solid #cbd5e1;border-left:6px solid #2563eb;border-radius:7px;padding:13px 15px;margin:0 0 13px;break-inside:auto;page-break-inside:auto;background:#fff}.export-unified-card h3{font-size:13pt;margin:0 0 10px;color:#1e3a8a;break-after:avoid;page-break-after:avoid}'+
                 '.view-section{padding:8px 0;border-bottom:1px solid #e2e8f0;page-break-inside:avoid}.view-section:last-child{border-bottom:0}.view-row{display:flex;gap:10px;padding:4px 0;border-bottom:1px solid #f1f5f9}.view-label{font-weight:700;min-width:36%}.view-value{flex:1}.export-band-name-title{display:block;font-size:11pt;color:#0f172a;margin-bottom:3px}.export-highlight-amount{color:#b91c1c;font-weight:800}'+
+                '.shuttle-highlight{margin-top:7px;padding:8px 10px;border:1px solid #60a5fa;border-left:5px solid #2563eb;border-radius:6px;background:#eff6ff;color:#1e3a8a;line-height:1.55}.shuttle-highlight-title{font-weight:900;color:#1d4ed8;margin-bottom:2px}.shuttle-none{margin-top:5px;color:#64748b;font-size:8.5pt}.shuttle-overview{border-left-color:#0ea5e9}'+
+                '.hotel-summary-box{margin-top:12px;border:2px solid #2563eb;border-radius:7px;padding:10px;background:#f8fafc;page-break-inside:avoid}.hotel-summary-title{font-size:9pt;font-weight:900;color:#1d4ed8;margin-bottom:6px}.hotel-summary-row,.hotel-summary-total{display:grid;grid-template-columns:1fr 2fr auto;gap:10px;padding:5px 3px;border-bottom:1px solid #dbeafe;align-items:center}.hotel-summary-total{border-bottom:0;border-top:2px solid #2563eb;margin-top:4px;padding-top:7px;color:#1e3a8a}'+
                 '</style></head><body><header class="report-head"><h1>CHRONICAL MOSHERS OPEN AIR 2027</h1><p>'+akkEscape(subtitle)+'</p></header>'+reportHtml+'</body></html>');
             d.close();
             setTimeout(function(){ try{frame.contentWindow.focus();frame.contentWindow.print();}catch(e){alert('Die Druckansicht konnte nicht geöffnet werden.');} setTimeout(function(){frame.remove();},1500); },350);
