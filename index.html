@@ -1484,6 +1484,93 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
         body.night-mode .cmoa-page-logo { opacity:.10; mix-blend-mode:screen; filter:invert(1); }
         .cmoa-decorated-page > *:not(.cmoa-page-logo) { position:relative; z-index:1; }
         @media(max-width:520px){.cash-stat-grid{grid-template-columns:1fr}.cash-summary-dialog{padding:11px}}
+
+        /* ===== HAUPTMENÜ: STUFENWEISE VON DUNKEL NACH HELL ===== */
+        .menu-grid > .menu-btn {
+            color:#fff !important;
+            border-color:color-mix(in srgb, var(--accent-blue) 76%, var(--border)) !important;
+            box-shadow:0 3px 9px rgba(15,23,42,.12) !important;
+        }
+        .menu-grid > .menu-btn:nth-child(1)  { background:color-mix(in srgb, var(--accent-blue) 96%, #101827) !important; }
+        .menu-grid > .menu-btn:nth-child(2)  { background:color-mix(in srgb, var(--accent-blue) 90%, #172033) !important; }
+        .menu-grid > .menu-btn:nth-child(3)  { background:color-mix(in srgb, var(--accent-blue) 84%, var(--card-bg)) !important; }
+        .menu-grid > .menu-btn:nth-child(4)  { background:color-mix(in srgb, var(--accent-blue) 77%, var(--card-bg)) !important; }
+        .menu-grid > .menu-btn:nth-child(5)  { background:color-mix(in srgb, var(--accent-blue) 70%, var(--card-bg)) !important; }
+        .menu-grid > .menu-btn:nth-child(6)  { background:color-mix(in srgb, var(--accent-blue) 63%, var(--card-bg)) !important; }
+        .menu-grid > .menu-btn:nth-child(7)  { background:color-mix(in srgb, var(--accent-blue) 56%, var(--card-bg)) !important; }
+        .menu-grid > .menu-btn:nth-child(8)  { background:color-mix(in srgb, var(--accent-blue) 49%, var(--card-bg)) !important; }
+        .menu-grid > .menu-btn:nth-child(9)  { background:color-mix(in srgb, var(--accent-blue) 42%, var(--card-bg)) !important; }
+        .menu-grid > .menu-btn:nth-child(10) { background:color-mix(in srgb, var(--accent-blue) 35%, var(--card-bg)) !important; }
+        .menu-grid > .menu-btn:nth-child(11) { background:color-mix(in srgb, var(--accent-blue) 28%, var(--card-bg)) !important; }
+        .menu-grid > .menu-btn:nth-child(12) { background:color-mix(in srgb, var(--accent-blue) 20%, var(--card-bg)) !important; }
+        .menu-grid > .menu-btn:nth-child(n+8) { color:var(--text-main) !important; }
+        body.night-mode .menu-grid > .menu-btn { color:#f8fafc !important; }
+        .menu-grid > .menu-btn:hover,
+        .menu-grid > .menu-btn:active,
+        .menu-grid > .menu-btn:focus-visible {
+            filter:brightness(1.08);
+            border-color:var(--accent-blue) !important;
+        }
+
+        /* ===== MOBILE FEINSCHLIFF: TOUCH, UMBRUCH UND BREITE ===== */
+        @media(max-width:600px) {
+            header {
+                display:grid;
+                grid-template-columns:1fr auto;
+                gap:8px;
+                align-items:center;
+                padding:10px 12px;
+            }
+            header > div:first-child { display:none; }
+            header h1 {
+                min-width:0;
+                text-align:left;
+                font-size:1rem !important;
+                letter-spacing:.8px;
+                overflow-wrap:anywhere;
+            }
+            header .theme-toggle-btn {
+                width:auto;
+                max-width:132px;
+                min-height:42px;
+                padding:8px 10px !important;
+            }
+            .container { padding:10px 8px; }
+            .menu-grid { grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:8px; }
+            .menu-grid > .menu-btn {
+                width:100%;
+                min-width:0;
+                min-height:58px;
+                padding:10px 7px !important;
+                font-size:.84rem !important;
+                line-height:1.2;
+                overflow-wrap:anywhere;
+                hyphens:auto;
+            }
+            .backup-section > button,
+            .event-switcher > button { flex:1 1 100%; width:100%; }
+            .festival-countdown-head { align-items:flex-start; flex-direction:column; gap:4px; }
+            .festival-countdown-head strong { white-space:normal; }
+            .cash-summary-launch > button { width:100%; min-width:0; }
+            .auth-userbar { align-items:stretch; }
+            .auth-userbar > * { min-width:0; }
+            .form-row { grid-template-columns:1fr !important; }
+            .card > *, .list-item > *, .pay-mode-box > * { min-width:0; }
+            .fees-table { min-width:560px; }
+            #fees-list { max-width:100%; overflow-x:auto; -webkit-overflow-scrolling:touch; }
+            .band-view-export-actions { grid-template-columns:1fr 1fr !important; }
+            .band-view-export-actions > button { width:100%; min-width:0; }
+            #band-document-overlay .akk-check-dialog { width:calc(100vw - 16px) !important; max-width:calc(100vw - 16px) !important; }
+        }
+
+        @media(max-width:360px) {
+            header { grid-template-columns:1fr; }
+            header h1 { text-align:center; }
+            header .theme-toggle-btn { width:100%; max-width:none; }
+            .menu-grid { gap:6px; }
+            .menu-grid > .menu-btn { min-height:56px; font-size:.78rem !important; }
+            .band-view-export-actions { grid-template-columns:1fr !important; }
+        }
 </style>
     <link rel="manifest" href="manifest.json">
 </head>
@@ -1976,7 +2063,7 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
             <div class="card">
                 <h2 id="view-band-title" style="margin-bottom:14px; text-align:center; color:var(--accent-yellow); text-transform:uppercase;"></h2>
                 <div id="view-band-content"></div>
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px;">
+                <div class="band-view-export-actions" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px;">
                     <button class="btn-primary" id="view-pdf-btn" style="width:100%;background:linear-gradient(135deg,#2563eb,#1d4ed8);color:#fff;border:none;">📄 PDF exportieren</button>
                     <button class="btn-primary" id="view-print-btn" style="width:100%;background:linear-gradient(135deg,#059669,#047857);color:#fff;border:none;">🖨️ Drucken</button>
                 </div>
