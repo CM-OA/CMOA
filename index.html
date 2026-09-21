@@ -8317,6 +8317,7 @@ function loadFromLocalStorage() {
         // =============================================================
         var currentAuthUser = null;
         var currentUserProfile = null;
+        var adminUsersCache = {};
         var CMOA_MODULES = [
           ['overview','Übersicht'],['bands','Bands'],['hotel','Hotel'],['shuttle','Shuttle'],
           ['running_order','Running Order'],['payments','Zahlungsziele / Zahlungsweise'],['fees','Gagen / Finanzen'],
@@ -8470,7 +8471,7 @@ function loadFromLocalStorage() {
           if(!hasModuleRight('admin','read'))return; var c=document.getElementById('admin-users-list'); if(!c)return; c.innerHTML='<div class="card">Lade Benutzer…</div>';
           renderAdminNewUserEvents();
           var r=await _supabase.from('profiles').select('*').order('email'); if(r.error){c.innerHTML='<div class="card">Fehler: '+escapeHtmlAuth(r.error.message)+'</div>';return;}
-          c.innerHTML=''; (r.data||[]).forEach(function(u){c.insertAdjacentHTML('beforeend',renderAdminUser(u));});
+          adminUsersCache={};c.innerHTML=''; (r.data||[]).forEach(function(u){adminUsersCache[u.id]=u;c.insertAdjacentHTML('beforeend',renderAdminUser(u));});
         }
         function renderAdminNewUserEvents(){
           var box=document.getElementById('admin-new-user-events');if(!box)return;
@@ -8499,7 +8500,8 @@ function loadFromLocalStorage() {
         function renderAdminUser(u){
           var perms=effectivePermissions(u), roleOpts=''; Object.keys(ROLE_PRESETS).forEach(function(k){roleOpts+='<option value="'+k+'" '+(u.role===k?'selected':'')+'>'+ROLE_PRESETS[k].label+'</option>';});
           var rows=''; CMOA_MODULES.forEach(function(m){var v=perms[m[0]]||'none';rows+='<div class="admin-perm-row"><strong>'+m[1]+'</strong><select data-perm-user="'+u.id+'" data-perm-module="'+m[0]+'"><option value="none" '+(v==='none'?'selected':'')+'>Unsichtbar</option><option value="read" '+(v==='read'?'selected':'')+'>Nur lesen</option><option value="write" '+(v==='write'?'selected':'')+'>Bearbeiten</option><option value="delete" '+(v==='delete'?'selected':'')+'>Bearbeiten + Löschen</option></select></div>';});
-          return '<div class="admin-user-card"><div class="admin-user-email">'+escapeHtmlAuth(u.email||u.id)+'</div><div class="admin-user-meta">Benutzer-ID: '+escapeHtmlAuth(u.id)+'</div><label>Rolle</label><select id="role-'+u.id+'">'+roleOpts+'</select><div style="margin-top:10px">'+rows+'</div><button class="btn-primary" style="width:100%;margin-top:10px" onclick="saveAdminUserRights(\''+u.id+'\')">💾 Rechte speichern</button></div>';
+          var deleteBtn=currentAuthUser&&u.id===currentAuthUser.id?'':'<button class="btn-danger" style="width:100%;margin-top:7px" onclick="deleteAdminUser(\''+u.id+'\')">🗑 Benutzer vollständig entfernen</button>';
+          return '<div class="admin-user-card"><div class="admin-user-email">'+escapeHtmlAuth(u.email||u.id)+'</div><div class="admin-user-meta">Benutzer-ID: '+escapeHtmlAuth(u.id)+'</div><label>Rolle</label><select id="role-'+u.id+'">'+roleOpts+'</select><div style="margin-top:10px">'+rows+'</div><button class="btn-primary" style="width:100%;margin-top:10px" onclick="saveAdminUserRights(\''+u.id+'\')">💾 Rechte speichern</button>'+deleteBtn+'</div>';
         }
         async function saveAdminUserRights(uid){
           if(!hasModuleRight('admin','write')){alert('Keine Schreibberechtigung für Benutzerverwaltung.');return;}
@@ -8507,6 +8509,20 @@ function loadFromLocalStorage() {
           document.querySelectorAll('[data-perm-user="'+uid+'"]').forEach(function(el){custom[el.getAttribute('data-perm-module')]=el.value;});
           var r=await _supabase.from('profiles').update({role:role,permissions:custom}).eq('id',uid); if(r.error){alert('Fehler: '+r.error.message);return;} alert('✅ Rechte gespeichert.');
           if(currentAuthUser&&uid===currentAuthUser.id){currentUserProfile.role=role;currentUserProfile.permissions=custom;applyCurrentUserRights();}
+        }
+        async function deleteAdminUser(uid){
+          if(!currentUserProfile||currentUserProfile.role!=='admin'){alert('Nur Administratoren dürfen Benutzer entfernen.');return;}
+          if(currentAuthUser&&uid===currentAuthUser.id){alert('Das eigene Administratorkonto kann nicht gelöscht werden.');return;}
+          var user=adminUsersCache[uid]||{},label=user.email||uid;
+          if(!confirm('Benutzer „'+label+'“ vollständig entfernen?\n\nDas Anmeldekonto, alle Rollen und sämtliche Veranstaltungszugriffe werden gelöscht.'))return;
+          if(prompt('Zur endgültigen Bestätigung bitte LÖSCHEN eingeben:')!=='LÖSCHEN')return;
+          try{
+            var result=await _supabase.functions.invoke('admin-create-user',{body:{action:'delete',userId:uid}});
+            if(result.error){var detail='';try{detail=result.data&&result.data.error?result.data.error:'';}catch(ignore){}throw new Error(detail||result.error.message||'Löschung fehlgeschlagen.');}
+            if(result.data&&result.data.error)throw new Error(result.data.error);
+            await logCmoaActivity('Benutzer entfernt','Benutzerkonto '+label+' wurde vollständig gelöscht.','admin');
+            alert('✅ Benutzer „'+label+'“ wurde vollständig entfernt.');await loadAdminUsers();
+          }catch(e){alert('Benutzer konnte nicht entfernt werden: '+(e.message||e));}
         }
 
 
