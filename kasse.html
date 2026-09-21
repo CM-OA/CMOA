@@ -42,21 +42,31 @@
 <nav class="nav"><button class="active" data-sec="sale">Kasse</button><button data-sec="history">Historie</button><button data-sec="stats">Statistik</button><button data-sec="settings">Einstellungen</button></nav><div id="modal" class="modal"><div class="dialog" id="dialog"></div></div>
 <script>
 const K='barKasseV2';
-const defaultDrinks=[['Bier',3.5,'#2563eb'],['Radler',3.5,'#2563eb'],['Alkfreies Bier',3.5,'#2563eb'],['Wasser',2.5,'#6b7280'],['Rotwein',4,'#7f1d1d'],['Weißwein',4,'#f5e7a1'],['Cola',3,'#6b3f20'],['Fanta',3,'#facc15'],['Sprite',3,'#e5e7eb']].map((x,i)=>({id:'d'+i,name:x[0],price:x[1],color:x[2],depositId:null}));
-let db=JSON.parse(localStorage.getItem(K)||'null')||{theme:'dark',tills:[{id:'t1',name:'Bierwagen'}],activeTillId:'t1',operator:'',deposits:[{id:'p1',name:'Pfand',value:0.5}],drinks:defaultDrinks.map(d=>({...d,depositId:['Rotwein','Weißwein'].includes(d.name)?null:'p1'})),sales:[],cashEvents:[]};
+const defaultDrinks=[['Bier',3.5,'#2563eb'],['Radler',3.5,'#2563eb'],['Alkfreies Bier',3.5,'#2563eb'],['Wasser',2.5,'#6b7280'],['Rotwein',4,'#7f1d1d'],['Weißwein',4,'#f5e7a1'],['Cola',3,'#6b3f20'],['Fanta',3,'#facc15'],['Sprite',3,'#e5e7eb'],['Schnaps',2.5,'#7c3aed'],['Mixgetränke',5,'#db2777']].map((x,i)=>({id:'d'+i,name:x[0],price:x[1],color:x[2],depositId:null}));
+let db=JSON.parse(localStorage.getItem(K)||'null')||{theme:'dark',tills:[{id:'t1',name:'Bierwagen'}],activeTillId:'t1',operator:'',deposits:[{id:'p1',name:'Pfand',value:2}],drinks:defaultDrinks.map(d=>({...d,depositId:'p1'})),sales:[],cashEvents:[]};
 let flow={},editDrinkId=null;const $=id=>document.getElementById(id);const euro=n=>(Number(n)||0).toLocaleString('de-DE',{style:'currency',currency:'EUR'});const now=()=>new Date().toISOString();const uid=()=>crypto.randomUUID();
+const specialDrinkChoices={
+  schnaps:['Kräuter','Korn','Wodka','Whisky','Tequila','Obstler','Likör'],
+  mixgetränke:['Wodka-Cola','Whisky-Cola','Rum-Cola','Gin-Tonic','Wodka-Energy','Korn-Fanta']
+};
+function specialChoicesFor(d){return specialDrinkChoices[String(d&&d.name||'').trim().toLocaleLowerCase('de-DE')]||null}
+function ensureSpecialDrinks(){let added=false,depositId=db.deposits&&db.deposits[0]?db.deposits[0].id:null;[['Schnaps',2.5,'#7c3aed'],['Mixgetränke',5,'#db2777']].forEach(x=>{if(!db.drinks.some(d=>String(d.name||'').trim().toLocaleLowerCase('de-DE')===x[0].toLocaleLowerCase('de-DE'))){db.drinks.push({id:uid(),name:x[0],price:x[1],color:x[2],depositId});added=true}});return added}
+ensureSpecialDrinks();persist();
 function persist(){localStorage.setItem(K,JSON.stringify(db))}function save(){persist();renderAll();scheduleCloudSync()}function activeTill(){return db.tills.find(t=>t.id===db.activeTillId)}function depFor(d){return db.deposits.find(p=>p.id===d.depositId)}
 function textColor(hex){let h=hex.replace('#',''),r=parseInt(h.slice(0,2),16),g=parseInt(h.slice(2,4),16),b=parseInt(h.slice(4,6),16);return(r*299+g*587+b*114)/1000>160?'#111827':'#fff'}
 function setTheme(t){db.theme=t;document.body.classList.toggle('dark',t==='dark');save()}
 function tillSales(id){return db.sales.filter(x=>x.tillId===id)}function tillEvents(id){return db.cashEvents.filter(x=>x.tillId===id)}function cashNow(id=db.activeTillId){let openings=tillEvents(id).filter(x=>x.type==='opening').reduce((s,x)=>s+x.amount,0),closings=tillEvents(id).filter(x=>x.type==='closing');let lastClose=closings.length?Math.max(...closings.map(x=>new Date(x.time).getTime())):0;let baseEvents=tillEvents(id).filter(x=>new Date(x.time).getTime()>lastClose);let opening=baseEvents.filter(x=>x.type==='opening').reduce((s,x)=>s+x.amount,0);let sales=tillSales(id).filter(x=>!x.voided&&new Date(x.time).getTime()>lastClose).reduce((s,x)=>s+x.total,0);let empties=baseEvents.filter(x=>x.type==='emptying').reduce((s,x)=>s+x.amount,0);return opening+sales-empties}
 function renderDrinks(){let ok=!!activeTill();$('noTill').classList.toggle('hidden',ok);$('drinkGrid').innerHTML=ok?db.drinks.map(d=>{let p=depFor(d);return `<button class="drink" style="background:${d.color};color:${textColor(d.color)}" onclick="selectDrink('${d.id}')">${esc(d.name)}<small>${euro(d.price)}${p?' · Pfand '+euro(p.value):''}</small></button>`}).join(''):''}
 function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
-function selectDrink(id){let d=db.drinks.find(x=>x.id===id);if(!flow.active)flow={active:true,cart:[],returns:0,depositId:null,input:''};flow.drink=d;showQty()}
+function selectDrink(id){let d=db.drinks.find(x=>x.id===id);if(!d)return;if(!flow.active)flow={active:true,cart:[],returns:0,depositId:null,input:''};let choices=specialChoicesFor(d);if(choices){flow.parentDrink=d;return showSpecialDrinkChoices(d,choices)}flow.parentDrink=null;flow.drink=d;showQty()}
+function showSpecialDrinkChoices(d,choices){$('dialog').innerHTML=`<h2>${esc(d.name)} auswählen</h2><div class="grid">${choices.map((name,i)=>`<button class="btn big" onclick="chooseSpecialDrink(${i})">${esc(name)}</button>`).join('')}</div><button class="btn back" onclick="cancelSpecialDrinkChoice()">← Zurück zu den Getränken</button>`;$('modal').classList.add('show')}
+function chooseSpecialDrink(index){let parent=flow.parentDrink,choices=specialChoicesFor(parent),name=choices&&choices[index];if(!parent||!name)return;flow.drink={...parent,name};showQty()}
+function cancelSpecialDrinkChoice(){flow.parentDrink=null;if(flow.cart.length){$('modal').classList.remove('show');return}closeModal(true)}
 function keys(action){return `<div class="keypad">${[1,2,3,4,5,6,7,8,9].map(n=>`<button onclick="${action}(${n})">${n}</button>`).join('')}<button onclick="clearInput()">C</button><button onclick="${action}(0)">0</button><button onclick="backspace()">⌫</button></div>`}
 function clearInput(){flow.input='';$('numDisplay').textContent='–'}function backspace(){flow.input=flow.input.slice(0,-1);$('numDisplay').textContent=flow.input||'–'}
 function showQty(){flow.input='';$('dialog').innerHTML=`<h2>${esc(flow.drink.name)} – Anzahl</h2><div class="display" id="numDisplay">–</div>${keys('qtyKey')}<button class="btn back" onclick="cancelCurrentDrink()">← Zurück</button>`;$('modal').classList.add('show')}
 function qtyKey(n){if(n===0)return;flow.qty=n;flow.cart.push({drink:flow.drink,qty:n});showNextChoice()}
-function cancelCurrentDrink(){if(flow.cart.length)showNextChoice();else closeModal(true)}
+function cancelCurrentDrink(){if(flow.parentDrink){let parent=flow.parentDrink;return showSpecialDrinkChoices(parent,specialChoicesFor(parent))}if(flow.cart.length)showNextChoice();else closeModal(true)}
 function purchaseDeposit(x){let p=depFor(x.drink);return p?x.qty*p.value:0}
 function cartHtml(){return flow.cart.map(x=>{let p=depFor(x.drink),drinkSum=x.qty*x.drink.price,depSum=p?x.qty*p.value:0;return `<div class="cartLine"><span>${x.qty} × ${esc(x.drink.name)}</span><b>${euro(drinkSum)}</b></div>${p?`<div class="cartLine muted"><span>＋ ${x.qty} × ${esc(p.name)}</span><b>＋ ${euro(depSum)}</b></div>`:''}`}).join('')}
 function showNextChoice(){$('dialog').innerHTML=`<h2>Wie weiter?</h2><div class="card">${cartHtml()}</div><div class="choice"><button class="btn blue big" onclick="addAnotherDrink()">＋ Weiteres Getränk</button><button class="btn primary big" onclick="startDeposit()">↩ Pfand</button></div><button class="btn back" onclick="removeLastItem()">← Letztes Getränk zurück</button>`}
@@ -162,10 +172,13 @@ async function loadCloudData(silent=false){
   db.tills=rr.map(x=>({id:x.id,name:x.name}));
   db.deposits=pr.map(x=>({id:x.id,name:x.name,value:Number(x.amount)}));
   db.drinks=dr.map(x=>({id:x.id,name:x.name,price:Number(x.price),depositId:x.deposit_type_id||null,color:x.color||'#2563eb'}));
+  let specialDrinksAdded=ensureSpecialDrinks();
   db.sales=sr.map(x=>{let i=itemBySale[x.id]||{},note={};return {id:x.id,itemId:i.id||uid(),time:x.sold_at,tillId:x.register_id,operator:x.operator_name||'',drinkId:i.drink_id||null,drink:i.drink_name||'Getränk',unitPrice:Number(i.unit_price||0),qty:Number(i.quantity||1),returns:Number(x.deposit_returned||0)/(Number(i.deposit_per_item)||1),depositValue:Number(i.deposit_per_item||0),total:Number(x.total),given:Number(x.amount_given||0),change:Number(x.change_amount||0),voided:!!x.voided,transactionId:x.id}});
   db.cashEvents=mr.map(x=>{let meta={};try{meta=JSON.parse(x.note||'{}')}catch(e){}return {id:x.id,type:x.movement_type,tillId:x.register_id,time:x.created_at,amount:Number(x.amount),who:x.person_name||'',expected:meta.expected,diff:meta.diff}});
   if(!db.tills.some(t=>t.id===db.activeTillId))db.activeTillId=db.tills[0]?db.tills[0].id:'';
-  persist();renderAll();cloudReady=true;setCloudStatus('Mit Supabase verbunden · '+new Date().toLocaleTimeString('de-DE'));
+  persist();renderAll();cloudReady=true;
+  if(specialDrinksAdded)await syncCloudData();
+  setCloudStatus('Mit Supabase verbunden · '+new Date().toLocaleTimeString('de-DE'));
 }
 function scheduleCloudSync(){if(!cloudReady||!cloudEventId)return;clearTimeout(cloudTimer);cloudTimer=setTimeout(syncCloudData,400)}
 async function syncCloudData(){
