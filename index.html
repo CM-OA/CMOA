@@ -3120,7 +3120,7 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
         async function migrateLegacyStateIfNeeded(){ return false; }
         async function loadPhase2CloudData(){
             bands=[];manualTodos=[];hotelCostsList=[];shuttleTripLog={};shuttleVehicles=[];productionEntries=[];akkDb=[];
-            eventBandsEnabled=true;
+            eventBandsEnabled=currentEvent&&currentEvent._bandsEnabled===false?false:true;
             await migrateLegacyStateIfNeeded();
             if(!currentEventId) return;
             var r=await _supabase.from('cmoa_module_state').select('module,data').eq('event_id',currentEventId);
@@ -8582,17 +8582,23 @@ function loadFromLocalStorage() {
           if(r.error){showAuthError('Veranstaltungen konnten nicht geladen werden: '+r.error.message);return false;}
           availableEvents=r.data||[];
           if(!availableEvents.length){showAuthError('Für dieses Benutzerkonto ist noch keine Veranstaltung freigeschaltet.');return false;}
+          var eventIds=availableEvents.map(function(e){return e.id;}),settingsMap={};
+          var sr=await _supabase.from('cmoa_module_state').select('event_id,data').eq('module','event_settings').in('event_id',eventIds);
+          if(!sr.error)(sr.data||[]).forEach(function(x){settingsMap[x.event_id]=x.data||{};});
+          availableEvents.forEach(function(e){e._bandsEnabled=!settingsMap[e.id]||settingsMap[e.id].bandsEnabled!==false;});
           var saved=localStorage.getItem('cmoa_current_event_id');
           currentEvent=availableEvents.find(function(e){return e.id===saved;})||availableEvents[0]; currentEventId=currentEvent.id;
+          eventBandsEnabled=currentEvent._bandsEnabled!==false;
           localStorage.setItem('cmoa_current_event_id',currentEventId); renderEventSelector(); return true;
         }
         function renderEventSelector(){
           var sel=document.getElementById('event-selector'); if(sel){sel.innerHTML=availableEvents.map(function(e){return '<option value="'+escapeHtmlAuth(e.id)+'" '+(e.id===currentEventId?'selected':'')+'>'+escapeHtmlAuth(e.short_name||e.name)+'</option>';}).join('');}
           var title=(currentEvent&&(currentEvent.short_name||currentEvent.name))||'CMOA'; var h=document.getElementById('app-event-title');if(h)h.textContent=title; document.title=title+' Planning';
+          applyEventBandMode();
         }
         async function switchCmoaEvent(id){
           if(!id||id===currentEventId)return; var ev=availableEvents.find(function(e){return e.id===id;});if(!ev)return;
-          currentEventId=id;currentEvent=ev;localStorage.setItem('cmoa_current_event_id',id);renderEventSelector();
+          currentEventId=id;currentEvent=ev;eventBandsEnabled=ev._bandsEnabled!==false;localStorage.setItem('cmoa_current_event_id',id);renderEventSelector();
           try{await loadPhase2CloudData();startPhase2Realtime();updateMainProgress();renderBandsList();if(typeof renderCateringPage==='function')renderCateringPage();if(typeof renderAkk==='function')renderAkk();showPage('main-page');}catch(e){alert('Veranstaltung konnte nicht geladen werden: '+e.message);}
         }
         async function loadEventsAdminPage(){
@@ -8600,9 +8606,12 @@ function loadFromLocalStorage() {
           var pr=await _supabase.from('profiles').select('id,email,role').order('email'); var users=pr.data||[];
           var box=document.getElementById('event-new-users'); if(box)box.innerHTML=users.map(function(u){return '<label class="event-user-row"><input type="checkbox" data-new-event-user="'+u.id+'" '+(u.id===currentAuthUser.id?'checked':'')+'><span>'+escapeHtmlAuth(u.email||u.id)+(u.role==='admin'?' · Admin':'')+'</span></label>';}).join('');
           var er=await _supabase.from('events').select('*').order('start_date',{ascending:false}); if(er.error){document.getElementById('events-admin-list').textContent='Fehler: '+er.error.message;return;}
-          availableEvents=er.data||[]; renderEventSelector(); var list=document.getElementById('events-admin-list'); list.innerHTML='',eventSettingsById={};
+          availableEvents=er.data||[]; var list=document.getElementById('events-admin-list'); list.innerHTML='',eventSettingsById={};
           var sr=await _supabase.from('cmoa_module_state').select('event_id,data').eq('module','event_settings');
           if(!sr.error)(sr.data||[]).forEach(function(x){eventSettingsById[x.event_id]=x.data||{};});
+          availableEvents.forEach(function(e){e._bandsEnabled=!eventSettingsById[e.id]||eventSettingsById[e.id].bandsEnabled!==false;});
+          var selectedEvent=availableEvents.find(function(e){return e.id===currentEventId;});if(selectedEvent)currentEvent=selectedEvent;
+          eventBandsEnabled=currentEvent&&currentEvent._bandsEnabled===false?false:true;renderEventSelector();
           for(var i=0;i<availableEvents.length;i++){var e=availableEvents[i], ar=await _supabase.from('event_users').select('user_id').eq('event_id',e.id), assigned=(ar.data||[]).map(function(x){return x.user_id;});
             var checks=users.map(function(u){return '<label class="event-user-row"><input type="checkbox" data-event-user-event="'+e.id+'" value="'+u.id+'" '+(assigned.indexOf(u.id)>=0?'checked':'')+'><span>'+escapeHtmlAuth(u.email||u.id)+'</span></label>';}).join('');
             var bandsActive=!eventSettingsById[e.id]||eventSettingsById[e.id].bandsEnabled!==false;
