@@ -757,6 +757,13 @@
         .akk-result-check-btn:disabled { background:#64748b; cursor:default; }
         .akk-result-back { width:100%; margin-top:9px; border:0; background:transparent; color:var(--text-muted); padding:10px; font-weight:800; cursor:pointer; }
         @media(max-width:520px){.akk-top-actions{align-items:stretch}.akk-top-actions .btn-back,.akk-quick-checkin-btn{flex:1;padding:10px 8px;font-size:12px}.akk-check-dialog{padding:16px}.akk-code-slot{width:64px;height:68px}.akk-keypad button{min-height:60px}}
+        .band-view-catering { border:1px solid rgba(5,150,105,.35); border-left:5px solid #059669; border-radius:10px; padding:12px; background:rgba(5,150,105,.06); }
+        .band-view-catering h4 { color:#059669; margin-top:0; }
+        .band-view-chip-list { display:flex; flex-wrap:wrap; gap:5px; }
+        .band-view-chip { display:inline-block; padding:4px 7px; border-radius:999px; background:rgba(37,99,235,.10); border:1px solid rgba(37,99,235,.25); font-size:.76rem; }
+        .band-view-chip.food { background:rgba(217,119,6,.10); border-color:rgba(217,119,6,.28); }
+        .band-view-specials { margin-top:9px; padding:9px; border-radius:8px; background:rgba(220,38,38,.09); border:1px solid rgba(220,38,38,.3); color:#dc2626; }
+        .band-view-special { margin-top:4px; font-size:.8rem; font-weight:700; }
         .akk-action-btn.check { border-color: var(--accent-green); background: rgba(16, 185, 129, 0.08); color: var(--accent-green); }
         .akk-action-btn.del { border-color: var(--accent-red); background: rgba(239, 68, 68, 0.08); color: var(--accent-red); }
 
@@ -1506,7 +1513,6 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
                 </div>
 
                 <div class="backup-section">
-                    <button class="btn-subtle" data-module="payments" onclick="showPage('payment-terms-page')">💳 Zahlungsziele / Zahlungsweisen</button>
                     <button class="btn-subtle" data-module="documents" onclick="showPage('band-notes-page')">📝 Notizen / Zusatzvereinbarungen</button>
                     <button class="btn-subtle" data-module="export" onclick="showPage('export-page')">📤 Daten Exportieren</button>
                     <button class="btn-subtle" onclick="exportBackup()">💾 Backup Exportieren</button>
@@ -1930,7 +1936,11 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
             <div class="card">
                 <h2 id="view-band-title" style="margin-bottom:14px; text-align:center; color:var(--accent-yellow); text-transform:uppercase;"></h2>
                 <div id="view-band-content"></div>
-                <button class="btn-primary" id="view-edit-btn" style="width:100%; margin-top:12px;">Bearbeiten</button>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px;">
+                    <button class="btn-primary" id="view-pdf-btn" style="width:100%;background:linear-gradient(135deg,#2563eb,#1d4ed8);color:#fff;border:none;">📄 PDF exportieren</button>
+                    <button class="btn-primary" id="view-print-btn" style="width:100%;background:linear-gradient(135deg,#059669,#047857);color:#fff;border:none;">🖨️ Drucken</button>
+                </div>
+                <button class="btn-primary" id="view-edit-btn" style="width:100%; margin-top:8px;">✏️ Bearbeiten</button>
             </div>
         </div>
 
@@ -3970,7 +3980,8 @@ function loadFromLocalStorage() {
             var out=[];
             if (b.drinks) Object.keys(b.drinks).forEach(function(k){
                 var d=b.drinks[k]||{}, c=parseInt(d.count)||0;
-                if(c>0) out.push(c+'x '+k+(d.comment?' ('+d.comment+')':''));
+                var displayName=(typeof window.getCateringDrinkDisplayName==='function')?window.getCateringDrinkDisplayName(k):k;
+                if(c>0) out.push(c+'x '+displayName+(d.comment?' ('+d.comment+')':''));
             });
             return out.length ? out.join(' · ') : '—';
         }
@@ -4044,17 +4055,23 @@ function loadFromLocalStorage() {
             doc.text('Erstellt am '+new Date().toLocaleDateString('de-DE')+' · Seite '+pageNo+' / '+totalPages,mx,H-4.5);
             doc.text('CMOA 2027',W-mx,H-4.5,{align:'right'});
         }
-        function makeBandsPdf(list, filename) {
+        function makeBandsPdf(list, filename, printMode) {
             if(!window.jspdf || !window.jspdf.jsPDF){alert('PDF-Modul konnte nicht geladen werden. Bitte Internetverbindung prüfen.');return;}
             if(!list || !list.length){alert('Keine Banddaten zum Exportieren vorhanden.');return;}
             var doc=new window.jspdf.jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
             list.forEach(function(b,i){if(i>0)doc.addPage(); addBandPdfPage(doc,b,i+1,list.length);});
-            doc.save(filename);
+            if(printMode){doc.autoPrint();var printUrl=doc.output('bloburl');var win=window.open(printUrl,'_blank');if(!win){alert('Die Druckansicht wurde vom Browser blockiert. Bitte Pop-ups für diese Seite erlauben.');}}
+            else doc.save(filename);
         }
         function exportBandPdf(id){
             var b=getBandById(id); if(!b){alert('Band nicht gefunden.');return;}
             var safe=String(b.name||'Band').replace(/[^a-zA-Z0-9ÄÖÜäöüß_-]+/g,'_');
             makeBandsPdf([b],'CMOA_2027_Band_'+safe+'.pdf');
+        }
+        function printBandPdf(id){
+            var b=getBandById(id); if(!b){alert('Band nicht gefunden.');return;}
+            var safe=String(b.name||'Band').replace(/[^a-zA-Z0-9ÄÖÜäöüß_-]+/g,'_');
+            makeBandsPdf([b],'CMOA_2027_Band_'+safe+'.pdf',true);
         }
         function exportAllBandsPdf(){
             if(!Array.isArray(bands)||!bands.length){alert('Keine Bands zum Exportieren vorhanden.');return;}
@@ -5920,6 +5937,24 @@ function loadFromLocalStorage() {
                 notesHtml += '</div>';
             }
 
+            var cateringDays=getCateringDaysForBand(b);
+            var cateringMembers=parseInt(b.paxCount)||0, cateringVips=parseInt(b.vipGuests)||0;
+            var cateringTotal=cateringMembers+cateringVips, cateringMeals=cateringTotal*2*cateringDays;
+            var cateringDrinks=[];
+            if(b.drinks) Object.keys(b.drinks).forEach(function(key){
+                var item=b.drinks[key]||{}, count=parseInt(item.count)||0;
+                if(count>0){var shown=(typeof window.getCateringDrinkDisplayName==='function')?window.getCateringDrinkDisplayName(key):key;cateringDrinks.push('<span class="band-view-chip"><b>'+count+'×</b> '+akkEscape(shown)+(item.comment?' <em>('+akkEscape(item.comment)+')</em>':'')+'</span>');}
+            });
+            var cateringFood=(Array.isArray(b.extraFood)?b.extraFood:[]).filter(function(x){return x&&(x.name||x.text)&&(parseInt(x.count)||0)>0;}).map(function(x){return '<span class="band-view-chip food"><b>'+(parseInt(x.count)||0)+'×</b> '+akkEscape(x.name||x.text)+(x.comment?' <em>('+akkEscape(x.comment)+')</em>':'')+'</span>';});
+            var cateringSpecials=(Array.isArray(b.extraSpecials)?b.extraSpecials:[]).filter(function(x){return x&&(x.text||x.name);}).map(function(x){return '<div class="band-view-special">⚠️ '+akkEscape(x.text||x.name)+(x.comment?' – '+akkEscape(x.comment):'')+'</div>';});
+            var cateringHtml='<div class="view-section band-view-catering"><h4>🍽️ Catering</h4>'+
+                '<div class="view-row"><span class="view-label">Personen:</span><span class="view-value">'+cateringMembers+' Bandmitglieder · '+cateringVips+' VIP · <b>'+cateringTotal+' gesamt</b></span></div>'+
+                '<div class="view-row"><span class="view-label">Verpflegung:</span><span class="view-value">'+cateringDays+' Tag(e) · <b>'+cateringMeals+' warme Mahlzeiten</b></span></div>'+
+                '<div class="view-row"><span class="view-label">Ernährung:</span><span class="view-value">'+(parseInt(b.meatCount)||0)+' Fleisch · '+(parseInt(b.vegetarianCount)||0)+' vegetarisch · '+(parseInt(b.veganCount)||0)+' vegan</span></div>'+
+                '<div class="view-row"><span class="view-label">Getränke:</span><span class="view-value band-view-chip-list">'+(cateringDrinks.length?cateringDrinks.join(''):'—')+'</span></div>'+
+                '<div class="view-row"><span class="view-label">Extra Food:</span><span class="view-value band-view-chip-list">'+(cateringFood.length?cateringFood.join(''):'—')+'</span></div>'+
+                (cateringSpecials.length?'<div class="band-view-specials"><b>Besonderheiten</b>'+cateringSpecials.join('')+'</div>':'')+'</div>';
+
             var contentEl = document.getElementById('view-band-content');
             if (contentEl) {
                 contentEl.innerHTML =
@@ -5945,11 +5980,17 @@ function loadFromLocalStorage() {
                     ((b.shuttleNeeded === 'ja' || b.shuttleNeeded === true) ? '<div class="view-row"><span class="view-label">Fahrzeug / Fahrer:</span> <span class="view-value">' + (b.shuttleVehicle || '-') + ' / ' + (b.shuttleDriver || '-') + '</span></div>' : '') +
                     '</div>' +
 
+                    cateringHtml +
+
                     notesHtml;
             }
 
             var editBtn = document.getElementById('view-edit-btn');
             if (editBtn) editBtn.onclick = function() { openBandDetail(id); };
+            var pdfBtn = document.getElementById('view-pdf-btn');
+            if (pdfBtn) pdfBtn.onclick = function() { exportBandPdf(id); };
+            var printBtn = document.getElementById('view-print-btn');
+            if (printBtn) printBtn.onclick = function() { printBandPdf(id); };
             showPage('band-view-page');
         }
 
