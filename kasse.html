@@ -42,23 +42,24 @@
 <nav class="nav"><button class="active" data-sec="sale">Kasse</button><button data-sec="history">Historie</button><button data-sec="stats">Statistik</button><button data-sec="settings">Einstellungen</button></nav><div id="modal" class="modal"><div class="dialog" id="dialog"></div></div>
 <script>
 const K='barKasseV2';
-const defaultDrinks=[['Bier',3.5,'#2563eb'],['Radler',3.5,'#2563eb'],['Alkfreies Bier',3.5,'#2563eb'],['Wasser',2.5,'#6b7280'],['Rotwein',4,'#7f1d1d'],['Weißwein',4,'#f5e7a1'],['Cola',3,'#6b3f20'],['Fanta',3,'#facc15'],['Sprite',3,'#e5e7eb'],['Schnaps',2.5,'#7c3aed'],['Mixgetränke',5,'#db2777']].map((x,i)=>({id:'d'+i,name:x[0],price:x[1],color:x[2],depositId:null}));
+const defaultDrinks=[['Bier',3.5,'#d99b16'],['Radler',3.5,'#f2c94c'],['Alkfreies Bier',3.5,'#bf7b18'],['Wasser',2.5,'#3b82f6'],['Rotwein',4,'#7f1d1d'],['Weißwein',4,'#e7d48a'],['Cola',3,'#5c2b16'],['Fanta',3,'#f97316'],['Sprite',3,'#b7e4c7'],['Schnaps',2.5,'#64748b'],['Mixgetränke',5,'#c026d3']].map((x,i)=>({id:'d'+i,name:x[0],price:x[1],color:x[2],depositId:null}));
 let db=JSON.parse(localStorage.getItem(K)||'null')||{theme:'dark',tills:[{id:'t1',name:'Bierwagen'}],activeTillId:'t1',operator:'',deposits:[{id:'p1',name:'Pfand',value:2}],drinks:defaultDrinks.map(d=>({...d,depositId:'p1'})),sales:[],cashEvents:[]};
 let flow={},editDrinkId=null;const $=id=>document.getElementById(id);const euro=n=>(Number(n)||0).toLocaleString('de-DE',{style:'currency',currency:'EUR'});const now=()=>new Date().toISOString();const uid=()=>crypto.randomUUID();
 const specialDrinkChoices={
   schnaps:['Kräuter','Korn','Wodka','Whisky','Tequila','Obstler','Likör'],
   mixgetränke:['Wodka-Cola','Whisky-Cola','Rum-Cola','Gin-Tonic','Wodka-Energy','Korn-Fanta']
 };
-const drinkSymbols={bier:'🍺',radler:'🍺','alkfreies bier':'🍺',wasser:'💧',rotwein:'🍷','weißwein':'🥂',cola:'🥤',fanta:'🍊',sprite:'🥤',schnaps:'🥃','mixgetränke':'🍹',kräuter:'🌿',korn:'🥃',wodka:'🧊',whisky:'🥃',tequila:'🌵',obstler:'🍐','likör':'🍸','wodka-cola':'🍹','whisky-cola':'🥃','rum-cola':'🍹','gin-tonic':'🍸','wodka-energy':'⚡','korn-fanta':'🍊'};
+const drinkSymbols={bier:'🍺',radler:'🍺','alkfreies bier':'🍺',wasser:'💧',rotwein:'🍷','weißwein':'🍷',cola:'🥤',fanta:'🍊',sprite:'🥤',schnaps:'🥃','mixgetränke':'🍹',kräuter:'🌿',korn:'🥃',wodka:'🧊',whisky:'🥃',tequila:'🌵',obstler:'🍐','likör':'🍸','wodka-cola':'🍹','whisky-cola':'🥃','rum-cola':'🍹','gin-tonic':'🍸','wodka-energy':'⚡','korn-fanta':'🍊'};
 function drinkSymbol(name){return drinkSymbols[String(name||'').trim().toLocaleLowerCase('de-DE')]||'🥤'}
 function specialChoicesFor(d){return specialDrinkChoices[String(d&&d.name||'').trim().toLocaleLowerCase('de-DE')]||null}
 function ensureDefaultDrinks(){let added=false,depositId=db.deposits&&db.deposits[0]?db.deposits[0].id:null;defaultDrinks.forEach(x=>{if(!db.drinks.some(d=>String(d.name||'').trim().toLocaleLowerCase('de-DE')===x.name.toLocaleLowerCase('de-DE'))){db.drinks.push({id:uid(),name:x.name,price:x.price,color:x.color,depositId});added=true}});return added}
-ensureDefaultDrinks();persist();
+function applyDrinkPalette(force=false){if(!force&&db.tilePaletteVersion===1)return false;let changed=false;defaultDrinks.forEach(style=>{let d=db.drinks.find(x=>String(x.name||'').trim().toLocaleLowerCase('de-DE')===style.name.toLocaleLowerCase('de-DE'));if(d&&d.color!==style.color){d.color=style.color;changed=true}});db.tilePaletteVersion=1;return changed}
+ensureDefaultDrinks();applyDrinkPalette();persist();
 function persist(){localStorage.setItem(K,JSON.stringify(db))}function save(){persist();renderAll();scheduleCloudSync()}function activeTill(){return db.tills.find(t=>t.id===db.activeTillId)}function depFor(d){return db.deposits.find(p=>p.id===d.depositId)}
 function textColor(hex){let h=hex.replace('#',''),r=parseInt(h.slice(0,2),16),g=parseInt(h.slice(2,4),16),b=parseInt(h.slice(4,6),16);return(r*299+g*587+b*114)/1000>160?'#111827':'#fff'}
 function setTheme(t){db.theme=t;document.body.classList.toggle('dark',t==='dark');save()}
 function tillSales(id){return db.sales.filter(x=>x.tillId===id)}function tillEvents(id){return db.cashEvents.filter(x=>x.tillId===id)}function cashNow(id=db.activeTillId){let openings=tillEvents(id).filter(x=>x.type==='opening').reduce((s,x)=>s+x.amount,0),closings=tillEvents(id).filter(x=>x.type==='closing');let lastClose=closings.length?Math.max(...closings.map(x=>new Date(x.time).getTime())):0;let baseEvents=tillEvents(id).filter(x=>new Date(x.time).getTime()>lastClose);let opening=baseEvents.filter(x=>x.type==='opening').reduce((s,x)=>s+x.amount,0);let sales=tillSales(id).filter(x=>!x.voided&&new Date(x.time).getTime()>lastClose).reduce((s,x)=>s+x.total,0);let empties=baseEvents.filter(x=>x.type==='emptying').reduce((s,x)=>s+x.amount,0);return opening+sales-empties}
-function renderDrinks(){let ok=!!activeTill();$('noTill').classList.toggle('hidden',ok);$('drinkGrid').innerHTML=ok?db.drinks.map(d=>{let p=depFor(d);return `<button class="drink" style="background:${d.color};color:${textColor(d.color)}" onclick="selectDrink('${d.id}')"><span style="font-size:34px;line-height:1;margin-bottom:7px">${drinkSymbol(d.name)}</span>${esc(d.name)}<small>${euro(d.price)}${p?' · Pfand '+euro(p.value):''}</small></button>`}).join(''):''}
+function renderDrinks(){let ok=!!activeTill();$('noTill').classList.toggle('hidden',ok);$('drinkGrid').innerHTML=ok?db.drinks.map(d=>{let p=depFor(d);return `<button class="drink" style="background:linear-gradient(145deg,${d.color},color-mix(in srgb,${d.color} 76%,#000));color:${textColor(d.color)};border:1px solid color-mix(in srgb,${d.color} 70%,#fff)" onclick="selectDrink('${d.id}')"><span style="font-size:34px;line-height:1;margin-bottom:7px">${drinkSymbol(d.name)}</span>${esc(d.name)}<small>${euro(d.price)}${p?' · Pfand '+euro(p.value):''}</small></button>`}).join(''):''}
 function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function selectDrink(id){let d=db.drinks.find(x=>x.id===id);if(!d)return;if(!flow.active)flow={active:true,cart:[],returns:0,depositId:null,input:''};let choices=specialChoicesFor(d);if(choices){flow.parentDrink=d;return showSpecialDrinkChoices(d,choices)}flow.parentDrink=null;flow.drink=d;showQty()}
 function showSpecialDrinkChoices(d,choices){$('dialog').innerHTML=`<h2>${drinkSymbol(d.name)} ${esc(d.name)} auswählen</h2><div class="grid">${choices.map((name,i)=>`<button class="btn big" onclick="chooseSpecialDrink(${i})"><span style="font-size:28px;display:block;margin-bottom:5px">${drinkSymbol(name)}</span>${esc(name)}</button>`).join('')}</div><button class="btn back" onclick="cancelSpecialDrinkChoice()">← Zurück zu den Getränken</button>`;$('modal').classList.add('show')}
@@ -175,11 +176,14 @@ async function loadCloudData(silent=false){
   db.deposits=pr.map(x=>({id:x.id,name:x.name,value:Number(x.amount)}));
   db.drinks=dr.map(x=>({id:x.id,name:x.name,price:Number(x.price),depositId:x.deposit_type_id||null,color:x.color||'#2563eb'}));
   let defaultDrinksAdded=ensureDefaultDrinks();
+  let paletteKey='cash_drink_palette_v1_'+cloudEventId;
+  let paletteApplied=applyDrinkPalette(localStorage.getItem(paletteKey)!=='1');
+  localStorage.setItem(paletteKey,'1');
   db.sales=sr.map(x=>{let i=itemBySale[x.id]||{},note={};return {id:x.id,itemId:i.id||uid(),time:x.sold_at,tillId:x.register_id,operator:x.operator_name||'',drinkId:i.drink_id||null,drink:i.drink_name||'Getränk',unitPrice:Number(i.unit_price||0),qty:Number(i.quantity||1),returns:Number(x.deposit_returned||0)/(Number(i.deposit_per_item)||1),depositValue:Number(i.deposit_per_item||0),total:Number(x.total),given:Number(x.amount_given||0),change:Number(x.change_amount||0),voided:!!x.voided,transactionId:x.id}});
   db.cashEvents=mr.map(x=>{let meta={};try{meta=JSON.parse(x.note||'{}')}catch(e){}return {id:x.id,type:x.movement_type,tillId:x.register_id,time:x.created_at,amount:Number(x.amount),who:x.person_name||'',expected:meta.expected,diff:meta.diff}});
   if(!db.tills.some(t=>t.id===db.activeTillId))db.activeTillId=db.tills[0]?db.tills[0].id:'';
   persist();renderAll();cloudReady=true;
-  if(defaultDrinksAdded)await syncCloudData();
+  if(defaultDrinksAdded||paletteApplied)await syncCloudData();
   setCloudStatus('Mit Supabase verbunden · '+new Date().toLocaleTimeString('de-DE'));
 }
 function scheduleCloudSync(){if(!cloudReady||!cloudEventId)return;clearTimeout(cloudTimer);cloudTimer=setTimeout(syncCloudData,400)}
