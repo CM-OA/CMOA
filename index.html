@@ -8625,9 +8625,10 @@ function loadFromLocalStorage() {
           var bandsEnabled=(document.getElementById('event-new-bands').value||'yes')==='yes';
           var row={name:name,short_name:shortName,start_date:document.getElementById('event-new-start').value||null,end_date:document.getElementById('event-new-end').value||null,location:(document.getElementById('event-new-location').value||'').trim()||null,status:'active',created_by:currentAuthUser.id};
           var r=await _supabase.from('events').insert(row).select().single(); if(r.error){alert('Fehler: '+r.error.message);return;}
+          var ids=[];document.querySelectorAll('[data-new-event-user]:checked').forEach(function(x){ids.push(x.getAttribute('data-new-event-user'));}); if(ids.indexOf(currentAuthUser.id)<0)ids.push(currentAuthUser.id);
+          if(ids.length){var ur=await _supabase.from('event_users').insert(ids.map(function(uid){return {event_id:r.data.id,user_id:uid};}));if(ur.error){alert('Veranstaltung wurde angelegt, aber der Benutzerzugriff konnte nicht gespeichert werden: '+ur.error.message);return;}}
           var settingsResult=await _supabase.from('cmoa_module_state').insert({event_id:r.data.id,module:'bands',data:{bands:[],bandsEnabled:bandsEnabled},updated_at:new Date().toISOString(),updated_by:currentAuthUser.id});
           if(settingsResult.error){alert('Veranstaltung wurde angelegt, aber die Auswahl „Bands“ konnte nicht gespeichert werden: '+settingsResult.error.message);return;}
-          var ids=[];document.querySelectorAll('[data-new-event-user]:checked').forEach(function(x){ids.push(x.getAttribute('data-new-event-user'));}); if(ids.indexOf(currentAuthUser.id)<0)ids.push(currentAuthUser.id); if(ids.length){var ur=await _supabase.from('event_users').insert(ids.map(function(uid){return {event_id:r.data.id,user_id:uid};}));if(ur.error){alert('Veranstaltung angelegt, aber Benutzerzuweisung fehlgeschlagen: '+ur.error.message);}}
           alert('✅ Veranstaltung angelegt.'); await loadAccessibleEvents(); await loadEventsAdminPage();
         }
         async function saveEventUsers(eventId){
