@@ -1413,6 +1413,14 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
         .final-report-card strong { display:block; font-size:.84rem; }
         .final-report-card span { display:block; margin-top:3px; color:var(--text-muted); font-size:.7rem; line-height:1.35; }
         .final-report-card button { flex:0 0 auto; }
+        .event-tree-card{margin:18px 0 0;border:1px solid var(--border);border-radius:13px;background:var(--card-bg);overflow:hidden}
+        .event-tree-toggle{width:100%;border:0;background:transparent;color:var(--text-main);padding:13px 15px;display:flex;justify-content:space-between;align-items:center;text-align:left;cursor:pointer;font-weight:850}
+        .event-tree-toggle small{display:block;color:var(--text-muted);font-weight:500;margin-top:3px}.event-tree-arrow{font-size:1.05rem;transition:transform .2s}.event-tree-card.open .event-tree-arrow{transform:rotate(180deg)}
+        .event-tree-content{display:none;border-top:1px solid var(--border);padding:12px 14px}.event-tree-card.open .event-tree-content{display:block}
+        .event-tree-root,.event-tree-root ul{list-style:none;margin:0;padding-left:0}.event-tree-root ul{margin:5px 0 4px 17px;padding-left:13px;border-left:1px solid var(--border)}
+        .event-tree-root li{position:relative;margin:5px 0}.event-tree-root ul>li:before{content:'';position:absolute;left:-13px;top:15px;width:10px;border-top:1px solid var(--border)}
+        .event-tree-link,.event-tree-folder{width:100%;border:1px solid transparent;border-radius:8px;background:transparent;color:var(--text-main);padding:7px 8px;text-align:left;font-size:.78rem;cursor:pointer}
+        .event-tree-link:hover{background:var(--input-bg);border-color:var(--border)}.event-tree-folder{font-weight:850;cursor:default}.event-tree-meta{float:right;color:var(--text-muted);font-size:.68rem;font-weight:650}
         @media(max-width:520px){
             .final-report-card { align-items:stretch; flex-direction:column; }
             .final-report-card button { width:100%; min-height:44px; }
@@ -1850,6 +1858,14 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
                 </div>
                 <button type="button" class="btn-subtle" onclick="generateFestivalFinalReport()">PDF erstellen</button>
             </div>
+
+            <section id="event-structure-tree" class="event-tree-card">
+                <button type="button" class="event-tree-toggle" onclick="toggleEventStructureTree()" aria-expanded="false">
+                    <span>🗂️ Verzeichnisbaum / Struktur<small id="event-tree-subtitle">Aktuelle Veranstaltung</small></span>
+                    <span class="event-tree-arrow">⌄</span>
+                </button>
+                <div id="event-tree-content" class="event-tree-content"></div>
+            </section>
 
         </div>
 
@@ -3197,7 +3213,7 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
                 var themeSaved=localStorage.getItem('cmoa_theme_v1');if(themeSaved==='night'){document.body.classList.add('night-mode');var btn=document.getElementById('theme-toggle-btn');if(btn)btn.innerText='☀️ Daymode';}
             } catch(e) {}
             if(!Array.isArray(bands))bands=[];if(!Array.isArray(manualTodos))manualTodos=[];if(!Array.isArray(eventNeeds))eventNeeds=[];if(!Array.isArray(hotelCostsList))hotelCostsList=[];if(!shuttleTripLog||typeof shuttleTripLog!=='object')shuttleTripLog={};if(!Array.isArray(shuttleVehicles))shuttleVehicles=[];if(!Array.isArray(productionEntries))productionEntries=[];if(!Array.isArray(akkDb))akkDb=[];
-            try{updateMainProgress();renderBandsList();initAkkreditierung();}catch(err){console.error('Init error:',err);}
+            try{updateMainProgress();renderBandsList();initAkkreditierung();renderEventStructureTree();}catch(err){console.error('Init error:',err);}
             if(navigator.onLine)syncOfflineQueue();
         };
 
@@ -3901,7 +3917,7 @@ function loadFromLocalStorage() {
             if (pageId === 'akkreditierung-page') renderAkk();
             if (pageId === 'admin-page') loadAdminUsers();
             if (pageId === 'events-admin-page') loadEventsAdminPage();
-            if (pageId === 'main-page') { updateFestivalCockpit(); loadCashSummaryMini(); }
+            if (pageId === 'main-page') { updateFestivalCockpit(); loadCashSummaryMini(); renderEventStructureTree(); }
             updateRightsBanner(pageId);
             window.scrollTo(0, 0);
         }
@@ -8617,6 +8633,41 @@ function loadFromLocalStorage() {
           document.querySelectorAll('[data-bands-required="true"]').forEach(function(el){el.classList.toggle('event-bands-hidden',!enabled);});
           document.querySelectorAll('[data-no-bands-only="true"]').forEach(function(el){el.classList.toggle('event-needs-hidden',enabled);});
         }
+        function toggleEventStructureTree(){
+          var card=document.getElementById('event-structure-tree');if(!card)return;var open=!card.classList.contains('open');card.classList.toggle('open',open);var btn=card.querySelector('.event-tree-toggle');if(btn)btn.setAttribute('aria-expanded',open?'true':'false');try{if(currentEventId)localStorage.setItem('cmoa_tree_open_'+currentEventId,open?'1':'0');}catch(e){}
+        }
+        function renderEventStructureTree(){
+          var content=document.getElementById('event-tree-content'),subtitle=document.getElementById('event-tree-subtitle'),card=document.getElementById('event-structure-tree');if(!content||!card||!currentEvent)return;
+          var title=currentEvent.short_name||currentEvent.name||'Veranstaltung';if(subtitle)subtitle.textContent=title+' · '+(eventBandsEnabled?'mit Bands':'ohne Bands');
+          function link(label,page,meta){return '<li><button type="button" class="event-tree-link" onclick="showPage(\''+page+'\')">'+label+(meta?'<span class="event-tree-meta">'+meta+'</span>':'')+'</button></li>';}
+          function allowed(module){return hasModuleRight(module,'read');}
+          var html='<ul class="event-tree-root"><li><div class="event-tree-folder">📁 '+escapeHtmlAuth(title)+'</div><ul>';
+          if(allowed('overview'))html+=link('📊 Übersicht','overview-page','');
+          if(eventBandsEnabled){
+            if(allowed('bands')){
+              html+='<li><div class="event-tree-folder">🎸 Bands <span class="event-tree-meta">'+(bands||[]).length+'</span></div><ul>';
+              if((bands||[]).length){(bands||[]).slice().sort(function(a,b){return String(a.name||'').localeCompare(String(b.name||''),'de');}).forEach(function(b){var docs=(getBandDocumentRecords(b,'contract').length+getBandDocumentRecords(b,'rider').length+getBandDocumentRecords(b,'invoice').length);html+='<li><button type="button" class="event-tree-link" onclick="openBandDetail(\''+String(b.id).replace(/'/g,"\\'")+'\')">🎤 '+escapeHtmlAuth(b.name||'Band')+'<span class="event-tree-meta">'+docs+' Dok.</span></button></li>';});}else html+='<li><div class="event-tree-link" style="cursor:default;color:var(--text-muted)">Noch keine Bands</div></li>';
+              html+='</ul></li>';
+            }
+            if(allowed('hotel'))html+=link('🏨 Hotel','hotel-page',(bands||[]).filter(function(b){return b.hotelNeeded==='ja'||b.hotelNeeded===true;}).length+' Buchungen');
+            if(allowed('shuttle'))html+=link('🚐 Shuttle','shuttle-page',(bands||[]).filter(function(b){return b.shuttleNeeded==='ja'||b.shuttleNeeded===true;}).length+' Bands');
+            if(allowed('running_order'))html+=link('🕒 Running Order','ro-page','');
+            if(allowed('payments'))html+=link('💳 Zahlungsziele / Zahlungsweise','payment-terms-page','');
+            if(allowed('fees'))html+=link('💶 Gagen','fees-page','');
+            if(allowed('catering'))html+=link('🍲 Catering','catering-page','');
+            if(allowed('accreditation'))html+=link('🎫 Akkreditierungen','akkreditierung-page',(akkDb||[]).length+' Personen');
+            if(allowed('documents'))html+=link('🔎 Dokumente','global-documents-page','');
+            if(allowed('todos')&&canViewPlanningControl())html+=link('✓ To-Do','misc-page','');
+          }else{
+            if(allowed('todos'))html+=link('📋 Bedarf & Aufgaben','event-needs-page',(eventNeeds||[]).filter(function(x){return !x.done;}).length+' offen');
+          }
+          if(allowed('fees'))html+=link('🏗️ Produktionskosten','production-costs-page',(productionEntries||[]).length+' Einträge');
+          if(canViewCashSummary())html+='<li><button type="button" class="event-tree-link" onclick="openCashSummary()">💶 Kassenübersicht</button></li>';
+          if(canViewActivityLog())html+='<li><button type="button" class="event-tree-link" onclick="openActivityLog()">📋 Log-Bericht</button></li>';
+          if(allowed('admin'))html+=link('⚙️ Benutzer & Rechte','admin-page','');
+          html+='</ul></li></ul>';content.innerHTML=html;
+          var open=false;try{open=localStorage.getItem('cmoa_tree_open_'+currentEventId)==='1';}catch(e){}card.classList.toggle('open',open);var btn=card.querySelector('.event-tree-toggle');if(btn)btn.setAttribute('aria-expanded',open?'true':'false');
+        }
         function canViewCashSummary(){
           if(!currentUserProfile)return false;
           if(currentUserProfile.role==='admin')return true;
@@ -8675,6 +8726,7 @@ function loadFromLocalStorage() {
           if(logButton)logButton.classList.toggle('permission-hidden',!canViewActivityLog());
           if(!canViewCashSummary())closeCashSummary();if(!canViewActivityLog())closeActivityLog();
           applyEventBandMode();
+          renderEventStructureTree();
         }
         function updateRightsBanner(pageId){
           var b=document.getElementById('rights-banner'); if(!b)return; var m=CMOA_PAGE_MODULES[pageId];
