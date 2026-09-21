@@ -1356,6 +1356,9 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
         .event-admin-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
         .event-user-row{display:flex;align-items:center;gap:9px;padding:8px 0;border-bottom:1px solid var(--border);font-size:.84rem}
         .event-user-row input{width:20px;height:20px}
+        .event-bands-choice{border:1px solid var(--border);border-radius:10px;background:var(--input-bg);padding:10px 12px;font-weight:750}
+        .event-bands-choice small{display:block;color:var(--text-muted);font-weight:500;margin-top:4px;line-height:1.35}
+        .event-bands-hidden{display:none!important}
         @media(max-width:520px){.event-admin-grid{grid-template-columns:1fr}.event-switcher{align-items:stretch}.event-switcher select{width:100%}}
 
         /* ===== KASSENÜBERSICHT AUF DER STARTSEITE ===== */
@@ -1750,20 +1753,20 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
             <div id="rights-banner" class="rights-banner"></div>
             <div class="menu-grid">
                 <button class="menu-btn menu-btn-overview" data-module="overview" onclick="showPage('overview-page')">Übersicht</button>
-                <button class="menu-btn menu-btn-bands" data-module="bands" onclick="showPage('bands-page')">Bands</button>
+                <button class="menu-btn menu-btn-bands" data-module="bands" data-bands-required="true" onclick="showPage('bands-page')">Bands</button>
                 <button class="menu-btn menu-btn-yellow" data-module="hotel" onclick="showPage('hotel-page')">Hotel</button>
                 <button class="menu-btn menu-btn-yellow" data-module="shuttle" onclick="showPage('shuttle-page')">Shuttle</button>
-                <button class="menu-btn" data-module="running_order" onclick="showPage('ro-page')">Running Order</button>
-                <button class="menu-btn" data-module="payments" onclick="showPage('payment-terms-page')">Zahlungsziel / Zahlungsweise</button>
-                <button class="menu-btn" data-module="fees" onclick="showPage('fees-page')">Gagen</button>
+                <button class="menu-btn" data-module="running_order" data-bands-required="true" onclick="showPage('ro-page')">Running Order</button>
+                <button class="menu-btn" data-module="payments" data-bands-required="true" onclick="showPage('payment-terms-page')">Zahlungsziel / Zahlungsweise</button>
+                <button class="menu-btn" data-module="fees" data-bands-required="true" onclick="showPage('fees-page')">Gagen</button>
                 <button id="todo-menu-btn" class="menu-btn" data-module="todos" onclick="showPage('misc-page')">To-Do</button>
-                <button class="menu-btn menu-btn-blue" data-module="catering" onclick="showPage('catering-page')">Catering</button>
+                <button class="menu-btn menu-btn-blue" data-module="catering" data-bands-required="true" onclick="showPage('catering-page')">Catering</button>
                 <button class="menu-btn menu-btn-blue" data-module="accreditation" onclick="showPage('akkreditierung-page')">Akkreditierung</button>
                 <button id="admin-menu-btn" class="menu-btn permission-hidden" data-module="admin" onclick="showPage('admin-page')">⚙️ Benutzer & Rechte</button>
                 <button class="menu-btn" data-module="fees" onclick="showPage('production-costs-page')">💶 Produktionskosten</button>
             </div>
 
-            <section id="festival-cockpit" class="festival-cockpit" aria-labelledby="festival-cockpit-title">
+            <section id="festival-cockpit" class="festival-cockpit" data-bands-required="true" aria-labelledby="festival-cockpit-title">
                 <div class="festival-cockpit-head">
                     <div><h3 id="festival-cockpit-title">🎛️ Festival-Cockpit</h3><p>Zahlungen, Dokumente, Hotel und Shuttle auf einen Blick</p></div>
                     <div style="display:flex;gap:7px;align-items:center;"><div id="festival-cockpit-total" class="festival-cockpit-total" title="Offene Hinweise">0</div><button id="festival-cockpit-toggle" type="button" class="festival-cockpit-toggle" aria-expanded="true" onclick="toggleFestivalCockpit()"><span id="festival-cockpit-toggle-label">Einklappen</span><span class="festival-cockpit-toggle-icon">⌃</span></button></div>
@@ -1772,7 +1775,7 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
             </section>
 
             <div class="progress-card">
-                <div id="main-progress-section">
+                <div id="main-progress-section" data-bands-required="true">
                     <div class="progress-header">
                         <span>Gesamtfortschritt</span>
                         <span id="main-progress-text">0%</span>
@@ -1786,7 +1789,7 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
                 </div>
 
                 <div class="backup-section">
-                    <button class="btn-subtle" data-module="documents" onclick="showPage('band-notes-page')">📝 Notizen / Zusatzvereinbarungen</button>
+                    <button class="btn-subtle" data-module="documents" data-bands-required="true" onclick="showPage('band-notes-page')">📝 Notizen / Zusatzvereinbarungen</button>
                     <button class="btn-subtle" data-module="documents" onclick="showPage('global-documents-page')">🔎 Dokumentensuche</button>
                     <button class="btn-subtle" data-module="export" onclick="showPage('export-page')">📤 Daten Exportieren</button>
                     <button class="btn-subtle" onclick="exportBackup()">💾 Backup Exportieren</button>
@@ -1953,6 +1956,14 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
                     <div class="form-group"><label>Ende</label><input id="event-new-end" type="date"></div>
                 </div>
                 <div class="form-group"><label>Ort</label><input id="event-new-location" type="text"></div>
+                <div class="form-group event-bands-choice">
+                    <label for="event-new-bands">Bands</label>
+                    <select id="event-new-bands">
+                        <option value="yes" selected>Ja – bei dieser Veranstaltung spielen Bands</option>
+                        <option value="no">Nein – Veranstaltung ohne Bands</option>
+                    </select>
+                    <small>Bei „Nein“ werden die ausschließlich bandbezogenen Bereiche in dieser Veranstaltung ausgeblendet. Bestehende Veranstaltungen werden nicht verändert.</small>
+                </div>
                 <div class="form-group"><label>Wer darf die neue Veranstaltung sehen?</label><div id="event-new-users"></div></div>
                 <button class="btn-primary" style="width:100%" onclick="createCmoaEvent()">＋ Veranstaltung anlegen</button>
             </div>
@@ -2980,6 +2991,7 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
         var currentEventId = null;
         var currentEvent = null;
         var availableEvents = [];
+        var eventBandsEnabled = true;
         var phase2Channel = null;
         var moduleHistorySnapshots = {};
         var OFFLINE_QUEUE_KEY = 'cmoa_offline_queue_v1';
@@ -3019,6 +3031,7 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
         }
         function applyDataModule(module,data){
             data=data||{};
+            if(module==='event_settings'){eventBandsEnabled=data.bandsEnabled!==false;return;}
             if(module==='accreditation'){akkDb=Array.isArray(data.akkDb)?data.akkDb:[];return;}
             if(module==='todos'){manualTodos=Array.isArray(data.manualTodos)?data.manualTodos:[];return;}
             if(module==='hotel' && Array.isArray(data.hotelCostsList)) hotelCostsList=data.hotelCostsList;
@@ -3107,6 +3120,7 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
         async function migrateLegacyStateIfNeeded(){ return false; }
         async function loadPhase2CloudData(){
             bands=[];manualTodos=[];hotelCostsList=[];shuttleTripLog={};shuttleVehicles=[];productionEntries=[];akkDb=[];
+            eventBandsEnabled=true;
             await migrateLegacyStateIfNeeded();
             if(!currentEventId) return;
             var r=await _supabase.from('cmoa_module_state').select('module,data').eq('event_id',currentEventId);
@@ -3114,6 +3128,7 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
             (r.data||[]).forEach(function(row){applyDataModule(row.module,row.data);});
             moduleHistorySnapshots={};CMOA_DATA_MODULES.forEach(function(module){moduleHistorySnapshots[module]=historyClone(payloadForDataModule(module));});
             normalizeAllBandNames();
+            applyEventBandMode();
             // Fach-Daten werden in Phase 2 nicht mehr im Browser-LocalStorage gehalten.
             ['cmoa_bands_v4','cmoa_manual_todos_v1','cmoa_hotel_costs_v1','cmoa_akkreditierung_v1'].forEach(function(k){try{localStorage.removeItem(k);}catch(e){}});
         }
@@ -3809,6 +3824,7 @@ function loadFromLocalStorage() {
 
         function showPage(pageId) {
             decorateCmoaPages();
+            if(!eventBandsEnabled&&['bands-page','band-view-page','band-detail-page','payment-terms-page','fees-page','catering-page','ro-page','band-notes-page','single-note-page'].indexOf(pageId)>=0){alert('Für diese Veranstaltung wurde „Bands: Nein“ gewählt. Dieser Bereich ist deshalb ausgeblendet.');return;}
             if(pageId==='misc-page'&&typeof canViewPlanningControl==='function'&&!canViewPlanningControl()){alert('To-Do ist nur für Administratoren oder Benutzer mit vollständigen Berechtigungen sichtbar.');return;}
             var mod = CMOA_PAGE_MODULES[pageId] || null;
             if (mod && !hasModuleRight(mod, 'read')) { alert('Für diesen Bereich hast du keine Leseberechtigung.'); return; }
@@ -8494,6 +8510,10 @@ function loadFromLocalStorage() {
           if(currentUserProfile.role==='admin')return true;
           var p=effectivePermissions(currentUserProfile); return rightRank(p[module])>=rightRank(need||'read');
         }
+        function applyEventBandMode(){
+          var enabled=eventBandsEnabled!==false;
+          document.querySelectorAll('[data-bands-required="true"]').forEach(function(el){el.classList.toggle('event-bands-hidden',!enabled);});
+        }
         function canViewCashSummary(){
           if(!currentUserProfile)return false;
           if(currentUserProfile.role==='admin')return true;
@@ -8551,6 +8571,7 @@ function loadFromLocalStorage() {
           if(cashButton)cashButton.classList.toggle('permission-hidden',!canViewCashSummary());
           if(logButton)logButton.classList.toggle('permission-hidden',!canViewActivityLog());
           if(!canViewCashSummary())closeCashSummary();if(!canViewActivityLog())closeActivityLog();
+          applyEventBandMode();
         }
         function updateRightsBanner(pageId){
           var b=document.getElementById('rights-banner'); if(!b)return; var m=CMOA_PAGE_MODULES[pageId];
@@ -8579,16 +8600,23 @@ function loadFromLocalStorage() {
           var pr=await _supabase.from('profiles').select('id,email,role').order('email'); var users=pr.data||[];
           var box=document.getElementById('event-new-users'); if(box)box.innerHTML=users.map(function(u){return '<label class="event-user-row"><input type="checkbox" data-new-event-user="'+u.id+'" '+(u.id===currentAuthUser.id?'checked':'')+'><span>'+escapeHtmlAuth(u.email||u.id)+(u.role==='admin'?' · Admin':'')+'</span></label>';}).join('');
           var er=await _supabase.from('events').select('*').order('start_date',{ascending:false}); if(er.error){document.getElementById('events-admin-list').textContent='Fehler: '+er.error.message;return;}
-          availableEvents=er.data||[]; renderEventSelector(); var list=document.getElementById('events-admin-list'); list.innerHTML='';
+          availableEvents=er.data||[]; renderEventSelector(); var list=document.getElementById('events-admin-list'); list.innerHTML='',eventSettingsById={};
+          var sr=await _supabase.from('cmoa_module_state').select('event_id,data').eq('module','event_settings');
+          if(!sr.error)(sr.data||[]).forEach(function(x){eventSettingsById[x.event_id]=x.data||{};});
           for(var i=0;i<availableEvents.length;i++){var e=availableEvents[i], ar=await _supabase.from('event_users').select('user_id').eq('event_id',e.id), assigned=(ar.data||[]).map(function(x){return x.user_id;});
             var checks=users.map(function(u){return '<label class="event-user-row"><input type="checkbox" data-event-user-event="'+e.id+'" value="'+u.id+'" '+(assigned.indexOf(u.id)>=0?'checked':'')+'><span>'+escapeHtmlAuth(u.email||u.id)+'</span></label>';}).join('');
-            list.insertAdjacentHTML('beforeend','<div class="admin-user-card"><div class="admin-user-email">'+escapeHtmlAuth(e.short_name||e.name)+'</div><div class="admin-user-meta">'+escapeHtmlAuth(e.name)+' · '+escapeHtmlAuth(e.start_date||'')+' bis '+escapeHtmlAuth(e.end_date||'')+'</div><details><summary style="cursor:pointer;font-weight:700;margin:8px 0">Benutzerzugriff</summary>'+checks+'<button class="btn-primary" style="width:100%;margin-top:8px" onclick="saveEventUsers(\''+e.id+'\')">💾 Zugriffe speichern</button></details><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px"><button class="btn-subtle" onclick="duplicateCmoaEvent(\''+e.id+'\')">⧉ Duplizieren</button><button class="btn-danger btn-sm" onclick="deleteCmoaEvent(\''+e.id+'\')">🗑 Löschen</button></div></div>');
+            var bandsActive=!eventSettingsById[e.id]||eventSettingsById[e.id].bandsEnabled!==false;
+            list.insertAdjacentHTML('beforeend','<div class="admin-user-card"><div class="admin-user-email">'+escapeHtmlAuth(e.short_name||e.name)+'</div><div class="admin-user-meta">'+escapeHtmlAuth(e.name)+' · '+escapeHtmlAuth(e.start_date||'')+' bis '+escapeHtmlAuth(e.end_date||'')+' · <strong>Bands: '+(bandsActive?'Ja':'Nein')+'</strong></div><details><summary style="cursor:pointer;font-weight:700;margin:8px 0">Benutzerzugriff</summary>'+checks+'<button class="btn-primary" style="width:100%;margin-top:8px" onclick="saveEventUsers(\''+e.id+'\')">💾 Zugriffe speichern</button></details><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px"><button class="btn-subtle" onclick="duplicateCmoaEvent(\''+e.id+'\')">⧉ Duplizieren</button><button class="btn-danger btn-sm" onclick="deleteCmoaEvent(\''+e.id+'\')">🗑 Löschen</button></div></div>');
           }
         }
         async function createCmoaEvent(){
           if(currentUserProfile.role!=='admin')return; var name=(document.getElementById('event-new-name').value||'').trim(), shortName=(document.getElementById('event-new-short').value||'').trim(); if(!name||!shortName){alert('Bitte Name und Kurzname eingeben.');return;}
+          var bandsEnabled=(document.getElementById('event-new-bands').value||'yes')==='yes';
           var row={name:name,short_name:shortName,start_date:document.getElementById('event-new-start').value||null,end_date:document.getElementById('event-new-end').value||null,location:(document.getElementById('event-new-location').value||'').trim()||null,status:'active',created_by:currentAuthUser.id};
-          var r=await _supabase.from('events').insert(row).select().single(); if(r.error){alert('Fehler: '+r.error.message);return;} var ids=[];document.querySelectorAll('[data-new-event-user]:checked').forEach(function(x){ids.push(x.getAttribute('data-new-event-user'));}); if(ids.indexOf(currentAuthUser.id)<0)ids.push(currentAuthUser.id); if(ids.length){var ur=await _supabase.from('event_users').insert(ids.map(function(uid){return {event_id:r.data.id,user_id:uid};}));if(ur.error){alert('Veranstaltung angelegt, aber Benutzerzuweisung fehlgeschlagen: '+ur.error.message);}}
+          var r=await _supabase.from('events').insert(row).select().single(); if(r.error){alert('Fehler: '+r.error.message);return;}
+          var settingsResult=await _supabase.from('cmoa_module_state').insert({event_id:r.data.id,module:'event_settings',data:{bandsEnabled:bandsEnabled},updated_at:new Date().toISOString(),updated_by:currentAuthUser.id});
+          if(settingsResult.error){alert('Veranstaltung wurde angelegt, aber die Auswahl „Bands“ konnte nicht gespeichert werden: '+settingsResult.error.message);return;}
+          var ids=[];document.querySelectorAll('[data-new-event-user]:checked').forEach(function(x){ids.push(x.getAttribute('data-new-event-user'));}); if(ids.indexOf(currentAuthUser.id)<0)ids.push(currentAuthUser.id); if(ids.length){var ur=await _supabase.from('event_users').insert(ids.map(function(uid){return {event_id:r.data.id,user_id:uid};}));if(ur.error){alert('Veranstaltung angelegt, aber Benutzerzuweisung fehlgeschlagen: '+ur.error.message);}}
           alert('✅ Veranstaltung angelegt.'); await loadAccessibleEvents(); await loadEventsAdminPage();
         }
         async function saveEventUsers(eventId){
@@ -8598,7 +8626,9 @@ function loadFromLocalStorage() {
           if(currentUserProfile.role!=='admin')return; var src=availableEvents.find(function(e){return e.id===sourceId;});if(!src)return; var shortName=prompt('Kurzname der Kopie:',(src.short_name||src.name)+' KOPIE');if(!shortName)return;var name=prompt('Name der Kopie:',src.name+' – Kopie');if(!name)return;
           var er=await _supabase.from('events').insert({name:name,short_name:shortName,start_date:src.start_date,end_date:src.end_date,location:src.location,status:'active',created_by:currentAuthUser.id}).select().single();if(er.error){alert('Fehler: '+er.error.message);return;} var target=er.data;
           var ur=await _supabase.from('event_users').select('user_id').eq('event_id',sourceId);if(ur.data&&ur.data.length)await _supabase.from('event_users').insert(ur.data.map(function(x){return {event_id:target.id,user_id:x.user_id};}));
-          var copy=confirm('Sollen auch alle Fachdaten (Bands, Hotel, Shuttle, Catering usw.) kopiert werden?\nOK = komplette Kopie\nAbbrechen = leere Veranstaltung'); if(copy){var mr=await _supabase.from('cmoa_module_state').select('module,data').eq('event_id',sourceId);if(mr.data&&mr.data.length){var rows=mr.data.map(function(x){return {event_id:target.id,module:x.module,data:x.data,updated_at:new Date().toISOString(),updated_by:currentAuthUser.id};});var ir=await _supabase.from('cmoa_module_state').insert(rows);if(ir.error){alert('Veranstaltung erstellt, Fachdaten konnten aber nicht kopiert werden: '+ir.error.message);}}}
+          var copy=confirm('Sollen auch alle Fachdaten (Bands, Hotel, Shuttle, Catering usw.) kopiert werden?\nOK = komplette Kopie\nAbbrechen = leere Veranstaltung');
+          var mr=await _supabase.from('cmoa_module_state').select('module,data').eq('event_id',sourceId);
+          if(mr.data){var sourceSettings=mr.data.find(function(x){return x.module==='event_settings';})||{module:'event_settings',data:{bandsEnabled:true}};var modulesToCopy=copy?mr.data:[sourceSettings];if(copy&&!modulesToCopy.some(function(x){return x.module==='event_settings';}))modulesToCopy.push(sourceSettings);if(modulesToCopy.length){var rows=modulesToCopy.map(function(x){return {event_id:target.id,module:x.module,data:x.data,updated_at:new Date().toISOString(),updated_by:currentAuthUser.id};});var ir=await _supabase.from('cmoa_module_state').insert(rows);if(ir.error){alert('Veranstaltung erstellt, Einstellungen oder Fachdaten konnten aber nicht kopiert werden: '+ir.error.message);}}}
           alert('✅ Veranstaltung dupliziert.');await loadAccessibleEvents();await loadEventsAdminPage();
         }
         async function deleteCmoaEvent(eventId){
