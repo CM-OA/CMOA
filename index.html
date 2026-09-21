@@ -731,6 +731,32 @@
         .akk-rec-actions { display: flex; gap: 5px; margin-top: 9px; align-items: center; flex-wrap: wrap; }
         .akk-action-btn { flex: 0 0 auto; min-width: 38px; height: 32px; padding: 0 9px; border-radius: 6px; border: 1px solid var(--border); font-weight: 800; background: var(--input-bg); color: var(--text-main); font-size: 11px; cursor: pointer; }
         .akk-action-btn.icon-only { width: 34px; min-width: 34px; padding: 0; font-size: 16px; line-height: 1; }
+        .akk-top-actions { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:12px; }
+        .akk-top-actions .btn-back { margin:0; }
+        .akk-quick-checkin-btn { border:0; border-radius:11px; padding:12px 18px; min-height:46px; color:#fff; background:linear-gradient(135deg,#f97316,#dc2626); box-shadow:0 5px 16px rgba(220,38,38,.30); font-weight:900; letter-spacing:.3px; cursor:pointer; animation:akkCheckPulse 2.2s infinite; }
+        @keyframes akkCheckPulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.025)} }
+        .akk-check-overlay { position:fixed; inset:0; z-index:10050; display:none; align-items:center; justify-content:center; padding:14px; background:rgba(3,7,18,.88); backdrop-filter:blur(5px); }
+        .akk-check-overlay.show { display:flex; }
+        .akk-check-dialog { width:min(520px,100%); max-height:95vh; overflow:auto; border-radius:20px; padding:20px; background:var(--card-bg); color:var(--text-main); border:1px solid var(--border); box-shadow:0 24px 70px rgba(0,0,0,.45); }
+        .akk-check-title { margin:0; text-align:center; font-size:25px; font-weight:950; }
+        .akk-check-hint { text-align:center; margin:6px 0 15px; color:var(--text-muted); font-weight:700; }
+        .akk-code-display { display:flex; justify-content:center; gap:12px; margin:12px 0 18px; }
+        .akk-code-slot { width:72px; height:76px; display:flex; align-items:center; justify-content:center; border:2px solid var(--border); border-radius:14px; background:var(--input-bg); font-size:38px; font-weight:950; color:var(--accent-blue); }
+        .akk-keypad { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+        .akk-keypad button { min-height:65px; border:1px solid var(--border); border-radius:13px; background:var(--input-bg); color:var(--text-main); font-size:27px; font-weight:950; cursor:pointer; }
+        .akk-keypad button:active { transform:scale(.97); background:var(--accent-blue); color:#fff; }
+        .akk-keypad .key-clear { color:var(--accent-red); font-size:17px; }
+        .akk-check-message { min-height:22px; margin:10px 0 0; text-align:center; color:var(--accent-red); font-weight:800; }
+        .akk-result-name { text-align:center; font-size:29px; line-height:1.15; font-weight:950; margin:6px 0; }
+        .akk-result-org { text-align:center; color:var(--text-muted); font-size:14px; margin-bottom:18px; }
+        .akk-result-label { text-align:center; color:var(--text-muted); font-size:11px; font-weight:900; letter-spacing:1px; text-transform:uppercase; }
+        .akk-result-perm { text-align:center; font-size:35px; font-weight:950; color:var(--accent-blue); margin:3px 0 17px; }
+        .akk-result-amount { text-align:center; font-size:31px; font-weight:950; color:#dc2626; margin:3px 0 19px; }
+        .akk-result-amount.free { color:#059669; }
+        .akk-result-check-btn { width:100%; min-height:64px; border:0; border-radius:13px; background:linear-gradient(135deg,#16a34a,#047857); color:#fff; font-size:20px; font-weight:950; cursor:pointer; }
+        .akk-result-check-btn:disabled { background:#64748b; cursor:default; }
+        .akk-result-back { width:100%; margin-top:9px; border:0; background:transparent; color:var(--text-muted); padding:10px; font-weight:800; cursor:pointer; }
+        @media(max-width:520px){.akk-top-actions{align-items:stretch}.akk-top-actions .btn-back,.akk-quick-checkin-btn{flex:1;padding:10px 8px;font-size:12px}.akk-check-dialog{padding:16px}.akk-code-slot{width:64px;height:68px}.akk-keypad button{min-height:60px}}
         .akk-action-btn.check { border-color: var(--accent-green); background: rgba(16, 185, 129, 0.08); color: var(--accent-green); }
         .akk-action-btn.del { border-color: var(--accent-red); background: rgba(239, 68, 68, 0.08); color: var(--accent-red); }
 
@@ -1679,7 +1705,14 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
 
         <!-- AKKREDITIERUNG SEITE -->
         <div id="akkreditierung-page" class="page">
-            <button class="btn-back" onclick="showPage('main-page')">← Hauptmenü</button>
+            <div class="akk-top-actions">
+                <button class="btn-back" onclick="showPage('main-page')">← Hauptmenü</button>
+                <button type="button" class="akk-quick-checkin-btn" onclick="openAkkQuickCheckin()">🔢 SCHNELL-CHECK-IN</button>
+            </div>
+
+            <div id="akk-quick-overlay" class="akk-check-overlay" onclick="if(event.target===this)closeAkkQuickCheckin()">
+                <div id="akk-quick-dialog" class="akk-check-dialog"></div>
+            </div>
             
             <div class="akk-header">
                 <div class="akk-header-title">CHRONICAL MOSHERS</div>
@@ -3379,6 +3412,69 @@ function loadFromLocalStorage() {
                 return 0;
             });
             return arr;
+        }
+
+        var akkQuickCode = '';
+        var akkQuickRecordId = '';
+        function akkEscape(value) {
+            return String(value == null ? '' : value).replace(/[&<>"']/g, function(ch){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]; });
+        }
+        function openAkkQuickCheckin() {
+            if (typeof hasModuleRight === 'function' && !hasModuleRight('checkin','write')) { alert('Für den Check-in fehlt die Schreibberechtigung.'); return; }
+            akkQuickCode = ''; akkQuickRecordId = '';
+            var overlay = document.getElementById('akk-quick-overlay');
+            if (overlay) { overlay.classList.add('show'); renderAkkQuickKeypad(); }
+        }
+        function closeAkkQuickCheckin() {
+            var overlay = document.getElementById('akk-quick-overlay');
+            if (overlay) overlay.classList.remove('show');
+            akkQuickCode = ''; akkQuickRecordId = '';
+        }
+        function renderAkkQuickKeypad(message) {
+            var dialog = document.getElementById('akk-quick-dialog'); if (!dialog) return;
+            var slots = '';
+            for (var i=0;i<3;i++) slots += '<div class="akk-code-slot">'+(akkQuickCode[i] || '–')+'</div>';
+            var keys = [1,2,3,4,5,6,7,8,9];
+            dialog.innerHTML = '<h2 class="akk-check-title">3-stellige Nummer eingeben</h2>'+
+                '<div class="akk-check-hint">Die letzten drei Ziffern der Akkreditierungs-ID</div>'+
+                '<div class="akk-code-display">'+slots+'</div>'+
+                '<div class="akk-keypad">'+keys.map(function(n){return '<button type="button" onclick="akkQuickKey(\''+n+'\')">'+n+'</button>';}).join('')+
+                '<button type="button" class="key-clear" onclick="akkQuickClear()">LÖSCHEN</button>'+
+                '<button type="button" onclick="akkQuickKey(\'0\')">0</button>'+
+                '<button type="button" onclick="akkQuickBackspace()">⌫</button></div>'+
+                '<div class="akk-check-message">'+akkEscape(message || '')+'</div>'+
+                '<button type="button" class="akk-result-back" onclick="closeAkkQuickCheckin()">Zurück</button>';
+        }
+        function akkQuickKey(n) {
+            if (akkQuickCode.length >= 3) return;
+            akkQuickCode += String(n);
+            renderAkkQuickKeypad();
+            if (akkQuickCode.length === 3) setTimeout(findAkkByQuickCode, 120);
+        }
+        function akkQuickClear(){ akkQuickCode=''; renderAkkQuickKeypad(); }
+        function akkQuickBackspace(){ akkQuickCode=akkQuickCode.slice(0,-1); renderAkkQuickKeypad(); }
+        function findAkkByQuickCode() {
+            var matches = akkDb.filter(function(r){ var m=String(r.id||'').match(/(\d{3})$/); return m && m[1]===akkQuickCode; });
+            if (matches.length !== 1) { var bad=akkQuickCode; akkQuickCode=''; renderAkkQuickKeypad(matches.length ? 'Nummer '+bad+' ist nicht eindeutig.' : 'Keine Akkreditierung mit der Nummer '+bad+' gefunden.'); return; }
+            akkQuickRecordId = matches[0].id;
+            renderAkkQuickResult(matches[0]);
+        }
+        function renderAkkQuickResult(rec) {
+            var dialog=document.getElementById('akk-quick-dialog'); if(!dialog)return;
+            var amount=Number(rec.amt||0), isFree=amount===0;
+            dialog.innerHTML='<div class="akk-result-name">'+akkEscape(rec.name||'—')+'</div>'+
+                '<div class="akk-result-org">'+akkEscape(rec.org||'—')+' · ID '+akkEscape(rec.id||'')+'</div>'+
+                '<div class="akk-result-label">Zugangsberechtigung</div><div class="akk-result-perm">'+akkEscape(String(rec.perm||'—').toUpperCase())+'</div>'+
+                '<div class="akk-result-label">Betrag</div><div class="akk-result-amount '+(isFree?'free':'')+'">'+(isFree?'EINTRITT FREI':amount.toFixed(2).replace('.',',')+' €')+'</div>'+
+                '<button type="button" class="akk-result-check-btn" '+(rec.chk?'disabled':'onclick="confirmAkkQuickCheckin()"')+'>'+(rec.chk?'✓ BEREITS EINGECHECKT':'✓ GAST EINCHECKEN')+'</button>'+
+                '<button type="button" class="akk-result-back" onclick="akkQuickCode=\'\';akkQuickRecordId=\'\';renderAkkQuickKeypad()">Zurück</button>';
+        }
+        function confirmAkkQuickCheckin() {
+            var rec=akkDb.find(function(r){return r.id===akkQuickRecordId;}); if(!rec)return;
+            rec.chk=true; rec.checkedInAt=new Date().toISOString();
+            saveToStorage(); renderAkk();
+            var dialog=document.getElementById('akk-quick-dialog');
+            if(dialog) dialog.innerHTML='<div style="text-align:center;font-size:58px;margin:8px 0">✅</div><div class="akk-result-name">Erfolgreich eingecheckt</div><div class="akk-result-org">'+akkEscape(rec.name||'')+'</div><button type="button" class="akk-result-check-btn" onclick="akkQuickCode=\'\';akkQuickRecordId=\'\';renderAkkQuickKeypad()">NÄCHSTER GAST</button><button type="button" class="akk-result-back" onclick="closeAkkQuickCheckin()">Schließen</button>';
         }
 
         function exportAkkListPdf(kind) {
@@ -5545,9 +5641,25 @@ function loadFromLocalStorage() {
                 html += '</div>';
             }
 
-            container.innerHTML = html;
+            container.innerHTML = '<div style="color:var(--text-muted);font-size:.82rem;text-align:center;padding:12px;">Der PDF-Bericht wurde in einer bereinigten Druckansicht geöffnet.</div>';
+            printCleanFestivalReport(html, dateSub ? dateSub.innerText : '');
+        }
 
-            setTimeout(function() { window.print(); }, 300);
+        function printCleanFestivalReport(reportHtml, subtitle) {
+            var oldFrame=document.getElementById('clean-export-print-frame'); if(oldFrame) oldFrame.remove();
+            var frame=document.createElement('iframe'); frame.id='clean-export-print-frame'; frame.setAttribute('aria-hidden','true');
+            frame.style.cssText='position:fixed;right:0;bottom:0;width:1px;height:1px;border:0;opacity:0;pointer-events:none;';
+            document.body.appendChild(frame);
+            var d=frame.contentDocument || frame.contentWindow.document;
+            d.open();
+            d.write('<!doctype html><html lang="de"><head><meta charset="utf-8"><title>CMOA 2027 Festival-Report</title><style>'+ 
+                '@page{size:A4 portrait;margin:14mm}*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;color:#0f172a;background:#fff;font-size:10pt}'+
+                '.report-head{text-align:center;border-bottom:3px solid #2563eb;padding-bottom:9px;margin-bottom:16px}.report-head h1{font-size:19pt;margin:0 0 4px}.report-head p{font-size:8.5pt;color:#64748b;margin:0}'+
+                '.export-unified-card{border:1px solid #cbd5e1;border-left:6px solid #2563eb;border-radius:7px;padding:13px 15px;margin:0 0 13px;page-break-inside:avoid;background:#fff}.export-unified-card h3{font-size:13pt;margin:0 0 10px;color:#1e3a8a}'+
+                '.view-section{padding:8px 0;border-bottom:1px solid #e2e8f0;page-break-inside:avoid}.view-section:last-child{border-bottom:0}.view-row{display:flex;gap:10px;padding:4px 0;border-bottom:1px solid #f1f5f9}.view-label{font-weight:700;min-width:36%}.view-value{flex:1}.export-band-name-title{display:block;font-size:11pt;color:#0f172a;margin-bottom:3px}.export-highlight-amount{color:#b91c1c;font-weight:800}'+
+                '</style></head><body><header class="report-head"><h1>CHRONICAL MOSHERS OPEN AIR 2027</h1><p>'+akkEscape(subtitle)+'</p></header>'+reportHtml+'</body></html>');
+            d.close();
+            setTimeout(function(){ try{frame.contentWindow.focus();frame.contentWindow.print();}catch(e){alert('Die Druckansicht konnte nicht geöffnet werden.');} setTimeout(function(){frame.remove();},1500); },350);
         }
 
         function renderBandNotesPage() {
