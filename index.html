@@ -948,6 +948,21 @@
         .pdf-table tr:last-child td { border-bottom: none !important; }
         .pdf-table tr:nth-child(even) td { background-color: #fafafa !important; }
 
+        .connection-indicator {
+            position: fixed; right: 14px; bottom: 14px; z-index: 15000;
+            display: inline-flex; align-items: center; gap: 7px; min-height: 36px;
+            padding: 8px 12px; border: 1px solid rgba(15,23,42,.16); border-radius: 999px;
+            background: rgba(255,255,255,.96); color: #14532d; box-shadow: 0 5px 18px rgba(15,23,42,.18);
+            font-size: .78rem; font-weight: 800; cursor: pointer; backdrop-filter: blur(8px);
+        }
+        .connection-indicator .connection-dot { width: 9px; height: 9px; border-radius: 50%; background: #22c55e; box-shadow: 0 0 0 3px rgba(34,197,94,.16); }
+        .connection-indicator.offline { color: #991b1b; border-color: rgba(239,68,68,.35); }
+        .connection-indicator.offline .connection-dot { background: #ef4444; box-shadow: 0 0 0 3px rgba(239,68,68,.16); }
+        .connection-indicator.syncing { color: #92400e; border-color: rgba(245,158,11,.4); }
+        .connection-indicator.syncing .connection-dot { background: #f59e0b; box-shadow: 0 0 0 3px rgba(245,158,11,.18); animation: connectionPulse 1s infinite alternate; }
+        .connection-queue-count { font-size: .68rem; opacity: .78; }
+        @keyframes connectionPulse { to { transform: scale(1.35); opacity: .65; } }
+
         @media print {
             @page { size: A4 portrait; margin: 12mm 10mm; }
             body { background-color: #ffffff !important; background-image: none !important; color: #000000 !important; padding: 0 !important; margin: 0 !important; }
@@ -972,6 +987,8 @@
     body {
         font-size: 15px;
     }
+
+    .connection-indicator { right: 8px; bottom: 8px; min-height: 34px; padding: 7px 10px; font-size: .72rem !important; }
 
     .container,
     .page,
@@ -1665,6 +1682,11 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
 </head>
 
 <body data-design="steel">
+    <button id="connection-indicator" class="connection-indicator" type="button" onclick="showConnectionQueueInfo()" aria-live="polite" title="Verbindungsstatus und ausstehende Synchronisation">
+        <span class="connection-dot" aria-hidden="true"></span>
+        <span id="connection-label">Online</span>
+        <span id="connection-queue-count" class="connection-queue-count"></span>
+    </button>
     <header>
         <div style="width: 80px;"></div>
         <h1 id="app-event-title">CMOA 2027</h1>
@@ -2909,6 +2931,8 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
         var availableEvents = [];
         var phase2Channel = null;
         var moduleHistorySnapshots = {};
+        var OFFLINE_QUEUE_KEY = 'cmoa_offline_queue_v1';
+        var offlineSyncInProgress = false;
         var CMOA_DATA_MODULES = ['bands','fees','payments','hotel','shuttle','running_order','catering','documents','todos','accreditation'];
         var CMOA_FIELD_GROUPS = {
             bands:['id','name','showday','contactName','contactEmail','contactPhone','contactOrg','dealDone'],
@@ -2954,12 +2978,74 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
             }
             if(Array.isArray(data.bands)) data.bands.forEach(mergeBandPart);
         }
+        function getOfflineQueue(){
+            try{var q=JSON.parse(localStorage.getItem(OFFLINE_QUEUE_KEY)||'[]');return Array.isArray(q)?q:[];}catch(e){return [];}
+        }
+        function setOfflineQueue(queue){
+            try{localStorage.setItem(OFFLINE_QUEUE_KEY,JSON.stringify((queue||[]).slice(-60)));}catch(e){console.error('Offline-Warteschlange konnte nicht gespeichert werden:',e);}
+            updateConnectionIndicator();
+        }
+        function queueOfflineModule(module,data){
+            if(!currentEventId)return;
+            var q=getOfflineQueue(),userId=currentAuthUser?currentAuthUser.id:null,key=String(currentEventId)+'|'+String(module);
+            q=q.filter(function(item){return String(item.eventId)+'|'+String(item.module)!==key;});
+            q.push({id:String(Date.now())+'-'+Math.random().toString(36).slice(2),eventId:currentEventId,module:module,data:historyClone(data),userId:userId,createdAt:new Date().toISOString()});
+            setOfflineQueue(q);
+        }
+        function removeOfflineModule(eventId,module){
+            setOfflineQueue(getOfflineQueue().filter(function(item){return !(String(item.eventId)===String(eventId)&&item.module===module);}));
+        }
+        function isConnectionError(error){
+            var msg=String(error&&error.message||error||'').toLowerCase();
+            return !navigator.onLine||msg.indexOf('fetch')>-1||msg.indexOf('network')>-1||msg.indexOf('offline')>-1||msg.indexOf('load failed')>-1;
+        }
+        function updateConnectionIndicator(mode){
+            var el=document.getElementById('connection-indicator'),label=document.getElementById('connection-label'),countEl=document.getElementById('connection-queue-count');if(!el||!label||!countEl)return;
+            var count=getOfflineQueue().length,state=mode||(offlineSyncInProgress?'syncing':(navigator.onLine?'online':'offline'));
+            el.classList.toggle('offline',state==='offline');el.classList.toggle('syncing',state==='syncing');
+            label.textContent=state==='syncing'?'Synchronisiert …':state==='offline'?'Offline':'Online';
+            countEl.textContent=count?'· '+count+' ausstehend':'';
+            el.title=state==='offline'?'Änderungen werden lokal vorgemerkt und später synchronisiert.':count?'Ausstehende Änderungen werden automatisch synchronisiert.':'Verbindung aktiv – alle Änderungen sind synchronisiert.';
+        }
+        function showConnectionQueueInfo(){
+            var count=getOfflineQueue().length;
+            if(!navigator.onLine){alert('Offline-Modus\n\nÄnderungen werden auf diesem Gerät vorgemerkt. Sobald die Verbindung wieder da ist, versucht die App automatisch zu synchronisieren.'+(count?'\n\nAusstehende Datenbereiche: '+count:''));return;}
+            alert(count?(count+' Datenbereich(e) warten auf die Synchronisierung. Die Übertragung wird automatisch erneut versucht.'):'Online – alle Änderungen sind synchronisiert.');
+        }
+        async function syncOfflineQueue(){
+            if(offlineSyncInProgress||!navigator.onLine||!_supabase||!currentAuthUser)return;
+            var queue=getOfflineQueue();if(!queue.length){updateConnectionIndicator();return;}var pending=queue.slice();
+            offlineSyncInProgress=true;updateConnectionIndicator('syncing');
+            for(var i=0;i<pending.length;i++){
+                var item=pending[i];
+                if(item.userId&&item.userId!==currentAuthUser.id)continue;
+                if(!hasDataModuleWrite(item.module))continue;
+                try{
+                    var row={module:item.module,event_id:item.eventId,data:item.data,updated_at:new Date().toISOString(),updated_by:currentAuthUser.id};
+                    var r=await _supabase.from('cmoa_module_state').upsert(row,{onConflict:'module,event_id'});
+                    if(r.error)throw new Error(r.error.message);
+                    queue=queue.filter(function(q){return q.id!==item.id;});setOfflineQueue(queue);
+                    if(String(item.eventId)===String(currentEventId))moduleHistorySnapshots[item.module]=historyClone(item.data);
+                }catch(e){console.error('Offline-Synchronisierung fehlgeschlagen:',e);if(!isConnectionError(e))break;}
+            }
+            offlineSyncInProgress=false;updateConnectionIndicator();
+        }
+        function initConnectionMonitor(){
+            updateConnectionIndicator();
+            window.addEventListener('offline',function(){updateConnectionIndicator('offline');});
+            window.addEventListener('online',function(){updateConnectionIndicator('syncing');syncOfflineQueue();});
+            document.addEventListener('visibilitychange',function(){if(!document.hidden&&navigator.onLine)syncOfflineQueue();});
+        }
         async function writeDataModule(module){
-            if(!_supabase || !hasDataModuleWrite(module)) return;
+            if(!hasDataModuleWrite(module)) return;
             if(!currentEventId) return;
             var row={module:module,event_id:currentEventId,data:payloadForDataModule(module),updated_at:new Date().toISOString(),updated_by:currentAuthUser?currentAuthUser.id:null};
-            var r=await _supabase.from('cmoa_module_state').upsert(row,{onConflict:'module,event_id'});
-            if(r.error) throw new Error(module+': '+r.error.message);
+            if(!navigator.onLine||!_supabase){queueOfflineModule(module,row.data);moduleHistorySnapshots[module]=historyClone(row.data);return {queued:true};}
+            try{
+                var r=await _supabase.from('cmoa_module_state').upsert(row,{onConflict:'module,event_id'});
+                if(r.error) throw new Error(module+': '+r.error.message);
+            }catch(e){if(isConnectionError(e)){queueOfflineModule(module,row.data);moduleHistorySnapshots[module]=historyClone(row.data);return {queued:true};}throw e;}
+            removeOfflineModule(currentEventId,module);
             var previous=moduleHistorySnapshots[module],current=historyClone(row.data);if(previous){var diff=moduleHistoryDiff(previous,current);if(diff.count)await logCmoaChange('Änderung gespeichert',module,'module',module,'Bereich: '+module,diff.before,diff.after,false);}moduleHistorySnapshots[module]=current;
         }
         function hasDataModuleWrite(module){
@@ -2990,6 +3076,7 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
             }catch(e){console.log('Realtime nicht verfügbar:',e);}
         }
         window.onload = async function() {
+            initConnectionMonitor();
             initSupabaseClient();
             if (!_supabase) { showAuthError('Supabase konnte nicht geladen werden.'); return; }
             var authOk = await initCmoaAuth(); if (!authOk) return;
@@ -3001,6 +3088,7 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
             } catch(e) {}
             if(!Array.isArray(bands))bands=[];if(!Array.isArray(manualTodos))manualTodos=[];if(!Array.isArray(hotelCostsList))hotelCostsList=[];if(!shuttleTripLog||typeof shuttleTripLog!=='object')shuttleTripLog={};if(!Array.isArray(shuttleVehicles))shuttleVehicles=[];if(!Array.isArray(productionEntries))productionEntries=[];if(!Array.isArray(akkDb))akkDb=[];
             try{updateMainProgress();renderBandsList();initAkkreditierung();}catch(err){console.error('Init error:',err);}
+            if(navigator.onLine)syncOfflineQueue();
         };
 
         // =============================================================
@@ -4077,6 +4165,7 @@ function loadFromLocalStorage() {
                 'Hallo ' + String(rec.name || '') + ',\n\n' +
                 'anbei erhältst du deine Akkreditierung für ' + eventName + '.\n\n' +
                 'Bitte bringe die Akkreditierung digital oder ausgedruckt zur Veranstaltung mit.\n\n' +
+                'Auf der Akkreditierung befindet sich ein QR-Code für den schnellen Check-in. Bitte halte ihn am Einlass gut sichtbar bereit.\n\n' +
                 'Wichtig: Die letzten drei Ziffern deiner Akkreditierungs-ID (' + String(rec.id || '') + ') müssen am Einlass mitgeteilt werden.\n\n' +
                 'Die PDF-Akkreditierung bitte ich als Anhang dieser E-Mail zu beachten.\n\n' +
                 'Bei Rückfragen kannst du dich gerne an uns wenden.';
@@ -4171,7 +4260,7 @@ function loadFromLocalStorage() {
             // Frisch geliefertes Logo: schwarz auf weiß, groß im freien Bereich rechts neben den Infos.
             try { doc.addImage(AKK_PDF_LOGO_2027,'PNG',119,76,75,72); } catch(e) { console.error('Logo konnte nicht eingefügt werden',e); }
             var qrData=createAkkQrDataUrl(rec);
-            if(qrData){try{doc.addImage(qrData,'PNG',150,147,36,36);doc.setTextColor(45,115,190);doc.setFont('helvetica','bold');doc.setFontSize(6.8);doc.text('QR-CHECK-IN',168,186,{align:'center'});}catch(e){console.error('QR-Code konnte nicht eingefügt werden',e);}}
+            if(qrData){try{doc.addImage(qrData,'PNG',138.5,150,36,36);}catch(e){console.error('QR-Code konnte nicht eingefügt werden',e);}}
 
             doc.setDrawColor(220,220,220); doc.line(16,188,194,188);
             doc.setTextColor(dark[0],dark[1],dark[2]); doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.text('VERANSTALTUNG',16,200);
