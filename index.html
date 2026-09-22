@@ -3552,17 +3552,28 @@ function loadFromLocalStorage() {
                     return s.register_id === register.id && !s.voided && new Date(s.sold_at).getTime() > lastClosingTime;
                 });
                 var saleIds = new Set(sales.map(function(s){ return s.id; }));
+                var saleById = {};
+                sales.forEach(function(s){ saleById[s.id] = s; });
                 var drinkMap = {};
                 data.items.filter(function(i){ return saleIds.has(i.sale_id); }).forEach(function(i){
                     var qty = Number(i.quantity || 0);
                     if (qty <= 0) return;
+                    var sale = saleById[i.sale_id] || {};
+                    var isToken = Number(sale.drinks_total || 0) === 0
+                        && Number(i.unit_price || i.price || 0) > 0
+                        && Number(sale.deposit_returned || 0) === 0;
                     var name = String(i.drink_name || i.product_name || i.name || 'Getränk');
-                    if (!drinkMap[name]) drinkMap[name] = { name: name, quantity: 0, revenue: 0 };
+                    if (!drinkMap[name]) drinkMap[name] = { name: name, quantity: 0, paidQuantity: 0, freeQuantity: 0, revenue: 0 };
                     drinkMap[name].quantity += qty;
-                    drinkMap[name].revenue += qty * Number(i.unit_price || i.price || 0);
+                    if (isToken) drinkMap[name].freeQuantity += qty;
+                    else {
+                        drinkMap[name].paidQuantity += qty;
+                        drinkMap[name].revenue += qty * Number(i.unit_price || i.price || 0);
+                    }
                 });
                 var drinks = Object.keys(drinkMap).map(function(name){ return drinkMap[name]; }).sort(function(a,b){ return a.name.localeCompare(b.name, 'de'); });
                 var drinkCount = drinks.reduce(function(sum,d){ return sum + d.quantity; }, 0);
+                var freeDrinkCount = drinks.reduce(function(sum,d){ return sum + d.freeQuantity; }, 0);
                 var opening = periodMovements.filter(function(m){ return m.movement_type === 'opening'; }).reduce(function(sum,m){ return sum + Number(m.amount || 0); }, 0);
                 var emptying = periodMovements.filter(function(m){ return m.movement_type === 'emptying'; }).reduce(function(sum,m){ return sum + Number(m.amount || 0); }, 0);
                 var turnover = sales.reduce(function(sum,s){ return sum + Number(s.total || 0); }, 0);
@@ -3574,6 +3585,7 @@ function loadFromLocalStorage() {
                     name: register.name,
                     balance: opening + turnover - emptying,
                     drinkCount: drinkCount,
+                    freeDrinkCount: freeDrinkCount,
                     depositCharged: depositCharged,
                     depositReturned: depositReturned,
                     drinks: drinks,
@@ -3609,20 +3621,32 @@ function loadFromLocalStorage() {
         function buildCashEventFinancials(data) {
             var sales = data.sales.filter(function(s){ return !s.voided; });
             var saleIds = new Set(sales.map(function(s){ return s.id; }));
+            var saleById = {};
+            sales.forEach(function(s){ saleById[s.id] = s; });
             var drinks = {};
             data.items.filter(function(i){ return saleIds.has(i.sale_id); }).forEach(function(i){
                 var qty = Number(i.quantity || 0);
                 if (qty <= 0) return;
+                var sale = saleById[i.sale_id] || {};
+                var isToken = Number(sale.drinks_total || 0) === 0
+                    && Number(i.unit_price || i.price || 0) > 0
+                    && Number(sale.deposit_returned || 0) === 0;
                 var name = String(i.drink_name || i.product_name || i.name || 'Getränk');
-                if (!drinks[name]) drinks[name] = { name: name, quantity: 0, revenue: 0 };
+                if (!drinks[name]) drinks[name] = { name: name, quantity: 0, paidQuantity: 0, freeQuantity: 0, revenue: 0 };
                 drinks[name].quantity += qty;
-                drinks[name].revenue += qty * Number(i.unit_price || i.price || 0);
+                if (isToken) drinks[name].freeQuantity += qty;
+                else {
+                    drinks[name].paidQuantity += qty;
+                    drinks[name].revenue += qty * Number(i.unit_price || i.price || 0);
+                }
             });
             var beverageRevenue = sales.reduce(function(sum,s){ return sum + Number(s.drinks_total || s.subtotal || 0); }, 0);
             if (!beverageRevenue) beverageRevenue = Object.keys(drinks).reduce(function(sum,k){ return sum + drinks[k].revenue; }, 0);
+            var freeDrinkCount = Object.keys(drinks).reduce(function(sum,k){ return sum + drinks[k].freeQuantity; }, 0);
             var costs = calculateFestivalCosts();
             return {
                 drinks: Object.keys(drinks).map(function(k){ return drinks[k]; }).sort(function(a,b){ return a.name.localeCompare(b.name, 'de'); }),
+                freeDrinkCount: freeDrinkCount,
                 beverageRevenue: beverageRevenue,
                 depositCharged: sales.reduce(function(sum,s){ return sum + Number(s.deposit_charged || 0); }, 0),
                 depositReturned: sales.reduce(function(sum,s){ return sum + Number(s.deposit_returned || 0); }, 0),
@@ -3668,6 +3692,7 @@ function loadFromLocalStorage() {
             var shuttleRides=getShuttleLogRides(),shuttleTotals=getShuttleCostTotals();
             var drinkRows=finance?finance.drinks:[];
             var drinkCount=drinkRows.reduce(function(sum,d){return sum+Number(d.quantity||0);},0);
+            var freeDrinkCount=finance?Number(finance.freeDrinkCount||0):0;
 
             var doc=new window.jspdf.jsPDF({orientation:'portrait',unit:'mm',format:'a4'}),W=210,H=297,M=15,y=18,pageNo=1;
             function safeText(v){return String(v==null?'':v).replace(/[–—]/g,'-');}
@@ -3721,8 +3746,8 @@ function loadFromLocalStorage() {
             shuttleRides.forEach(function(r){listLine((r.bandName||r.band||'Band')+' | '+(r.type||'Fahrt')+' | '+formatDateDE(r.date)+' '+(r.time||''),(r.route||'-'));});
 
             section('Getraenke');
-            row('Verkaufte Getraenke gesamt',String(drinkCount));row('Getraenkeumsatz',money(beverageRevenue));
-            if(drinkRows.length)drinkRows.forEach(function(d){listLine(d.name,Number(d.quantity||0).toLocaleString('de-DE')+' Stk. | '+money(d.revenue));});
+            row('Ausgegebene Getraenke gesamt',String(drinkCount));row('Davon Freigetraenke ueber Marken',String(freeDrinkCount));row('Getraenkeumsatz',money(beverageRevenue));
+            if(drinkRows.length)drinkRows.forEach(function(d){listLine(d.name,Number(d.quantity||0).toLocaleString('de-DE')+' Stk. | davon '+Number(d.freeQuantity||0).toLocaleString('de-DE')+' Marke | '+money(d.revenue));});
             else note('Keine Kassendaten oder Getraenkeverkaeufe fuer diese Auswertung vorhanden.');
 
             section('Akkreditierungen nach Berechtigung');
@@ -3860,13 +3885,14 @@ function loadFromLocalStorage() {
                           + '</details>'
                         : '<div class="cash-emptying-history"><span class="cash-emptying">Noch keine Leerung dokumentiert.</span></div>';
                     var drinkRows = s.drinks.length
-                        ? s.drinks.map(function(d){ return '<div class="cash-drink-row"><span>' + escapeHtmlAuth(d.name) + '</span><b>' + d.quantity + '</b></div>'; }).join('')
+                        ? s.drinks.map(function(d){ return '<div class="cash-drink-row"><span>' + escapeHtmlAuth(d.name) + (d.freeQuantity ? ' <small style="color:#16a34a">· davon ' + d.freeQuantity + ' Marke</small>' : '') + '</span><b>' + d.quantity + '</b></div>'; }).join('')
                         : '<div class="cash-drink-row"><span>Noch keine Getränke verkauft</span><b>0</b></div>';
                     return '<div class="cash-register-card">'
                         + '<div class="cash-register-title"><strong>' + escapeHtmlAuth(s.name) + '</strong><span class="cash-balance">' + cashEuro(s.balance) + '</span></div>'
                         + '<div class="cash-stat-grid">'
                         + '<div class="cash-stat"><span>Aktueller Sollbestand</span><b>' + cashEuro(s.balance) + '</b></div>'
                         + '<div class="cash-stat"><span>Getränke verkauft</span><b>' + s.drinkCount + '</b></div>'
+                        + '<div class="cash-stat"><span>Freigetränke über Marken</span><b style="color:#16a34a">' + s.freeDrinkCount + '</b></div>'
                         + '<div class="cash-stat"><span>Pfand berechnet</span><b>' + cashEuro(s.depositCharged) + '</b></div>'
                         + '<div class="cash-stat"><span>Pfand zurückgegeben</span><b>' + cashEuro(s.depositReturned) + '</b></div>'
                         + '</div>'
@@ -3877,15 +3903,16 @@ function loadFromLocalStorage() {
                 }).join('');
                 var finance = buildCashEventFinancials(cashData);
                 var totalDrinkRows = finance.drinks.length
-                    ? finance.drinks.map(function(d){ return '<div class="cash-drink-row"><span>' + escapeHtmlAuth(d.name) + '</span><b>' + d.quantity + ' · ' + cashEuro(d.revenue) + '</b></div>'; }).join('')
+                    ? finance.drinks.map(function(d){ return '<div class="cash-drink-row"><span>' + escapeHtmlAuth(d.name) + (d.freeQuantity ? ' <small style="color:#16a34a">· ' + d.freeQuantity + ' Marke</small>' : '') + '</span><b>' + d.quantity + ' · ' + cashEuro(d.revenue) + '</b></div>'; }).join('')
                     : '<div class="cash-drink-row"><span>Noch keine Getränke verkauft</span><b>0</b></div>';
                 content.innerHTML += '<div class="cash-finance-card">'
                     + '<h3>Gesamtbilanz der Veranstaltung</h3>'
                     + '<div class="cash-finance-row"><span>Getränkeeinnahmen (ohne Pfand)</span><b>' + cashEuro(finance.beverageRevenue) + '</b></div>'
+                    + '<div class="cash-finance-row"><span>Freigetränke über Marken</span><b style="color:#16a34a">' + finance.freeDrinkCount + '</b></div>'
                     + '<div class="cash-finance-row"><span>Pfand berechnet</span><b>' + cashEuro(finance.depositCharged) + '</b></div>'
                     + '<div class="cash-finance-row"><span>Pfand zurückgegeben</span><b>− ' + cashEuro(finance.depositReturned) + '</b></div>'
                     + '<div class="cash-finance-row cash-finance-total"><span>Kassenumsatz gesamt</span><b>' + cashEuro(finance.cashTotal) + '</b></div>'
-                    + '<div class="cash-drink-list"><div class="cash-drink-list-title">Alle verkauften Getränke</div>' + totalDrinkRows + '</div>'
+                    + '<div class="cash-drink-list"><div class="cash-drink-list-title">Alle ausgegebenen Getränke inklusive Marken</div>' + totalDrinkRows + '</div>'
                     + '<div class="cash-finance-row"><span>Bandgagen brutto</span><b>' + cashEuro(finance.costs.feesGross) + '</b></div>'
                     + '<div class="cash-finance-row"><span>Hotelkosten</span><b>' + cashEuro(finance.costs.hotelTotal) + '</b></div>'
                     + '<div class="cash-finance-row"><span>Shuttlekosten</span><b>' + cashEuro(finance.costs.shuttleTotal) + '</b></div>'
