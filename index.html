@@ -3596,7 +3596,7 @@ function loadFromLocalStorage() {
                 sales.forEach(function(s){ saleById[s.id] = s; });
                 var drinkMap = {};
                 var componentLiters = {};
-                var registerTax={net:0,tax:0,gross:0};
+                var registerTax={net:0,tax:0,gross:0,byCategory:{drink:{label:'Getränke',net:0,tax:0,gross:0},food:{label:'Speisen',net:0,tax:0,gross:0}}};
                 data.items.filter(function(i){ return saleIds.has(i.sale_id); }).forEach(function(i){
                     var qty = Number(i.quantity || 0);
                     if (qty <= 0) return;
@@ -3625,7 +3625,9 @@ function loadFromLocalStorage() {
                         if(!Number.isFinite(vatRate))vatRate=product.category==='food'?7:19;
                         var netAmount=priceMode==='gross'?paidAmount/(1+vatRate/100):paidAmount,grossAmount=priceMode==='gross'?paidAmount:paidAmount*(1+vatRate/100);
                         drinkMap[name].revenue += paidAmount;
+                        var categoryKey=product.category==='food'?'food':'drink';
                         registerTax.net+=netAmount;registerTax.tax+=grossAmount-netAmount;registerTax.gross+=grossAmount;
+                        registerTax.byCategory[categoryKey].net+=netAmount;registerTax.byCategory[categoryKey].tax+=grossAmount-netAmount;registerTax.byCategory[categoryKey].gross+=grossAmount;
                     }
                 });
                 var drinks = Object.keys(drinkMap).map(function(name){ return drinkMap[name]; }).sort(function(a,b){ return a.name.localeCompare(b.name, 'de'); });
@@ -3653,6 +3655,7 @@ function loadFromLocalStorage() {
                     taxNet: registerTax.net,
                     taxAmount: registerTax.tax,
                     taxGross: registerTax.gross,
+                    taxByCategory: registerTax.byCategory,
                     depositCharged: depositCharged,
                     depositReturned: depositReturned,
                     drinks: drinks,
@@ -3691,7 +3694,7 @@ function loadFromLocalStorage() {
             var saleById = {};
             sales.forEach(function(s){ saleById[s.id] = s; });
             var drinks = {};
-            var productById={},componentLiters={},taxByRate={},taxNetTotal=0,taxAmountTotal=0,taxGrossTotal=0;
+            var productById={},componentLiters={},taxByRate={},taxByCategory={drink:{label:'Getränke',net:0,tax:0,gross:0},food:{label:'Speisen',net:0,tax:0,gross:0}},taxNetTotal=0,taxAmountTotal=0,taxGrossTotal=0;
             (data.products||[]).forEach(function(p){var meta=parseCashDrinkMeta(p.color);productById[p.id]={name:p.name,category:meta.category,part1:meta.part1,part2:meta.part2,volume1:meta.volume1,volume2:meta.volume2,vatRate:meta.vatRate,priceMode:meta.priceMode};});
             data.items.filter(function(i){ return saleIds.has(i.sale_id); }).forEach(function(i){
                 var qty = Number(i.quantity || 0);
@@ -3726,6 +3729,8 @@ function loadFromLocalStorage() {
                     taxNetTotal+=netAmount;taxAmountTotal+=taxAmount;taxGrossTotal+=grossAmount;
                     if(!taxByRate[key])taxByRate[key]={rate:vatRate,net:0,tax:0,gross:0};
                     taxByRate[key].net+=netAmount;taxByRate[key].tax+=taxAmount;taxByRate[key].gross+=grossAmount;
+                    var categoryKey=product.category==='food'?'food':'drink';
+                    taxByCategory[categoryKey].net+=netAmount;taxByCategory[categoryKey].tax+=taxAmount;taxByCategory[categoryKey].gross+=grossAmount;
                 }
             });
             var beverageRevenue = sales.reduce(function(sum,s){ return sum + Number(s.drinks_total || s.subtotal || 0); }, 0);
@@ -3746,6 +3751,7 @@ function loadFromLocalStorage() {
                 taxAmountTotal: taxAmountTotal,
                 taxGrossTotal: taxGrossTotal,
                 taxByRate: taxByRate,
+                taxByCategory: taxByCategory,
                 beverageRevenue: beverageRevenue,
                 depositCharged: sales.reduce(function(sum,s){ return sum + Number(s.deposit_charged || 0); }, 0),
                 depositReturned: sales.reduce(function(sum,s){ return sum + Number(s.deposit_returned || 0); }, 0),
@@ -3771,6 +3777,7 @@ function loadFromLocalStorage() {
             var beverageTax=finance?finance.taxAmountTotal:0;
             var beverageGross=finance?finance.taxGrossTotal:0;
             var beverageTaxByRate=finance&&finance.taxByRate?finance.taxByRate:{};
+            var beverageTaxByCategory=finance&&finance.taxByCategory?finance.taxByCategory:{drink:{label:'Getränke',net:0,tax:0,gross:0},food:{label:'Speisen',net:0,tax:0,gross:0}};
             var depositIncome=finance?finance.depositCharged:0;
             var depositExpense=finance?finance.depositReturned:0;
             var incomeTotal=production.income+beverageRevenue;
@@ -3823,7 +3830,7 @@ function loadFromLocalStorage() {
             }
             function pageFooter(){
                 doc.setDrawColor(220);doc.line(M,H-12,W-M,H-12);doc.setTextColor(100);doc.setFont('helvetica','normal');doc.setFontSize(7);
-                doc.text('Erstellt am '+new Date().toLocaleString('de-DE'),M,H-7);doc.text('PDF-Version 10 · Seite '+pageNo,W-M,H-7,{align:'right'});
+                doc.text('Erstellt am '+new Date().toLocaleString('de-DE'),M,H-7);doc.text('PDF-Version 11 · Seite '+pageNo,W-M,H-7,{align:'right'});
             }
             function newPage(){pageFooter();doc.addPage();pageNo++;pageHeader();}
             function ensure(space){if(y+space>H-17)newPage();}
@@ -3863,7 +3870,7 @@ function loadFromLocalStorage() {
             row('Freie Akkreditierungen',String(accreditedFree));row('Akkreditierungsbeträge',money(accreditedAmount));
 
             section('Finanzielle Auswertung');
-            row('Einnahmen Speisen und Getränke netto',signedMoney(beverageRevenue,'+'),'green');row('Darauf berechnete Umsatzsteuer',signedMoney(beverageTax,'+'));row('Speisen und Getränke brutto einschließlich Steuer',signedMoney(beverageGross,'+'));row('Weitere Einnahmen',signedMoney(production.income,'+'),'green');row('Nettoeinnahmen gesamt',signedMoney(incomeTotal,'+'),'green');
+            row('Getränke netto',signedMoney(beverageTaxByCategory.drink.net,'+'),'green');row('Getränke Umsatzsteuer',signedMoney(beverageTaxByCategory.drink.tax,'+'));row('Getränke brutto',signedMoney(beverageTaxByCategory.drink.gross,'+'));row('Speisen netto',signedMoney(beverageTaxByCategory.food.net,'+'),'green');row('Speisen Umsatzsteuer',signedMoney(beverageTaxByCategory.food.tax,'+'));row('Speisen brutto',signedMoney(beverageTaxByCategory.food.gross,'+'));row('Speisen und Getränke netto gesamt',signedMoney(beverageRevenue,'+'),'green');row('Umsatzsteuer gesamt',signedMoney(beverageTax,'+'));row('Brutto gesamt',signedMoney(beverageGross,'+'));row('Weitere Einnahmen',signedMoney(production.income,'+'),'green');row('Nettoeinnahmen gesamt',signedMoney(incomeTotal,'+'),'green');
             row('Bandgagen brutto',signedMoney(costs.feesGross,'-'));row('Hotelkosten',signedMoney(costs.hotelTotal,'-'));row('Shuttlekosten',signedMoney(costs.shuttleTotal,'-'));row('Produktionsausgaben',signedMoney(costs.productionExpense,'-'));row('Ausgaben gesamt',signedMoney(expenseTotal,'-'),'red');
             row('Saldo Einnahmen minus Ausgaben',signedMoney(balance,balance>=0?'+':'-'),balance>=0?'green':'red');
             note('Cateringkosten ohne hinterlegten Euro-Preis sind nicht enthalten.');
@@ -3905,6 +3912,10 @@ function loadFromLocalStorage() {
             else note('Keine bezahlten Getränke vorhanden.');
 
             section('Umsatzsteuer Speisen und Getränke');
+            listLine('GETRÄNKE','Netto '+money(beverageTaxByCategory.drink.net)+' | Steuer '+money(beverageTaxByCategory.drink.tax)+' | Brutto '+money(beverageTaxByCategory.drink.gross));
+            listLine('SPEISEN','Netto '+money(beverageTaxByCategory.food.net)+' | Steuer '+money(beverageTaxByCategory.food.tax)+' | Brutto '+money(beverageTaxByCategory.food.gross));
+            listLine('GESAMT','Netto '+money(beverageRevenue)+' | Steuer '+money(beverageTax)+' | Brutto '+money(beverageGross));
+            compactNote('Zusätzliche Aufteilung nach Steuersatz:');
             var taxRateKeys=Object.keys(beverageTaxByRate).sort(function(a,b){return Number(a)-Number(b);});
             if(taxRateKeys.length)taxRateKeys.forEach(function(key){var taxRow=beverageTaxByRate[key];listLine(Number(taxRow.rate||0).toLocaleString('de-DE')+' % USt.','Netto '+money(taxRow.net)+' | Steuer '+money(taxRow.tax)+' | Brutto '+money(taxRow.gross));});
             else note('Noch keine steuerpflichtigen Einnahmen vorhanden.');
@@ -3947,8 +3958,8 @@ function loadFromLocalStorage() {
 
             pageFooter();
             var safeName=safeText(eventTitle).replace(/[^a-zA-Z0-9_-]+/g,'_').replace(/^_+|_+$/g,'')||'CMOA';
-            doc.setProperties({title:'Abschlussbericht '+eventTitle+' · PDF-Version 10',subject:'Festival-Auswertung'});
-            doc.save(safeName+'_Abschlussbericht_PDF-Version-10_'+new Date().toISOString().slice(0,10)+'.pdf');
+            doc.setProperties({title:'Abschlussbericht '+eventTitle+' · PDF-Version 11',subject:'Festival-Auswertung'});
+            doc.save(safeName+'_Abschlussbericht_PDF-Version-11_'+new Date().toISOString().slice(0,10)+'.pdf');
             logCmoaActivity('Abschlussbericht exportiert','PDF-Auswertung wurde erstellt.','export');
         }
 
@@ -4081,9 +4092,9 @@ function loadFromLocalStorage() {
                         + '<div class="cash-stat"><span>Getränkemenge</span><b>' + Number(s.totalLiters||0).toLocaleString('de-DE',{maximumFractionDigits:3}) + ' l</b></div>'
                         + '<div class="cash-stat"><span>Markengetränke</span><b style="color:#16a34a">' + s.tokenDrinkCount + '</b></div>'
                         + '<div class="cash-stat"><span>FREE ohne Marke</span><b style="color:#ca8a04">' + s.directFreeDrinkCount + '</b></div>'
-                        + '<div class="cash-stat"><span>Einnahmen netto</span><b>' + cashEuro(s.taxNet) + '</b></div>'
-                        + '<div class="cash-stat"><span>Umsatzsteuer</span><b>' + cashEuro(s.taxAmount) + '</b></div>'
-                        + '<div class="cash-stat"><span>Brutto einschließlich Steuer</span><b>' + cashEuro(s.taxGross) + '</b></div>'
+                        + '<div class="cash-stat"><span>Getränke: Netto / USt. / Brutto</span><b>' + cashEuro(s.taxByCategory.drink.net) + ' / ' + cashEuro(s.taxByCategory.drink.tax) + ' / ' + cashEuro(s.taxByCategory.drink.gross) + '</b></div>'
+                        + '<div class="cash-stat"><span>Speisen: Netto / USt. / Brutto</span><b>' + cashEuro(s.taxByCategory.food.net) + ' / ' + cashEuro(s.taxByCategory.food.tax) + ' / ' + cashEuro(s.taxByCategory.food.gross) + '</b></div>'
+                        + '<div class="cash-stat"><span>Gesamt: Netto / USt. / Brutto</span><b>' + cashEuro(s.taxNet) + ' / ' + cashEuro(s.taxAmount) + ' / ' + cashEuro(s.taxGross) + '</b></div>'
                         + '<div class="cash-stat"><span>Pfand berechnet</span><b>' + cashEuro(s.depositCharged) + '</b></div>'
                         + '<div class="cash-stat"><span>Pfand zurückgegeben</span><b>' + cashEuro(s.depositReturned) + '</b></div>'
                         + '</div>'
@@ -4101,9 +4112,15 @@ function loadFromLocalStorage() {
                 content.innerHTML += '<div class="cash-finance-card">'
                     + '<h3>Gesamtbilanz der Veranstaltung</h3>'
                     + '<div class="cash-finance-row"><span>An der Kasse erfasster Zahlbetrag (ohne Pfand)</span><b>' + cashEuro(finance.beverageRevenue) + '</b></div>'
-                    + '<div class="cash-finance-row"><span>Einnahmen Speisen und Getränke netto</span><b>' + cashEuro(finance.taxNetTotal) + '</b></div>'
-                    + '<div class="cash-finance-row"><span>Umsatzsteuer</span><b>' + cashEuro(finance.taxAmountTotal) + '</b></div>'
-                    + '<div class="cash-finance-row"><span>Brutto einschließlich Steuer</span><b>' + cashEuro(finance.taxGrossTotal) + '</b></div>'
+                    + '<div class="cash-finance-row"><span>Getränke netto</span><b>' + cashEuro(finance.taxByCategory.drink.net) + '</b></div>'
+                    + '<div class="cash-finance-row"><span>Getränke Umsatzsteuer</span><b>' + cashEuro(finance.taxByCategory.drink.tax) + '</b></div>'
+                    + '<div class="cash-finance-row"><span>Getränke brutto</span><b>' + cashEuro(finance.taxByCategory.drink.gross) + '</b></div>'
+                    + '<div class="cash-finance-row"><span>Speisen netto</span><b>' + cashEuro(finance.taxByCategory.food.net) + '</b></div>'
+                    + '<div class="cash-finance-row"><span>Speisen Umsatzsteuer</span><b>' + cashEuro(finance.taxByCategory.food.tax) + '</b></div>'
+                    + '<div class="cash-finance-row"><span>Speisen brutto</span><b>' + cashEuro(finance.taxByCategory.food.gross) + '</b></div>'
+                    + '<div class="cash-finance-row cash-finance-total"><span>Gesamt netto</span><b>' + cashEuro(finance.taxNetTotal) + '</b></div>'
+                    + '<div class="cash-finance-row cash-finance-total"><span>Umsatzsteuer gesamt</span><b>' + cashEuro(finance.taxAmountTotal) + '</b></div>'
+                    + '<div class="cash-finance-row cash-finance-total"><span>Brutto gesamt</span><b>' + cashEuro(finance.taxGrossTotal) + '</b></div>'
                     + '<div class="cash-finance-row"><span>Markengetränke</span><b style="color:#16a34a">' + finance.tokenDrinkCount + '</b></div>'
                     + '<div class="cash-finance-row"><span>FREE-Getränke ohne Marke, Geld und Pfand</span><b style="color:#ca8a04">' + finance.directFreeDrinkCount + '</b></div>'
                     + '<div class="cash-finance-row"><span>Ausgegebene Getränkemenge</span><b>' + Number(finance.totalLiters||0).toLocaleString('de-DE',{maximumFractionDigits:3}) + ' l</b></div>'
