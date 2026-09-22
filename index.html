@@ -3705,11 +3705,19 @@ function loadFromLocalStorage() {
             var accreditedAmount=accreditationList.reduce(function(sum,r){return sum+Number(r.amt||0);},0);
             var artistPersons=bandList.reduce(function(sum,b){return sum+Number(b.paxCount||0)+Number(b.vipGuests||0);},0);
             var hotelBands=bandList.filter(function(b){return b.hotelNeeded==='ja'||b.hotelNeeded===true;});
-            var hotelRooms=0,hotelRoomNights=0;
+            var hotelRooms=0,hotelRoomNights=0,hotelBreakdown={};
             hotelBands.forEach(function(b){
-                var rooms=Number(b.hotelEzCount||0)+Number(b.hotelDzCount||0),nights=1;
+                var ez=Number(b.hotelEzCount||0),dz=Number(b.hotelDzCount||0),rooms=ez+dz,nights=1;
                 if(b.hotelFrom&&b.hotelTo){var diff=Math.ceil(Math.abs(new Date(b.hotelTo)-new Date(b.hotelFrom))/86400000);if(diff>0)nights=diff;}
                 hotelRooms+=rooms;hotelRoomNights+=rooms*nights;
+                var hotelName=String(b.hotelName||'Hotel nicht angegeben');
+                var roomCosts=getCostForHotel(b.hotelName)||{},ezCost=Number(roomCosts.ezCost||0),dzCost=Number(roomCosts.dzCost||0);
+                var bandHotelCost=(ez*ezCost+dz*dzCost)*nights;
+                if(!hotelBreakdown[hotelName])hotelBreakdown[hotelName]={name:hotelName,rooms:0,roomNights:0,total:0,bands:[]};
+                hotelBreakdown[hotelName].rooms+=rooms;
+                hotelBreakdown[hotelName].roomNights+=rooms*nights;
+                hotelBreakdown[hotelName].total+=bandHotelCost;
+                hotelBreakdown[hotelName].bands.push({name:String(b.name||'Band'),ez:ez,dz:dz,nights:nights,ezCost:ezCost,dzCost:dzCost,total:bandHotelCost,from:b.hotelFrom||'',to:b.hotelTo||''});
             });
             var shuttleBands=bandList.filter(function(b){return b.shuttleNeeded==='ja'||b.shuttleNeeded===true;});
             var shuttleRides=getShuttleLogRides(),shuttleTotals=getShuttleCostTotals();
@@ -3728,7 +3736,7 @@ function loadFromLocalStorage() {
             }
             function pageFooter(){
                 doc.setDrawColor(220);doc.line(M,H-12,W-M,H-12);doc.setTextColor(100);doc.setFont('helvetica','normal');doc.setFontSize(7);
-                doc.text('Erstellt am '+new Date().toLocaleString('de-DE'),M,H-7);doc.text('PDF-Version 5 · Seite '+pageNo,W-M,H-7,{align:'right'});
+                doc.text('Erstellt am '+new Date().toLocaleString('de-DE'),M,H-7);doc.text('PDF-Version 6 · Seite '+pageNo,W-M,H-7,{align:'right'});
             }
             function newPage(){pageFooter();doc.addPage();pageNo++;pageHeader();}
             function ensure(space){if(y+space>H-17)newPage();}
@@ -3767,7 +3775,17 @@ function loadFromLocalStorage() {
 
             section('Hotel');
             row('Bands mit Hotelbedarf',String(hotelBands.length));row('Gebuchte Zimmer',String(hotelRooms));row('Zimmernächte',String(hotelRoomNights));row('Erfasste Hotelkosten',money(costs.hotelTotal));
-            hotelBands.forEach(function(b){listLine((b.name||'Band')+' | '+(b.hotelName||'Hotel nicht angegeben'),Number(b.hotelEzCount||0)+' EZ / '+Number(b.hotelDzCount||0)+' DZ');});
+            Object.keys(hotelBreakdown).sort(function(a,b){return a.localeCompare(b,'de');}).forEach(function(hotelName){
+                var hotel=hotelBreakdown[hotelName];
+                listLine('HOTEL: '+hotel.name,money(hotel.total));
+                compactNote(hotel.bands.length+' Band'+(hotel.bands.length===1?'':'s')+' | '+hotel.rooms+' Zimmer | '+hotel.roomNights+' Zimmernächte');
+                hotel.bands.sort(function(a,b){return a.name.localeCompare(b.name,'de');}).forEach(function(band){
+                    listLine('  '+band.name,band.nights+' '+(band.nights===1?'Nacht':'Nächte')+' | '+band.ez+' EZ | '+band.dz+' DZ | '+money(band.total));
+                    var stay=(band.from||band.to)?('Aufenthalt: '+(band.from?formatDateDE(band.from):'-')+' bis '+(band.to?formatDateDE(band.to):'-')+' | '):'';
+                    compactNote(stay+'Zimmerpreise: EZ '+money(band.ezCost)+' | DZ '+money(band.dzCost));
+                });
+            });
+            if(!hotelBands.length)note('Keine Bands mit Hotelbedarf erfasst.');
 
             section('Shuttle');
             row('Bands mit Shuttlebedarf',String(shuttleBands.length));row('Geplante Fahrten',String(shuttleRides.length));row('Erfasste Kilometer',shuttleTotals.kilometers.toLocaleString('de-DE')+' km');row('Shuttlekosten gesamt',money(shuttleTotals.total));
@@ -3814,8 +3832,8 @@ function loadFromLocalStorage() {
 
             pageFooter();
             var safeName=safeText(eventTitle).replace(/[^a-zA-Z0-9_-]+/g,'_').replace(/^_+|_+$/g,'')||'CMOA';
-            doc.setProperties({title:'Abschlussbericht '+eventTitle+' · PDF-Version 5',subject:'Festival-Auswertung'});
-            doc.save(safeName+'_Abschlussbericht_PDF-Version-5_'+new Date().toISOString().slice(0,10)+'.pdf');
+            doc.setProperties({title:'Abschlussbericht '+eventTitle+' · PDF-Version 6',subject:'Festival-Auswertung'});
+            doc.save(safeName+'_Abschlussbericht_PDF-Version-6_'+new Date().toISOString().slice(0,10)+'.pdf');
             logCmoaActivity('Abschlussbericht exportiert','PDF-Auswertung wurde erstellt.','export');
         }
 
