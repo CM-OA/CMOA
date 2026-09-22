@@ -1861,9 +1861,8 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
             <details class="privacy-card">
                 <summary><span>🔐 Datenschutzinformationen<small>Informationen zur Datenverarbeitung in dieser Festival-App</small></span></summary>
                 <div class="privacy-content">
-                    <div class="privacy-warning">Vor dem produktiven Einsatz müssen Name, Anschrift und Kontakt des verantwortlichen Veranstalters ergänzt werden.</div>
                     <h4>1. Verantwortlicher</h4>
-                    <p><strong>[Name/Firma des Veranstalters]</strong><br>[Straße und Hausnummer]<br>[PLZ und Ort]<br>E-Mail: [Datenschutz-Kontakt ergänzen]<br>Telefon: [optional ergänzen]</p>
+                    <p><strong>Chronical Moshers e.V.</strong><br>Alaunstraße 3<br>08468 Reichenbach, OT Rotschau<br>E-Mail: <a href="mailto:cmoa@gmx.de">cmoa@gmx.de</a><br>Telefon: <a href="tel:+491638684967">0163 8684967</a></p>
                     <h4>2. Zweck und Umfang der App</h4>
                     <p>Diese nicht öffentliche Verwaltungs-App dient der Planung, Durchführung, Abrechnung und Nachbereitung von Veranstaltungen. Sie verarbeitet nur Daten, die hierfür eingegeben, hochgeladen oder bei der Benutzung technisch erzeugt werden.</p>
                     <h4>3. Verarbeitete Daten</h4>
@@ -3690,8 +3689,10 @@ function loadFromLocalStorage() {
             var finance=cashData?buildCashEventFinancials(cashData):null;
             var production=getProductionTotals();
             var beverageRevenue=finance?finance.beverageRevenue:0;
-            var incomeTotal=production.income+beverageRevenue;
-            var expenseTotal=costs.expenseTotal;
+            var depositIncome=finance?finance.depositCharged:0;
+            var depositExpense=finance?finance.depositReturned:0;
+            var incomeTotal=production.income+beverageRevenue+depositIncome;
+            var expenseTotal=costs.expenseTotal+depositExpense;
             var balance=incomeTotal-expenseTotal;
             var eventTitle=(currentEvent&&(currentEvent.short_name||currentEvent.name))||'CMOA';
             var eventPeriod='';
@@ -3714,11 +3715,13 @@ function loadFromLocalStorage() {
             var shuttleRides=getShuttleLogRides(),shuttleTotals=getShuttleCostTotals();
             var drinkRows=finance?finance.drinks:[];
             var drinkCount=drinkRows.reduce(function(sum,d){return sum+Number(d.quantity||0);},0);
+            var paidDrinkCount=drinkRows.reduce(function(sum,d){return sum+Number(d.paidQuantity||0);},0);
             var freeDrinkCount=finance?Number(finance.freeDrinkCount||0):0;
 
             var doc=new window.jspdf.jsPDF({orientation:'portrait',unit:'mm',format:'a4'}),W=210,H=297,M=15,y=18,pageNo=1;
             function safeText(v){return String(v==null?'':v).replace(/[–—]/g,'-');}
             function money(v){return Number(v||0).toLocaleString('de-DE',{minimumFractionDigits:2,maximumFractionDigits:2})+' EUR';}
+            function signedMoney(v,sign){var prefix=sign||(Number(v)<0?'-':'+');return prefix+' '+money(Math.abs(Number(v||0)));}
             function pageHeader(){
                 doc.setFillColor(30,41,59);doc.rect(0,0,W,13,'F');doc.setTextColor(255);doc.setFont('helvetica','bold');doc.setFontSize(9);doc.text(safeText(eventTitle)+' - Abschlussbericht',M,8.5);
                 doc.setTextColor(15,23,42);y=20;
@@ -3738,6 +3741,9 @@ function loadFromLocalStorage() {
             function note(text){
                 ensure(12);doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor(100);var lines=doc.splitTextToSize(safeText(text),W-2*M);doc.text(lines,M,y);y+=lines.length*4+3;
             }
+            function compactNote(text){
+                ensure(7);doc.setFont('helvetica','normal');doc.setFontSize(6.5);doc.setTextColor(90);var lines=doc.splitTextToSize(safeText(text),W-2*M);doc.text(lines,M+3,y);y+=lines.length*3.1+1.5;
+            }
             function listLine(left,right){
                 ensure(7);doc.setFontSize(7.7);doc.setFont('helvetica','normal');doc.setTextColor(30);var l=doc.splitTextToSize(safeText(left),125);doc.text(l,M,y);doc.setFont('helvetica','bold');doc.text(safeText(right||''),W-M,y,{align:'right'});y+=Math.max(5,l.length*3.6+1);
             }
@@ -3750,17 +3756,17 @@ function loadFromLocalStorage() {
             section('Kennzahlen');
             row('Bands / Acts',String(bandList.length));row('Erfasste Artist- und VIP-Personen',String(artistPersons));
             row('Akkreditierungen',String(accreditationList.length));row('Davon eingecheckt',accreditedChecked+' von '+accreditationList.length);
-            row('Freie Akkreditierungen',String(accreditedFree));row('Akkreditierungsbetraege',money(accreditedAmount));
+            row('Freie Akkreditierungen',String(accreditedFree));row('Akkreditierungsbeträge',money(accreditedAmount));
 
             section('Finanzielle Auswertung');
-            row('Getraenkeumsatz',money(beverageRevenue),'green');row('Weitere Einnahmen',money(production.income),'green');row('Einnahmen gesamt',money(incomeTotal),'green');
-            row('Bandgagen brutto',money(costs.feesGross));row('Hotelkosten',money(costs.hotelTotal));row('Shuttlekosten',money(costs.shuttleTotal));row('Produktionsausgaben',money(costs.productionExpense));row('Ausgaben gesamt',money(expenseTotal),'red');
-            row('Ergebnis / Budgetabweichung',money(balance),balance>=0?'green':'red');
-            note('Es ist kein separates Planbudget hinterlegt. Die ausgewiesene Budgetabweichung entspricht deshalb den erfassten Einnahmen abzüglich der erfassten Ausgaben. Cateringkosten ohne hinterlegten Euro-Preis sind nicht enthalten.');
+            row('Getränkeeinnahmen ohne Pfand',signedMoney(beverageRevenue,'+'),'green');row('Pfandeinnahmen',signedMoney(depositIncome,'+'),'green');row('Weitere Einnahmen',signedMoney(production.income,'+'),'green');row('Einnahmen gesamt',signedMoney(incomeTotal,'+'),'green');
+            row('Pfandausgaben / Rückzahlungen',signedMoney(depositExpense,'-'),'red');row('Bandgagen brutto',signedMoney(costs.feesGross,'-'));row('Hotelkosten',signedMoney(costs.hotelTotal,'-'));row('Shuttlekosten',signedMoney(costs.shuttleTotal,'-'));row('Produktionsausgaben',signedMoney(costs.productionExpense,'-'));row('Ausgaben gesamt',signedMoney(expenseTotal,'-'),'red');
+            row('Saldo Einnahmen minus Ausgaben',signedMoney(balance,balance>=0?'+':'-'),balance>=0?'green':'red');
+            note('Cateringkosten ohne hinterlegten Euro-Preis sind nicht enthalten.');
             if(cashNote)note(cashNote);
 
             section('Hotel');
-            row('Bands mit Hotelbedarf',String(hotelBands.length));row('Gebuchte Zimmer',String(hotelRooms));row('Zimmernaechte',String(hotelRoomNights));row('Erfasste Hotelkosten',money(costs.hotelTotal));
+            row('Bands mit Hotelbedarf',String(hotelBands.length));row('Gebuchte Zimmer',String(hotelRooms));row('Zimmernächte',String(hotelRoomNights));row('Erfasste Hotelkosten',money(costs.hotelTotal));
             hotelBands.forEach(function(b){listLine((b.name||'Band')+' | '+(b.hotelName||'Hotel nicht angegeben'),Number(b.hotelEzCount||0)+' EZ / '+Number(b.hotelDzCount||0)+' DZ');});
 
             section('Shuttle');
@@ -3771,14 +3777,27 @@ function loadFromLocalStorage() {
                 var arrival=bandRides.find(function(r){return r.type==='Anreise';}),departure=bandRides.find(function(r){return r.type==='Abreise';});
                 var arrivalText=arrival?('Anreise: '+formatDateDE(arrival.date)+' '+(arrival.time||'')+' Uhr | '+(arrival.route||arrival.airport||'-')+(arrival.flight?' | Flug '+arrival.flight:'')+(arrival.driver?' | Fahrer '+arrival.driver:'')+(arrival.vehicle?' | Fahrzeug '+arrival.vehicle:'')):'Anreise: noch keine Angaben';
                 var departureText=departure?('Abreise: '+formatDateDE(departure.date)+' '+(departure.time||'')+' Uhr | '+(departure.route||departure.airport||'-')+(departure.flight?' | Flug '+departure.flight:'')+(departure.driver?' | Fahrer '+departure.driver:'')+(departure.vehicle?' | Fahrzeug '+departure.vehicle:'')):'Abreise: noch keine Angaben';
-                note(arrivalText);note(departureText);
+                compactNote(arrivalText);compactNote(departureText);
             });
             if(!shuttleBands.length)note('Keine Bands mit Shuttlebedarf erfasst.');
 
-            section('Getraenke');
-            row('Ausgegebene Getraenke gesamt',String(drinkCount));row('Davon Freigetraenke ueber Marken',String(freeDrinkCount));row('Getraenkeumsatz',money(beverageRevenue));
-            if(drinkRows.length)drinkRows.forEach(function(d){listLine(d.name,Number(d.quantity||0).toLocaleString('de-DE')+' Stk. | davon '+Number(d.freeQuantity||0).toLocaleString('de-DE')+' Marke | '+money(d.revenue));});
-            else note('Keine Kassendaten oder Getraenkeverkaeufe fuer diese Auswertung vorhanden.');
+            section('Getränkeübersicht');
+            row('Ausgegebene Getränke gesamt',String(drinkCount));row('Davon bezahlt',String(paidDrinkCount));row('Davon über Marken / frei',String(freeDrinkCount));
+
+            section('Bezahlte Getränke');
+            row('Bezahlte Getränke gesamt',String(paidDrinkCount));row('Getränkeeinnahmen ohne Pfand',signedMoney(beverageRevenue,'+'),'green');
+            var paidDrinkRows=drinkRows.filter(function(d){return Number(d.paidQuantity||0)>0;});
+            if(paidDrinkRows.length)paidDrinkRows.forEach(function(d){var qty=Number(d.paidQuantity||0),rev=Number(d.revenue||0),avg=qty?rev/qty:0;listLine(d.name,qty.toLocaleString('de-DE')+' Stk. | Ø '+money(avg)+' | '+signedMoney(rev,'+'));});
+            else note('Keine bezahlten Getränke vorhanden.');
+
+            section('Markengetränke / Freigetränke');
+            row('Markengetränke gesamt',String(freeDrinkCount));
+            var freeDrinkRows=drinkRows.filter(function(d){return Number(d.freeQuantity||0)>0;});
+            if(freeDrinkRows.length)freeDrinkRows.forEach(function(d){listLine(d.name,Number(d.freeQuantity||0).toLocaleString('de-DE')+' Marken / Freigetränke');});
+            else note('Keine Markengetränke vorhanden.');
+
+            section('Pfandübersicht');
+            row('Pfandeinnahmen',signedMoney(depositIncome,'+'),'green');row('Pfandausgaben / Rückzahlungen',signedMoney(depositExpense,'-'),'red');row('Pfandsaldo',signedMoney(depositIncome-depositExpense,depositIncome-depositExpense>=0?'+':'-'),depositIncome-depositExpense>=0?'green':'red');
 
             section('Akkreditierungen nach Berechtigung');
             var permissionCounts={};accreditationList.forEach(function(r){var key=r.perm||'Ohne Angabe';if(!permissionCounts[key])permissionCounts[key]={total:0,checked:0};permissionCounts[key].total++;if(r.chk)permissionCounts[key].checked++;});
@@ -3787,7 +3806,10 @@ function loadFromLocalStorage() {
 
             section('Produktionskosten und weitere Einnahmen');
             var entries=(productionEntries||[]).slice().sort(function(a,b){return String(a.date||'').localeCompare(String(b.date||''));});
-            if(entries.length)entries.forEach(function(e){listLine((e.type==='income'?'Einnahme: ':'Ausgabe: ')+(e.description||'Eintrag')+(e.party?' | '+e.party:''),money(e.amount));});else note('Keine Produktionseintraege vorhanden.');
+            if(entries.length)entries.forEach(function(e){var income=e.type==='income';listLine((income?'Einnahme: ':'Ausgabe: ')+(e.description||'Eintrag')+(e.party?' | '+e.party:''),signedMoney(e.amount,income?'+':'-'));});else note('Keine Produktionseinträge vorhanden.');
+
+            section('Gesamtergebnis');
+            row('Einnahmen gesamt',signedMoney(incomeTotal,'+'),'green');row('Ausgaben gesamt',signedMoney(expenseTotal,'-'),'red');row('Saldo',signedMoney(balance,balance>=0?'+':'-'),balance>=0?'green':'red');
 
             pageFooter();
             var safeName=safeText(eventTitle).replace(/[^a-zA-Z0-9_-]+/g,'_').replace(/^_+|_+$/g,'')||'CMOA';
