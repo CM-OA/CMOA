@@ -3736,7 +3736,7 @@ function loadFromLocalStorage() {
             }
             function pageFooter(){
                 doc.setDrawColor(220);doc.line(M,H-12,W-M,H-12);doc.setTextColor(100);doc.setFont('helvetica','normal');doc.setFontSize(7);
-                doc.text('Erstellt am '+new Date().toLocaleString('de-DE'),M,H-7);doc.text('PDF-Version 6 · Seite '+pageNo,W-M,H-7,{align:'right'});
+                doc.text('Erstellt am '+new Date().toLocaleString('de-DE'),M,H-7);doc.text('PDF-Version 7 · Seite '+pageNo,W-M,H-7,{align:'right'});
             }
             function newPage(){pageFooter();doc.addPage();pageNo++;pageHeader();}
             function ensure(space){if(y+space>H-17)newPage();}
@@ -3754,6 +3754,15 @@ function loadFromLocalStorage() {
             }
             function listLine(left,right){
                 ensure(7);doc.setFontSize(7.7);doc.setFont('helvetica','normal');doc.setTextColor(30);var l=doc.splitTextToSize(safeText(left),125);doc.text(l,M,y);doc.setFont('helvetica','bold');doc.text(safeText(right||''),W-M,y,{align:'right'});y+=Math.max(5,l.length*3.6+1);
+            }
+            function hotelHeading(name,total){
+                ensure(9);doc.setFillColor(226,232,240);doc.roundedRect(M,y-3.8,W-2*M,7,1.2,1.2,'F');doc.setFont('helvetica','bold');doc.setFontSize(7.4);doc.setTextColor(15,23,42);doc.text(safeText(name),M+3,y);doc.text(safeText(total),W-M-3,y,{align:'right'});y+=6;
+            }
+            function hotelBandLine(name,details){
+                ensure(6);doc.setFont('helvetica','normal');doc.setFontSize(6.7);doc.setTextColor(51,65,85);doc.text('• '+safeText(name),M+5,y);doc.setFont('helvetica','bold');doc.text(safeText(details),W-M-2,y,{align:'right'});y+=4.2;
+            }
+            function hotelNote(text){
+                ensure(5);doc.setFont('helvetica','normal');doc.setFontSize(5.7);doc.setTextColor(100);var lines=doc.splitTextToSize(safeText(text),W-2*M-10);doc.text(lines,M+8,y);y+=lines.length*2.8+1.2;
             }
 
             pageHeader();
@@ -3777,12 +3786,12 @@ function loadFromLocalStorage() {
             row('Bands mit Hotelbedarf',String(hotelBands.length));row('Gebuchte Zimmer',String(hotelRooms));row('Zimmernächte',String(hotelRoomNights));row('Erfasste Hotelkosten',money(costs.hotelTotal));
             Object.keys(hotelBreakdown).sort(function(a,b){return a.localeCompare(b,'de');}).forEach(function(hotelName){
                 var hotel=hotelBreakdown[hotelName];
-                listLine('HOTEL: '+hotel.name,money(hotel.total));
-                compactNote(hotel.bands.length+' Band'+(hotel.bands.length===1?'':'s')+' | '+hotel.rooms+' Zimmer | '+hotel.roomNights+' Zimmernächte');
+                hotelHeading(hotel.name,money(hotel.total));
+                hotelNote(hotel.bands.length+' Band'+(hotel.bands.length===1?'':'s')+' | '+hotel.rooms+' Zimmer | '+hotel.roomNights+' Zimmernächte');
                 hotel.bands.sort(function(a,b){return a.name.localeCompare(b.name,'de');}).forEach(function(band){
-                    listLine('  '+band.name,band.nights+' '+(band.nights===1?'Nacht':'Nächte')+' | '+band.ez+' EZ | '+band.dz+' DZ | '+money(band.total));
+                    hotelBandLine(band.name,band.nights+' '+(band.nights===1?'Nacht':'Nächte')+' | '+band.ez+' EZ | '+band.dz+' DZ | '+money(band.total));
                     var stay=(band.from||band.to)?('Aufenthalt: '+(band.from?formatDateDE(band.from):'-')+' bis '+(band.to?formatDateDE(band.to):'-')+' | '):'';
-                    compactNote(stay+'Zimmerpreise: EZ '+money(band.ezCost)+' | DZ '+money(band.dzCost));
+                    hotelNote(stay+'Zimmerpreise: EZ '+money(band.ezCost)+' | DZ '+money(band.dzCost));
                 });
             });
             if(!hotelBands.length)note('Keine Bands mit Hotelbedarf erfasst.');
@@ -3832,8 +3841,8 @@ function loadFromLocalStorage() {
 
             pageFooter();
             var safeName=safeText(eventTitle).replace(/[^a-zA-Z0-9_-]+/g,'_').replace(/^_+|_+$/g,'')||'CMOA';
-            doc.setProperties({title:'Abschlussbericht '+eventTitle+' · PDF-Version 6',subject:'Festival-Auswertung'});
-            doc.save(safeName+'_Abschlussbericht_PDF-Version-6_'+new Date().toISOString().slice(0,10)+'.pdf');
+            doc.setProperties({title:'Abschlussbericht '+eventTitle+' · PDF-Version 7',subject:'Festival-Auswertung'});
+            doc.save(safeName+'_Abschlussbericht_PDF-Version-7_'+new Date().toISOString().slice(0,10)+'.pdf');
             logCmoaActivity('Abschlussbericht exportiert','PDF-Auswertung wurde erstellt.','export');
         }
 
