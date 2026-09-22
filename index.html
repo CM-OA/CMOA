@@ -3545,13 +3545,26 @@ function loadFromLocalStorage() {
             });
         }
 
+        function parseCashDrinkMeta(raw) {
+            var parts=String(raw||'').split('|'),meta={category:'drink',part1:'',part2:'',volume1:0,volume2:0};
+            parts.forEach(function(part){
+                if(part.indexOf('category:')===0)meta.category=part.slice(9)==='food'?'food':'drink';
+                else if(part.indexOf('part1:')===0){try{meta.part1=decodeURIComponent(part.slice(6));}catch(e){meta.part1=part.slice(6);}}
+                else if(part.indexOf('part2:')===0){try{meta.part2=decodeURIComponent(part.slice(6));}catch(e){meta.part2=part.slice(6);}}
+                else if(part.indexOf('vol1:')===0)meta.volume1=Math.max(0,Number(part.slice(5))||0);
+                else if(part.indexOf('vol2:')===0)meta.volume2=Math.max(0,Number(part.slice(5))||0);
+            });
+            return meta;
+        }
+
         async function fetchCashSummaryData() {
             if (!currentEventId) throw new Error('Keine Veranstaltung ausgewählt.');
             var results = await Promise.all([
                 _supabase.from('cash_registers').select('id,name,active').eq('event_id', currentEventId).order('name'),
                 _supabase.from('cash_sales').select('*').eq('event_id', currentEventId),
                 _supabase.from('cash_sale_items').select('*').eq('event_id', currentEventId),
-                _supabase.from('cash_movements').select('register_id,movement_type,amount,person_name,created_at,note').eq('event_id', currentEventId).order('created_at')
+                _supabase.from('cash_movements').select('register_id,movement_type,amount,person_name,created_at,note').eq('event_id', currentEventId).order('created_at'),
+                _supabase.from('cash_drinks').select('id,name,color').eq('event_id', currentEventId)
             ]);
             var failed = results.find(function(r){ return r.error; });
             if (failed) throw failed.error;
@@ -3559,11 +3572,14 @@ function loadFromLocalStorage() {
                 registers: results[0].data || [],
                 sales: results[1].data || [],
                 items: results[2].data || [],
-                movements: results[3].data || []
+                movements: results[3].data || [],
+                products: results[4].data || []
             };
         }
 
         function buildCashRegisterStats(data) {
+            var productById={};
+            (data.products||[]).forEach(function(p){var meta=parseCashDrinkMeta(p.color);productById[p.id]={name:p.name,category:meta.category,part1:meta.part1,part2:meta.part2,volume1:meta.volume1,volume2:meta.volume2};});
             return data.registers.map(function(register) {
                 var movements = data.movements.filter(function(m){ return m.register_id === register.id; });
                 var closings = movements.filter(function(m){ return m.movement_type === 'closing'; });
@@ -3576,6 +3592,7 @@ function loadFromLocalStorage() {
                 var saleById = {};
                 sales.forEach(function(s){ saleById[s.id] = s; });
                 var drinkMap = {};
+                var componentLiters = {};
                 data.items.filter(function(i){ return saleIds.has(i.sale_id); }).forEach(function(i){
                     var qty = Number(i.quantity || 0);
                     if (qty <= 0) return;
@@ -3589,12 +3606,17 @@ function loadFromLocalStorage() {
                         && Number(i.unit_price || i.price || 0) > 0
                         && Number(sale.deposit_returned || 0) === 0;
                     var name = String(i.drink_name || i.product_name || i.name || 'Getränk');
-                    if (!drinkMap[name]) drinkMap[name] = { name: name, quantity: 0, paidQuantity: 0, tokenQuantity: 0, directFreeQuantity: 0, freeQuantity: 0, revenue: 0 };
+                    var product=productById[i.drink_id]||{},v1=product.category==='food'?0:Number(product.volume1||0),v2=product.category==='food'?0:Number(product.volume2||0);
+                    if (!drinkMap[name]) drinkMap[name] = { name: name, quantity: 0, paidQuantity: 0, tokenQuantity: 0, directFreeQuantity: 0, freeQuantity: 0, revenue: 0, liters: 0, paidLiters: 0, tokenLiters: 0, directFreeLiters: 0 };
                     drinkMap[name].quantity += qty;
-                    if (isToken) { drinkMap[name].tokenQuantity += qty; drinkMap[name].freeQuantity += qty; }
-                    else if (isFree) { drinkMap[name].directFreeQuantity += qty; drinkMap[name].freeQuantity += qty; }
+                    drinkMap[name].liters += qty*(v1+v2);
+                    if(v1>0){var part1=String(product.part1||product.name||name);componentLiters[part1]=(componentLiters[part1]||0)+qty*v1;}
+                    if(v2>0){var part2=String(product.part2||'Komponente 2');componentLiters[part2]=(componentLiters[part2]||0)+qty*v2;}
+                    if (isToken) { drinkMap[name].tokenQuantity += qty; drinkMap[name].freeQuantity += qty; drinkMap[name].tokenLiters += qty*(v1+v2); }
+                    else if (isFree) { drinkMap[name].directFreeQuantity += qty; drinkMap[name].freeQuantity += qty; drinkMap[name].directFreeLiters += qty*(v1+v2); }
                     else {
                         drinkMap[name].paidQuantity += qty;
+                        drinkMap[name].paidLiters += qty*(v1+v2);
                         drinkMap[name].revenue += qty * Number(i.unit_price || i.price || 0);
                     }
                 });
@@ -3603,6 +3625,7 @@ function loadFromLocalStorage() {
                 var freeDrinkCount = drinks.reduce(function(sum,d){ return sum + d.freeQuantity; }, 0);
                 var tokenDrinkCount = drinks.reduce(function(sum,d){ return sum + d.tokenQuantity; }, 0);
                 var directFreeDrinkCount = drinks.reduce(function(sum,d){ return sum + d.directFreeQuantity; }, 0);
+                var totalLiters = drinks.reduce(function(sum,d){ return sum + Number(d.liters||0); }, 0);
                 var opening = periodMovements.filter(function(m){ return m.movement_type === 'opening'; }).reduce(function(sum,m){ return sum + Number(m.amount || 0); }, 0);
                 var emptying = periodMovements.filter(function(m){ return m.movement_type === 'emptying'; }).reduce(function(sum,m){ return sum + Number(m.amount || 0); }, 0);
                 var turnover = sales.reduce(function(sum,s){ return sum + Number(s.total || 0); }, 0);
@@ -3617,6 +3640,8 @@ function loadFromLocalStorage() {
                     freeDrinkCount: freeDrinkCount,
                     tokenDrinkCount: tokenDrinkCount,
                     directFreeDrinkCount: directFreeDrinkCount,
+                    totalLiters: totalLiters,
+                    componentLiters: componentLiters,
                     depositCharged: depositCharged,
                     depositReturned: depositReturned,
                     drinks: drinks,
@@ -3655,6 +3680,8 @@ function loadFromLocalStorage() {
             var saleById = {};
             sales.forEach(function(s){ saleById[s.id] = s; });
             var drinks = {};
+            var productById={},componentLiters={};
+            (data.products||[]).forEach(function(p){var meta=parseCashDrinkMeta(p.color);productById[p.id]={name:p.name,category:meta.category,part1:meta.part1,part2:meta.part2,volume1:meta.volume1,volume2:meta.volume2};});
             data.items.filter(function(i){ return saleIds.has(i.sale_id); }).forEach(function(i){
                 var qty = Number(i.quantity || 0);
                 if (qty <= 0) return;
@@ -3668,12 +3695,17 @@ function loadFromLocalStorage() {
                     && Number(i.unit_price || i.price || 0) > 0
                     && Number(sale.deposit_returned || 0) === 0;
                 var name = String(i.drink_name || i.product_name || i.name || 'Getränk');
-                if (!drinks[name]) drinks[name] = { name: name, quantity: 0, paidQuantity: 0, tokenQuantity: 0, directFreeQuantity: 0, freeQuantity: 0, revenue: 0 };
+                var product=productById[i.drink_id]||{},v1=product.category==='food'?0:Number(product.volume1||0),v2=product.category==='food'?0:Number(product.volume2||0);
+                if (!drinks[name]) drinks[name] = { name: name, quantity: 0, paidQuantity: 0, tokenQuantity: 0, directFreeQuantity: 0, freeQuantity: 0, revenue: 0, liters: 0, paidLiters: 0, tokenLiters: 0, directFreeLiters: 0 };
                 drinks[name].quantity += qty;
-                if (isToken) { drinks[name].tokenQuantity += qty; drinks[name].freeQuantity += qty; }
-                else if (isFree) { drinks[name].directFreeQuantity += qty; drinks[name].freeQuantity += qty; }
+                drinks[name].liters += qty*(v1+v2);
+                if(v1>0){var part1=String(product.part1||product.name||name);componentLiters[part1]=(componentLiters[part1]||0)+qty*v1;}
+                if(v2>0){var part2=String(product.part2||'Komponente 2');componentLiters[part2]=(componentLiters[part2]||0)+qty*v2;}
+                if (isToken) { drinks[name].tokenQuantity += qty; drinks[name].freeQuantity += qty; drinks[name].tokenLiters += qty*(v1+v2); }
+                else if (isFree) { drinks[name].directFreeQuantity += qty; drinks[name].freeQuantity += qty; drinks[name].directFreeLiters += qty*(v1+v2); }
                 else {
                     drinks[name].paidQuantity += qty;
+                    drinks[name].paidLiters += qty*(v1+v2);
                     drinks[name].revenue += qty * Number(i.unit_price || i.price || 0);
                 }
             });
@@ -3682,12 +3714,15 @@ function loadFromLocalStorage() {
             var freeDrinkCount = Object.keys(drinks).reduce(function(sum,k){ return sum + drinks[k].freeQuantity; }, 0);
             var tokenDrinkCount = Object.keys(drinks).reduce(function(sum,k){ return sum + drinks[k].tokenQuantity; }, 0);
             var directFreeDrinkCount = Object.keys(drinks).reduce(function(sum,k){ return sum + drinks[k].directFreeQuantity; }, 0);
+            var totalLiters = Object.keys(drinks).reduce(function(sum,k){ return sum + Number(drinks[k].liters||0); }, 0);
             var costs = calculateFestivalCosts();
             return {
                 drinks: Object.keys(drinks).map(function(k){ return drinks[k]; }).sort(function(a,b){ return a.name.localeCompare(b.name, 'de'); }),
                 freeDrinkCount: freeDrinkCount,
                 tokenDrinkCount: tokenDrinkCount,
                 directFreeDrinkCount: directFreeDrinkCount,
+                totalLiters: totalLiters,
+                componentLiters: componentLiters,
                 beverageRevenue: beverageRevenue,
                 depositCharged: sales.reduce(function(sum,s){ return sum + Number(s.deposit_charged || 0); }, 0),
                 depositReturned: sales.reduce(function(sum,s){ return sum + Number(s.deposit_returned || 0); }, 0),
@@ -3747,10 +3782,13 @@ function loadFromLocalStorage() {
             var freeDrinkCount=finance?Number(finance.freeDrinkCount||0):0;
             var tokenDrinkCount=finance?Number(finance.tokenDrinkCount||0):0;
             var directFreeDrinkCount=finance?Number(finance.directFreeDrinkCount||0):0;
+            var totalDrinkLiters=finance?Number(finance.totalLiters||0):0;
+            var drinkComponentLiters=finance&&finance.componentLiters?finance.componentLiters:{};
 
             var doc=new window.jspdf.jsPDF({orientation:'portrait',unit:'mm',format:'a4'}),W=210,H=297,M=15,y=18,pageNo=1;
             function safeText(v){return String(v==null?'':v).replace(/[–—]/g,'-');}
             function money(v){return Number(v||0).toLocaleString('de-DE',{minimumFractionDigits:2,maximumFractionDigits:2})+' EUR';}
+            function liters(v){return Number(v||0).toLocaleString('de-DE',{minimumFractionDigits:0,maximumFractionDigits:3})+' l';}
             function signedMoney(v,sign){var prefix=sign||(Number(v)<0?'-':'+');return prefix+' '+money(Math.abs(Number(v||0)));}
             function pageHeader(){
                 doc.setFillColor(30,41,59);doc.rect(0,0,W,13,'F');doc.setTextColor(255);doc.setFont('helvetica','bold');doc.setFontSize(9);doc.text(safeText(eventTitle)+' - Abschlussbericht',M,8.5);
@@ -3758,7 +3796,7 @@ function loadFromLocalStorage() {
             }
             function pageFooter(){
                 doc.setDrawColor(220);doc.line(M,H-12,W-M,H-12);doc.setTextColor(100);doc.setFont('helvetica','normal');doc.setFontSize(7);
-                doc.text('Erstellt am '+new Date().toLocaleString('de-DE'),M,H-7);doc.text('PDF-Version 8 · Seite '+pageNo,W-M,H-7,{align:'right'});
+                doc.text('Erstellt am '+new Date().toLocaleString('de-DE'),M,H-7);doc.text('PDF-Version 9 · Seite '+pageNo,W-M,H-7,{align:'right'});
             }
             function newPage(){pageFooter();doc.addPage();pageNo++;pageHeader();}
             function ensure(space){if(y+space>H-17)newPage();}
@@ -3831,25 +3869,33 @@ function loadFromLocalStorage() {
             if(!shuttleBands.length)note('Keine Bands mit Shuttlebedarf erfasst.');
 
             section('Getränkeübersicht');
-            row('Ausgegebene Getränke gesamt',String(drinkCount));row('Davon bezahlt',String(paidDrinkCount));row('Davon über Marken',String(tokenDrinkCount));row('Davon FREE ohne Marke',String(directFreeDrinkCount));
+            row('Ausgegebene Getränke gesamt',String(drinkCount));row('Getränkemenge gesamt',liters(totalDrinkLiters));row('Davon bezahlt',String(paidDrinkCount));row('Davon über Marken',String(tokenDrinkCount));row('Davon FREE ohne Marke',String(directFreeDrinkCount));
 
             section('Bezahlte Getränke');
             row('Bezahlte Getränke gesamt',String(paidDrinkCount));row('Getränkeeinnahmen ohne Pfand',signedMoney(beverageRevenue,'+'),'green');
             var paidDrinkRows=drinkRows.filter(function(d){return Number(d.paidQuantity||0)>0;});
-            if(paidDrinkRows.length)paidDrinkRows.forEach(function(d){var qty=Number(d.paidQuantity||0),rev=Number(d.revenue||0),avg=qty?rev/qty:0;listLine(d.name,qty.toLocaleString('de-DE')+' Stk. | Ø '+money(avg)+' | '+signedMoney(rev,'+'));});
+            if(paidDrinkRows.length)paidDrinkRows.forEach(function(d){var qty=Number(d.paidQuantity||0),rev=Number(d.revenue||0),avg=qty?rev/qty:0;listLine(d.name,qty.toLocaleString('de-DE')+' Stk. | '+liters(d.paidLiters)+' | Ø '+money(avg)+' | '+signedMoney(rev,'+'));});
             else note('Keine bezahlten Getränke vorhanden.');
 
             section('Markengetränke');
             row('Markengetränke gesamt',String(tokenDrinkCount));
             var tokenDrinkRows=drinkRows.filter(function(d){return Number(d.tokenQuantity||0)>0;});
-            if(tokenDrinkRows.length)tokenDrinkRows.forEach(function(d){listLine(d.name,Number(d.tokenQuantity||0).toLocaleString('de-DE')+' Markengetränke');});
+            if(tokenDrinkRows.length)tokenDrinkRows.forEach(function(d){listLine(d.name,Number(d.tokenQuantity||0).toLocaleString('de-DE')+' Markengetränke | '+liters(d.tokenLiters));});
             else note('Keine Markengetränke vorhanden.');
 
             section('FREE-Getränke ohne Marke');
             row('FREE-Getränke gesamt',String(directFreeDrinkCount));
             var directFreeDrinkRows=drinkRows.filter(function(d){return Number(d.directFreeQuantity||0)>0;});
-            if(directFreeDrinkRows.length)directFreeDrinkRows.forEach(function(d){listLine(d.name,Number(d.directFreeQuantity||0).toLocaleString('de-DE')+' FREE · 0,00 EUR · kein Pfand');});
+            if(directFreeDrinkRows.length)directFreeDrinkRows.forEach(function(d){listLine(d.name,Number(d.directFreeQuantity||0).toLocaleString('de-DE')+' FREE | '+liters(d.directFreeLiters)+' | 0,00 EUR | kein Pfand');});
             else note('Keine FREE-Getränke ohne Marke vorhanden.');
+
+            section('Getränkeverbrauch in Litern');
+            row('Gesamtmenge aller ausgegebenen Getränke',liters(totalDrinkLiters));
+            var componentNames=Object.keys(drinkComponentLiters).sort(function(a,b){return Number(drinkComponentLiters[b]||0)-Number(drinkComponentLiters[a]||0);});
+            if(componentNames.length)componentNames.forEach(function(name){listLine(name,liters(drinkComponentLiters[name]));});
+            else note('Noch keine Literangaben bei den Getränken hinterlegt.');
+            var literDrinkRows=drinkRows.filter(function(d){return Number(d.liters||0)>0;});
+            if(literDrinkRows.length){compactNote('Nach Getränkesorte:');literDrinkRows.forEach(function(d){listLine(d.name,Number(d.quantity||0).toLocaleString('de-DE')+' Stk. | '+liters(d.liters));});}
 
             section('Pfand: Einnahme, Auszahlung und Differenz');
             var depositDifference=depositIncome-depositExpense;
@@ -3869,8 +3915,8 @@ function loadFromLocalStorage() {
 
             pageFooter();
             var safeName=safeText(eventTitle).replace(/[^a-zA-Z0-9_-]+/g,'_').replace(/^_+|_+$/g,'')||'CMOA';
-            doc.setProperties({title:'Abschlussbericht '+eventTitle+' · PDF-Version 8',subject:'Festival-Auswertung'});
-            doc.save(safeName+'_Abschlussbericht_PDF-Version-8_'+new Date().toISOString().slice(0,10)+'.pdf');
+            doc.setProperties({title:'Abschlussbericht '+eventTitle+' · PDF-Version 9',subject:'Festival-Auswertung'});
+            doc.save(safeName+'_Abschlussbericht_PDF-Version-9_'+new Date().toISOString().slice(0,10)+'.pdf');
             logCmoaActivity('Abschlussbericht exportiert','PDF-Auswertung wurde erstellt.','export');
         }
 
@@ -3993,13 +4039,14 @@ function loadFromLocalStorage() {
                           + '</details>'
                         : '<div class="cash-emptying-history"><span class="cash-emptying">Noch keine Leerung dokumentiert.</span></div>';
                     var drinkRows = s.drinks.length
-                        ? s.drinks.map(function(d){ return '<div class="cash-drink-row"><span>' + escapeHtmlAuth(d.name) + (d.tokenQuantity ? ' <small style="color:#16a34a">· ' + d.tokenQuantity + ' Marke</small>' : '') + (d.directFreeQuantity ? ' <small style="color:#ca8a04">· ' + d.directFreeQuantity + ' FREE</small>' : '') + '</span><b>' + d.quantity + '</b></div>'; }).join('')
+                        ? s.drinks.map(function(d){ return '<div class="cash-drink-row"><span>' + escapeHtmlAuth(d.name) + (d.tokenQuantity ? ' <small style="color:#16a34a">· ' + d.tokenQuantity + ' Marke</small>' : '') + (d.directFreeQuantity ? ' <small style="color:#ca8a04">· ' + d.directFreeQuantity + ' FREE</small>' : '') + '</span><b>' + d.quantity + ' · ' + Number(d.liters||0).toLocaleString('de-DE',{maximumFractionDigits:3}) + ' l</b></div>'; }).join('')
                         : '<div class="cash-drink-row"><span>Noch keine Getränke verkauft</span><b>0</b></div>';
                     return '<div class="cash-register-card">'
                         + '<div class="cash-register-title"><strong>' + escapeHtmlAuth(s.name) + '</strong><span class="cash-balance">' + cashEuro(s.balance) + '</span></div>'
                         + '<div class="cash-stat-grid">'
                         + '<div class="cash-stat"><span>Aktueller Sollbestand</span><b>' + cashEuro(s.balance) + '</b></div>'
                         + '<div class="cash-stat"><span>Getränke verkauft</span><b>' + s.drinkCount + '</b></div>'
+                        + '<div class="cash-stat"><span>Getränkemenge</span><b>' + Number(s.totalLiters||0).toLocaleString('de-DE',{maximumFractionDigits:3}) + ' l</b></div>'
                         + '<div class="cash-stat"><span>Markengetränke</span><b style="color:#16a34a">' + s.tokenDrinkCount + '</b></div>'
                         + '<div class="cash-stat"><span>FREE ohne Marke</span><b style="color:#ca8a04">' + s.directFreeDrinkCount + '</b></div>'
                         + '<div class="cash-stat"><span>Pfand berechnet</span><b>' + cashEuro(s.depositCharged) + '</b></div>'
@@ -4012,17 +4059,20 @@ function loadFromLocalStorage() {
                 }).join('');
                 var finance = buildCashEventFinancials(cashData);
                 var totalDrinkRows = finance.drinks.length
-                    ? finance.drinks.map(function(d){ return '<div class="cash-drink-row"><span>' + escapeHtmlAuth(d.name) + (d.tokenQuantity ? ' <small style="color:#16a34a">· ' + d.tokenQuantity + ' Marke</small>' : '') + (d.directFreeQuantity ? ' <small style="color:#ca8a04">· ' + d.directFreeQuantity + ' FREE</small>' : '') + '</span><b>' + d.quantity + ' · ' + cashEuro(d.revenue) + '</b></div>'; }).join('')
+                    ? finance.drinks.map(function(d){ return '<div class="cash-drink-row"><span>' + escapeHtmlAuth(d.name) + (d.tokenQuantity ? ' <small style="color:#16a34a">· ' + d.tokenQuantity + ' Marke</small>' : '') + (d.directFreeQuantity ? ' <small style="color:#ca8a04">· ' + d.directFreeQuantity + ' FREE</small>' : '') + '</span><b>' + d.quantity + ' · ' + Number(d.liters||0).toLocaleString('de-DE',{maximumFractionDigits:3}) + ' l · ' + cashEuro(d.revenue) + '</b></div>'; }).join('')
                     : '<div class="cash-drink-row"><span>Noch keine Getränke verkauft</span><b>0</b></div>';
+                var componentLiterRows=Object.keys(finance.componentLiters||{}).sort(function(a,b){return Number(finance.componentLiters[b]||0)-Number(finance.componentLiters[a]||0);}).map(function(name){return '<div class="cash-drink-row"><span>'+escapeHtmlAuth(name)+'</span><b>'+Number(finance.componentLiters[name]||0).toLocaleString('de-DE',{maximumFractionDigits:3})+' l</b></div>';}).join('')||'<div class="cash-drink-row"><span>Noch keine Literangaben hinterlegt</span><b>0 l</b></div>';
                 content.innerHTML += '<div class="cash-finance-card">'
                     + '<h3>Gesamtbilanz der Veranstaltung</h3>'
                     + '<div class="cash-finance-row"><span>Getränkeeinnahmen (ohne Pfand)</span><b>' + cashEuro(finance.beverageRevenue) + '</b></div>'
                     + '<div class="cash-finance-row"><span>Markengetränke</span><b style="color:#16a34a">' + finance.tokenDrinkCount + '</b></div>'
                     + '<div class="cash-finance-row"><span>FREE-Getränke ohne Marke, Geld und Pfand</span><b style="color:#ca8a04">' + finance.directFreeDrinkCount + '</b></div>'
+                    + '<div class="cash-finance-row"><span>Ausgegebene Getränkemenge</span><b>' + Number(finance.totalLiters||0).toLocaleString('de-DE',{maximumFractionDigits:3}) + ' l</b></div>'
                     + '<div class="cash-finance-row"><span>Pfand berechnet</span><b>' + cashEuro(finance.depositCharged) + '</b></div>'
                     + '<div class="cash-finance-row"><span>Pfand zurückgegeben</span><b>− ' + cashEuro(finance.depositReturned) + '</b></div>'
                     + '<div class="cash-finance-row cash-finance-total"><span>Kassenumsatz gesamt</span><b>' + cashEuro(finance.cashTotal) + '</b></div>'
                     + '<div class="cash-drink-list"><div class="cash-drink-list-title">Alle ausgegebenen Getränke inklusive Marken und FREE</div>' + totalDrinkRows + '</div>'
+                    + '<div class="cash-drink-list"><div class="cash-drink-list-title">Verbrauch nach Getränkekomponenten</div>' + componentLiterRows + '</div>'
                     + '<div class="cash-finance-row"><span>Bandgagen brutto</span><b>' + cashEuro(finance.costs.feesGross) + '</b></div>'
                     + '<div class="cash-finance-row"><span>Hotelkosten</span><b>' + cashEuro(finance.costs.hotelTotal) + '</b></div>'
                     + '<div class="cash-finance-row"><span>Shuttlekosten</span><b>' + cashEuro(finance.costs.shuttleTotal) + '</b></div>'
