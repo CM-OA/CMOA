@@ -3759,8 +3759,8 @@ function loadFromLocalStorage() {
             row('Freie Akkreditierungen',String(accreditedFree));row('Akkreditierungsbeträge',money(accreditedAmount));
 
             section('Finanzielle Auswertung');
-            row('Getränkeeinnahmen ohne Pfand',signedMoney(beverageRevenue,'+'),'green');row('Pfandeinnahmen',signedMoney(depositIncome,'+'),'green');row('Weitere Einnahmen',signedMoney(production.income,'+'),'green');row('Einnahmen gesamt',signedMoney(incomeTotal,'+'),'green');
-            row('Pfandausgaben / Rückzahlungen',signedMoney(depositExpense,'-'),'red');row('Bandgagen brutto',signedMoney(costs.feesGross,'-'));row('Hotelkosten',signedMoney(costs.hotelTotal,'-'));row('Shuttlekosten',signedMoney(costs.shuttleTotal,'-'));row('Produktionsausgaben',signedMoney(costs.productionExpense,'-'));row('Ausgaben gesamt',signedMoney(expenseTotal,'-'),'red');
+            row('Getränkeeinnahmen ohne Pfand',signedMoney(beverageRevenue,'+'),'green');row('Pfandeinnahme',signedMoney(depositIncome,'+'),'green');row('Weitere Einnahmen',signedMoney(production.income,'+'),'green');row('Einnahmen gesamt',signedMoney(incomeTotal,'+'),'green');
+            row('Pfandauszahlung',signedMoney(depositExpense,'-'),'red');row('Bandgagen brutto',signedMoney(costs.feesGross,'-'));row('Hotelkosten',signedMoney(costs.hotelTotal,'-'));row('Shuttlekosten',signedMoney(costs.shuttleTotal,'-'));row('Produktionsausgaben',signedMoney(costs.productionExpense,'-'));row('Ausgaben gesamt',signedMoney(expenseTotal,'-'),'red');
             row('Saldo Einnahmen minus Ausgaben',signedMoney(balance,balance>=0?'+':'-'),balance>=0?'green':'red');
             note('Cateringkosten ohne hinterlegten Euro-Preis sind nicht enthalten.');
             if(cashNote)note(cashNote);
@@ -3797,7 +3797,8 @@ function loadFromLocalStorage() {
             else note('Keine Markengetränke vorhanden.');
 
             section('Pfandübersicht');
-            row('Pfandeinnahmen',signedMoney(depositIncome,'+'),'green');row('Pfandausgaben / Rückzahlungen',signedMoney(depositExpense,'-'),'red');row('Pfandsaldo',signedMoney(depositIncome-depositExpense,depositIncome-depositExpense>=0?'+':'-'),depositIncome-depositExpense>=0?'green':'red');
+            var depositDifference=depositIncome-depositExpense;
+            row('Pfandeinnahme',signedMoney(depositIncome,'+'),'green');row('Pfandauszahlung',signedMoney(depositExpense,'-'),'red');row('Differenz Pfandeinnahme − Pfandauszahlung',signedMoney(depositDifference,depositDifference>=0?'+':'-'),depositDifference>=0?'green':'red');
 
             section('Akkreditierungen nach Berechtigung');
             var permissionCounts={};accreditationList.forEach(function(r){var key=r.perm||'Ohne Angabe';if(!permissionCounts[key])permissionCounts[key]={total:0,checked:0};permissionCounts[key].total++;if(r.chk)permissionCounts[key].checked++;});
