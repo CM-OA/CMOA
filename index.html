@@ -3691,8 +3691,8 @@ function loadFromLocalStorage() {
             var beverageRevenue=finance?finance.beverageRevenue:0;
             var depositIncome=finance?finance.depositCharged:0;
             var depositExpense=finance?finance.depositReturned:0;
-            var incomeTotal=production.income+beverageRevenue+depositIncome;
-            var expenseTotal=costs.expenseTotal+depositExpense;
+            var incomeTotal=production.income+beverageRevenue;
+            var expenseTotal=costs.expenseTotal;
             var balance=incomeTotal-expenseTotal;
             var eventTitle=(currentEvent&&(currentEvent.short_name||currentEvent.name))||'CMOA';
             var eventPeriod='';
@@ -3728,7 +3728,7 @@ function loadFromLocalStorage() {
             }
             function pageFooter(){
                 doc.setDrawColor(220);doc.line(M,H-12,W-M,H-12);doc.setTextColor(100);doc.setFont('helvetica','normal');doc.setFontSize(7);
-                doc.text('Erstellt am '+new Date().toLocaleString('de-DE'),M,H-7);doc.text('PDF-Version 4 · Seite '+pageNo,W-M,H-7,{align:'right'});
+                doc.text('Erstellt am '+new Date().toLocaleString('de-DE'),M,H-7);doc.text('PDF-Version 5 · Seite '+pageNo,W-M,H-7,{align:'right'});
             }
             function newPage(){pageFooter();doc.addPage();pageNo++;pageHeader();}
             function ensure(space){if(y+space>H-17)newPage();}
@@ -3759,8 +3759,8 @@ function loadFromLocalStorage() {
             row('Freie Akkreditierungen',String(accreditedFree));row('Akkreditierungsbeträge',money(accreditedAmount));
 
             section('Finanzielle Auswertung');
-            row('Getränkeeinnahmen ohne Pfand',signedMoney(beverageRevenue,'+'),'green');row('Weitere Einnahmen',signedMoney(production.income,'+'),'green');row('Einnahmen gesamt inklusive Pfand',signedMoney(incomeTotal,'+'),'green');
-            row('Bandgagen brutto',signedMoney(costs.feesGross,'-'));row('Hotelkosten',signedMoney(costs.hotelTotal,'-'));row('Shuttlekosten',signedMoney(costs.shuttleTotal,'-'));row('Produktionsausgaben',signedMoney(costs.productionExpense,'-'));row('Ausgaben gesamt inklusive Pfand',signedMoney(expenseTotal,'-'),'red');
+            row('Getränkeeinnahmen',signedMoney(beverageRevenue,'+'),'green');row('Weitere Einnahmen',signedMoney(production.income,'+'),'green');row('Einnahmen gesamt',signedMoney(incomeTotal,'+'),'green');
+            row('Bandgagen brutto',signedMoney(costs.feesGross,'-'));row('Hotelkosten',signedMoney(costs.hotelTotal,'-'));row('Shuttlekosten',signedMoney(costs.shuttleTotal,'-'));row('Produktionsausgaben',signedMoney(costs.productionExpense,'-'));row('Ausgaben gesamt',signedMoney(expenseTotal,'-'),'red');
             row('Saldo Einnahmen minus Ausgaben',signedMoney(balance,balance>=0?'+':'-'),balance>=0?'green':'red');
             note('Cateringkosten ohne hinterlegten Euro-Preis sind nicht enthalten.');
             if(cashNote)note(cashNote);
@@ -3814,8 +3814,8 @@ function loadFromLocalStorage() {
 
             pageFooter();
             var safeName=safeText(eventTitle).replace(/[^a-zA-Z0-9_-]+/g,'_').replace(/^_+|_+$/g,'')||'CMOA';
-            doc.setProperties({title:'Abschlussbericht '+eventTitle+' · PDF-Version 4',subject:'Festival-Auswertung'});
-            doc.save(safeName+'_Abschlussbericht_PDF-Version-4_'+new Date().toISOString().slice(0,10)+'.pdf');
+            doc.setProperties({title:'Abschlussbericht '+eventTitle+' · PDF-Version 5',subject:'Festival-Auswertung'});
+            doc.save(safeName+'_Abschlussbericht_PDF-Version-5_'+new Date().toISOString().slice(0,10)+'.pdf');
             logCmoaActivity('Abschlussbericht exportiert','PDF-Auswertung wurde erstellt.','export');
         }
 
