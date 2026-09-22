@@ -1416,14 +1416,10 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
         .final-report-card strong { display:block; font-size:.84rem; }
         .final-report-card span { display:block; margin-top:3px; color:var(--text-muted); font-size:.7rem; line-height:1.35; }
         .final-report-card button { flex:0 0 auto; }
-        .event-tree-card{margin:18px 0 0;border:1px solid var(--border);border-radius:13px;background:var(--card-bg);overflow:hidden}
-        .event-tree-toggle{width:100%;border:0;background:transparent;color:var(--text-main);padding:13px 15px;display:flex;justify-content:space-between;align-items:center;text-align:left;cursor:pointer;font-weight:850}
-        .event-tree-toggle small{display:block;color:var(--text-muted);font-weight:500;margin-top:3px}.event-tree-arrow{font-size:1.05rem;transition:transform .2s}.event-tree-card.open .event-tree-arrow{transform:rotate(180deg)}
-        .event-tree-content{display:none;border-top:1px solid var(--border);padding:12px 14px}.event-tree-card.open .event-tree-content{display:block}
-        .event-tree-root,.event-tree-root ul{list-style:none;margin:0;padding-left:0}.event-tree-root ul{margin:5px 0 4px 17px;padding-left:13px;border-left:1px solid var(--border)}
-        .event-tree-root li{position:relative;margin:5px 0}.event-tree-root ul>li:before{content:'';position:absolute;left:-13px;top:15px;width:10px;border-top:1px solid var(--border)}
-        .event-tree-link,.event-tree-folder{width:100%;border:1px solid transparent;border-radius:8px;background:transparent;color:var(--text-main);padding:7px 8px;text-align:left;font-size:.78rem;cursor:pointer}
-        .event-tree-link:hover{background:var(--input-bg);border-color:var(--border)}.event-tree-folder{font-weight:850;cursor:default}.event-tree-meta{float:right;color:var(--text-muted);font-size:.68rem;font-weight:650}
+        .privacy-card{margin:18px 0 0;border:1px solid var(--border);border-radius:13px;background:var(--card-bg);overflow:hidden}
+        .privacy-card summary{padding:13px 15px;cursor:pointer;font-weight:850;color:var(--text-main);list-style:none;display:flex;justify-content:space-between;gap:10px;align-items:center}
+        .privacy-card summary::-webkit-details-marker{display:none}.privacy-card summary small{display:block;color:var(--text-muted);font-weight:500;margin-top:3px}.privacy-card summary:after{content:'⌄';font-size:1.05rem;transition:transform .2s}.privacy-card[open] summary:after{transform:rotate(180deg)}
+        .privacy-content{border-top:1px solid var(--border);padding:14px 16px;font-size:.78rem;line-height:1.55;color:var(--text-main)}.privacy-content h4{font-size:.88rem;margin:15px 0 5px;color:var(--accent-blue)}.privacy-content h4:first-child{margin-top:0}.privacy-content p{margin:5px 0}.privacy-content ul{margin:6px 0;padding-left:20px}.privacy-content li{margin:3px 0}.privacy-warning{padding:9px 11px;border-radius:8px;background:rgba(245,158,11,.13);border:1px solid rgba(245,158,11,.45);color:var(--text-main);font-weight:700}.privacy-content a{color:var(--accent-blue)}
         @media(max-width:520px){
             .final-report-card { align-items:stretch; flex-direction:column; }
             .final-report-card button { width:100%; min-height:44px; }
@@ -1862,13 +1858,39 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
                 <button type="button" class="btn-subtle" onclick="generateFestivalFinalReport()">PDF erstellen</button>
             </div>
 
-            <section id="event-structure-tree" class="event-tree-card">
-                <button type="button" class="event-tree-toggle" onclick="toggleEventStructureTree()" aria-expanded="false">
-                    <span>🗂️ Verzeichnisbaum / Struktur<small id="event-tree-subtitle">Aktuelle Veranstaltung</small></span>
-                    <span class="event-tree-arrow">⌄</span>
-                </button>
-                <div id="event-tree-content" class="event-tree-content"></div>
-            </section>
+            <details class="privacy-card">
+                <summary><span>🔐 Datenschutzinformationen<small>Informationen zur Datenverarbeitung in dieser Festival-App</small></span></summary>
+                <div class="privacy-content">
+                    <div class="privacy-warning">Vor dem produktiven Einsatz müssen Name, Anschrift und Kontakt des verantwortlichen Veranstalters ergänzt werden.</div>
+                    <h4>1. Verantwortlicher</h4>
+                    <p><strong>[Name/Firma des Veranstalters]</strong><br>[Straße und Hausnummer]<br>[PLZ und Ort]<br>E-Mail: [Datenschutz-Kontakt ergänzen]<br>Telefon: [optional ergänzen]</p>
+                    <h4>2. Zweck und Umfang der App</h4>
+                    <p>Diese nicht öffentliche Verwaltungs-App dient der Planung, Durchführung, Abrechnung und Nachbereitung von Veranstaltungen. Sie verarbeitet nur Daten, die hierfür eingegeben, hochgeladen oder bei der Benutzung technisch erzeugt werden.</p>
+                    <h4>3. Verarbeitete Daten</h4>
+                    <ul>
+                        <li>Benutzerkonten, E-Mail-Adressen, Rollen, Berechtigungen sowie Anmelde- und Änderungsprotokolle;</li>
+                        <li>Band-, Künstler-, Ansprechpartner-, Hotel-, Catering-, Zahlungs-, Gagen-, Shuttle-, Fahrer- und Fahrzeugdaten;</li>
+                        <li>Akkreditierungs- und Check-in-Daten, insbesondere Name, Organisation, Berechtigung, Betrag und Kennnummer;</li>
+                        <li>Verträge, Rider, Rechnungen und sonstige hochgeladene oder verlinkte Dokumente;</li>
+                        <li>Kassen-, Verkaufs-, Pfand-, Marken-, Bediener- und Leerungsdaten;</li>
+                        <li>technische Verbindungsdaten, die beim Hosting und beim Abruf externer Programmbibliotheken anfallen können, insbesondere IP-Adresse, Zeitpunkt, Browser- und Geräteinformationen.</li>
+                    </ul>
+                    <h4>4. Zwecke und Rechtsgrundlagen</h4>
+                    <p>Die Verarbeitung erfolgt – abhängig vom jeweiligen Datensatz – zur Vertragsanbahnung und Vertragserfüllung (Art. 6 Abs. 1 lit. b DSGVO), zur Erfüllung gesetzlicher Pflichten, insbesondere handels- und steuerrechtlicher Aufbewahrungspflichten (Art. 6 Abs. 1 lit. c DSGVO), sowie aufgrund berechtigter Interessen an einer sicheren, nachvollziehbaren und effizienten Veranstaltungsorganisation (Art. 6 Abs. 1 lit. f DSGVO). Soweit ausnahmsweise eine Einwilligung eingeholt wird, ist Art. 6 Abs. 1 lit. a DSGVO die Rechtsgrundlage; eine Einwilligung kann mit Wirkung für die Zukunft widerrufen werden.</p>
+                    <h4>5. Empfänger und eingesetzte Dienste</h4>
+                    <p>Zugriff erhalten nur freigeschaltete Benutzer entsprechend ihrer Rollen und Modulrechte. Für Anmeldung, Datenbank und Dateispeicherung wird Supabase eingesetzt; die konfigurierte Datenbankregion liegt in Irland. Die Web-App wird über GitHub Pages bereitgestellt. Zusätzlich können Programmbibliotheken über externe CDN-Dienste geladen werden. Beim Aufruf können die jeweiligen Anbieter technische Verbindungsdaten verarbeiten. Verträge zur Auftragsverarbeitung, Anbieter-Einstellungen, Unterauftragnehmer und mögliche Drittlandübermittlungen sind vom Verantwortlichen regelmäßig zu prüfen. Eine Weitergabe an weitere Stellen erfolgt nur, wenn sie für die Veranstaltung erforderlich, gesetzlich vorgeschrieben oder wirksam genehmigt ist.</p>
+                    <h4>6. Speicherung und Löschung</h4>
+                    <p>Daten werden nur so lange gespeichert, wie sie für Planung, Durchführung, Abrechnung, Nachweisführung und Rechtsverteidigung benötigt werden. Anschließend sind sie zu löschen oder zu anonymisieren, sofern keine gesetzlichen Aufbewahrungsfristen entgegenstehen. Handels- und steuerrechtlich relevante Unterlagen können längeren gesetzlichen Fristen unterliegen. Die App nimmt keine pauschale automatische Löschung aller Veranstaltungsdaten vor; der Verantwortliche muss Löschfristen festlegen und regelmäßig umsetzen.</p>
+                    <h4>7. Sicherheit und lokale Funktionen</h4>
+                    <p>Der Zugriff ist durch Benutzeranmeldung und Berechtigungen geschützt. Passwörter werden über den Authentifizierungsdienst verarbeitet und nicht im Klartext in dieser HTML-Datei gespeichert. PDF- und Tabellenexporte werden grundsätzlich im Browser erstellt und anschließend auf dem verwendeten Gerät gespeichert. Beim Vorbereiten einer E-Mail wird das eingerichtete E-Mail-Programm geöffnet; der Versand erfolgt erst durch den Benutzer.</p>
+                    <h4>8. Betroffenenrechte</h4>
+                    <p>Betroffene Personen haben im Rahmen der gesetzlichen Voraussetzungen Rechte auf Auskunft, Berichtigung, Löschung, Einschränkung der Verarbeitung, Datenübertragbarkeit und Widerspruch. Außerdem besteht ein Beschwerderecht bei einer Datenschutzaufsichtsbehörde. Anfragen sind an den oben genannten Verantwortlichen zu richten.</p>
+                    <h4>9. Pflicht zur Bereitstellung</h4>
+                    <p>Ohne die für Organisation, Vertrag, Akkreditierung, Shuttle, Abrechnung oder Benutzerkonto erforderlichen Angaben kann die jeweilige Funktion möglicherweise nicht durchgeführt werden. Eine ausschließlich automatisierte Entscheidungsfindung oder ein Profiling findet durch diese App nicht statt.</p>
+                    <h4>10. Stand und Änderungen</h4>
+                    <p>Stand: 22. September 2026. Diese Informationen sind anzupassen, wenn sich Verantwortlicher, Anbieter, Datenarten, Zwecke, Rechtsgrundlagen oder Speicherfristen ändern.</p>
+                </div>
+            </details>
 
         </div>
 
@@ -3233,7 +3255,7 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
                 var themeSaved=localStorage.getItem('cmoa_theme_v1');if(themeSaved==='night'){document.body.classList.add('night-mode');var btn=document.getElementById('theme-toggle-btn');if(btn)btn.innerText='☀️ Daymode';}
             } catch(e) {}
             if(!Array.isArray(bands))bands=[];if(!Array.isArray(manualTodos))manualTodos=[];if(!Array.isArray(eventNeeds))eventNeeds=[];if(!Array.isArray(hotelCostsList))hotelCostsList=[];if(!shuttleTripLog||typeof shuttleTripLog!=='object')shuttleTripLog={};if(!Array.isArray(shuttleVehicles))shuttleVehicles=[];if(!Array.isArray(productionEntries))productionEntries=[];if(!Array.isArray(akkDb))akkDb=[];
-            try{updateMainProgress();renderBandsList();initAkkreditierung();renderEventStructureTree();}catch(err){console.error('Init error:',err);}
+            try{updateMainProgress();renderBandsList();initAkkreditierung();}catch(err){console.error('Init error:',err);}
             if(navigator.onLine)syncOfflineQueue();
         };
 
@@ -3743,7 +3765,15 @@ function loadFromLocalStorage() {
 
             section('Shuttle');
             row('Bands mit Shuttlebedarf',String(shuttleBands.length));row('Geplante Fahrten',String(shuttleRides.length));row('Erfasste Kilometer',shuttleTotals.kilometers.toLocaleString('de-DE')+' km');row('Shuttlekosten gesamt',money(shuttleTotals.total));
-            shuttleRides.forEach(function(r){listLine((r.bandName||r.band||'Band')+' | '+(r.type||'Fahrt')+' | '+formatDateDE(r.date)+' '+(r.time||''),(r.route||'-'));});
+            shuttleBands.forEach(function(b){
+                var bandName=String(b.name||'Band').toUpperCase(),pax=Number(b.shuttlePax||0)||Number(b.paxCount||0)+Number(b.vipGuests||0),bandRides=shuttleRides.filter(function(r){return String(r.bandId)===String(b.id);});
+                listLine(bandName,pax.toLocaleString('de-DE')+' Personen');
+                var arrival=bandRides.find(function(r){return r.type==='Anreise';}),departure=bandRides.find(function(r){return r.type==='Abreise';});
+                var arrivalText=arrival?('Anreise: '+formatDateDE(arrival.date)+' '+(arrival.time||'')+' Uhr | '+(arrival.route||arrival.airport||'-')+(arrival.flight?' | Flug '+arrival.flight:'')+(arrival.driver?' | Fahrer '+arrival.driver:'')+(arrival.vehicle?' | Fahrzeug '+arrival.vehicle:'')):'Anreise: noch keine Angaben';
+                var departureText=departure?('Abreise: '+formatDateDE(departure.date)+' '+(departure.time||'')+' Uhr | '+(departure.route||departure.airport||'-')+(departure.flight?' | Flug '+departure.flight:'')+(departure.driver?' | Fahrer '+departure.driver:'')+(departure.vehicle?' | Fahrzeug '+departure.vehicle:'')):'Abreise: noch keine Angaben';
+                note(arrivalText);note(departureText);
+            });
+            if(!shuttleBands.length)note('Keine Bands mit Shuttlebedarf erfasst.');
 
             section('Getraenke');
             row('Ausgegebene Getraenke gesamt',String(drinkCount));row('Davon Freigetraenke ueber Marken',String(freeDrinkCount));row('Getraenkeumsatz',money(beverageRevenue));
@@ -3964,7 +3994,7 @@ function loadFromLocalStorage() {
             if (pageId === 'akkreditierung-page') renderAkk();
             if (pageId === 'admin-page') loadAdminUsers();
             if (pageId === 'events-admin-page') loadEventsAdminPage();
-            if (pageId === 'main-page') { updateFestivalCockpit(); loadCashSummaryMini(); renderEventStructureTree(); }
+            if (pageId === 'main-page') { updateFestivalCockpit(); loadCashSummaryMini(); }
             updateRightsBanner(pageId);
             window.scrollTo(0, 0);
         }
@@ -8703,41 +8733,6 @@ function loadFromLocalStorage() {
           document.querySelectorAll('[data-bands-required="true"]').forEach(function(el){el.classList.toggle('event-bands-hidden',!enabled);});
           document.querySelectorAll('[data-no-bands-only="true"]').forEach(function(el){el.classList.toggle('event-needs-hidden',enabled);});
         }
-        function toggleEventStructureTree(){
-          var card=document.getElementById('event-structure-tree');if(!card)return;var open=!card.classList.contains('open');card.classList.toggle('open',open);var btn=card.querySelector('.event-tree-toggle');if(btn)btn.setAttribute('aria-expanded',open?'true':'false');try{if(currentEventId)localStorage.setItem('cmoa_tree_open_'+currentEventId,open?'1':'0');}catch(e){}
-        }
-        function renderEventStructureTree(){
-          var content=document.getElementById('event-tree-content'),subtitle=document.getElementById('event-tree-subtitle'),card=document.getElementById('event-structure-tree');if(!content||!card||!currentEvent)return;
-          var title=currentEvent.short_name||currentEvent.name||'Veranstaltung';if(subtitle)subtitle.textContent=title+' · '+(eventBandsEnabled?'mit Bands':'ohne Bands');
-          function link(label,page,meta){return '<li><button type="button" class="event-tree-link" onclick="showPage(\''+page+'\')">'+label+(meta?'<span class="event-tree-meta">'+meta+'</span>':'')+'</button></li>';}
-          function allowed(module){return hasModuleRight(module,'read');}
-          var html='<ul class="event-tree-root"><li><div class="event-tree-folder">📁 '+escapeHtmlAuth(title)+'</div><ul>';
-          if(allowed('overview'))html+=link('📊 Übersicht','overview-page','');
-          if(eventBandsEnabled){
-            if(allowed('bands')){
-              html+='<li><div class="event-tree-folder">🎸 Bands <span class="event-tree-meta">'+(bands||[]).length+'</span></div><ul>';
-              if((bands||[]).length){(bands||[]).slice().sort(function(a,b){return String(a.name||'').localeCompare(String(b.name||''),'de');}).forEach(function(b){var docs=(getBandDocumentRecords(b,'contract').length+getBandDocumentRecords(b,'rider').length+getBandDocumentRecords(b,'invoice').length);html+='<li><button type="button" class="event-tree-link" onclick="openBandDetail(\''+String(b.id).replace(/'/g,"\\'")+'\')">🎤 '+escapeHtmlAuth(b.name||'Band')+'<span class="event-tree-meta">'+docs+' Dok.</span></button></li>';});}else html+='<li><div class="event-tree-link" style="cursor:default;color:var(--text-muted)">Noch keine Bands</div></li>';
-              html+='</ul></li>';
-            }
-            if(allowed('hotel'))html+=link('🏨 Hotel','hotel-page',(bands||[]).filter(function(b){return b.hotelNeeded==='ja'||b.hotelNeeded===true;}).length+' Buchungen');
-            if(allowed('shuttle'))html+=link('🚐 Shuttle','shuttle-page',(bands||[]).filter(function(b){return b.shuttleNeeded==='ja'||b.shuttleNeeded===true;}).length+' Bands');
-            if(allowed('running_order'))html+=link('🕒 Running Order','ro-page','');
-            if(allowed('payments'))html+=link('💳 Zahlungsziele / Zahlungsweise','payment-terms-page','');
-            if(allowed('fees'))html+=link('💶 Gagen','fees-page','');
-            if(allowed('catering'))html+=link('🍲 Catering','catering-page','');
-            if(allowed('accreditation'))html+=link('🎫 Akkreditierungen','akkreditierung-page',(akkDb||[]).length+' Personen');
-            if(allowed('documents'))html+=link('🔎 Dokumente','global-documents-page','');
-            if(allowed('todos')&&canViewPlanningControl())html+=link('✓ To-Do','misc-page','');
-          }else{
-            if(allowed('todos'))html+=link('📋 Bedarf & Aufgaben','event-needs-page',(eventNeeds||[]).filter(function(x){return !x.done;}).length+' offen');
-          }
-          if(allowed('fees'))html+=link('🏗️ Produktionskosten','production-costs-page',(productionEntries||[]).length+' Einträge');
-          if(canViewCashSummary())html+='<li><button type="button" class="event-tree-link" onclick="openCashSummary()">💶 Kassenübersicht</button></li>';
-          if(canViewActivityLog())html+='<li><button type="button" class="event-tree-link" onclick="openActivityLog()">📋 Log-Bericht</button></li>';
-          if(allowed('admin'))html+=link('⚙️ Benutzer & Rechte','admin-page','');
-          html+='</ul></li></ul>';content.innerHTML=html;
-          var open=false;try{open=localStorage.getItem('cmoa_tree_open_'+currentEventId)==='1';}catch(e){}card.classList.toggle('open',open);var btn=card.querySelector('.event-tree-toggle');if(btn)btn.setAttribute('aria-expanded',open?'true':'false');
-        }
         function canViewCashSummary(){
           if(!currentUserProfile)return false;
           if(currentUserProfile.role==='admin')return true;
@@ -8796,7 +8791,6 @@ function loadFromLocalStorage() {
           if(logButton)logButton.classList.toggle('permission-hidden',!canViewActivityLog());
           if(!canViewCashSummary())closeCashSummary();if(!canViewActivityLog())closeActivityLog();
           applyEventBandMode();
-          renderEventStructureTree();
         }
         function updateRightsBanner(pageId){
           var b=document.getElementById('rights-banner'); if(!b)return; var m=CMOA_PAGE_MODULES[pageId];
