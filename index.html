@@ -1987,6 +1987,7 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
                 <div class="production-form-grid">
                     <div class="form-group"><label>Art</label><select id="production-type" onchange="syncProductionTypeFields()"><option value="expense">Ausgabe</option><option value="income">Einnahme</option></select></div>
                     <div class="form-group"><label>Empfänger / Absender</label><input id="production-party" placeholder="z. B. Stadtverwaltung oder Ticketanbieter"></div>
+                    <div class="form-group"><label>Zuständig (optional)</label><select id="production-user"><option value="">Nicht zugewiesen</option></select></div>
                     <div class="form-group"><label>Bezeichnung</label><input id="production-description" placeholder="z. B. Bühnenmiete"></div>
                     <div class="form-group"><label>Betrag (€)</label><input id="production-amount" type="number" min="0" step="0.01"></div>
                     <div class="form-group"><label>Datum</label><input id="production-date" type="date"></div>
@@ -1998,7 +1999,7 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
                 <div style="display:flex;gap:8px;flex-wrap:wrap;"><button class="btn-primary" onclick="saveProductionEntry()">💾 Speichern</button><button id="production-cancel-btn" class="btn-subtle" style="display:none;" onclick="resetProductionForm()">Abbrechen</button></div>
             </div>
             <div class="card">
-                <h3>📋 Alle Einträge</h3>
+                <h3>📋 Alle Einträge</h3><div class="form-group"><label>Nach Benutzer filtern</label><select id="production-user-filter" onchange="renderProductionCosts()"><option value="">Alle Benutzer</option></select></div>
                 <div class="production-search-wrap"><span class="production-search-icon">🔎</span><input id="production-search" type="search" placeholder="Einträge durchsuchen, z. B. Bühne" oninput="renderProductionCosts()"></div>
                 <div id="production-search-result" class="production-search-result"></div>
                 <div id="production-list"></div>
@@ -2853,7 +2854,7 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
         <div id="fees-page" class="page">
             <button class="btn-back" onclick="showPage('main-page')">← Hauptmenü</button>
             <div class="card">
-                <h3>💶 Gagen & Steuern</h3>
+                <h3>💶 Gagen & Steuern</h3><button class="btn-primary" onclick="exportFeesPdf()" style="margin-bottom:12px">📄 Gagenübersicht als PDF</button>
                 <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 12px;">
                     Übersicht aller Gagen, Steuersätze und Bruttobeträge im modernen Tabellenformat.
                 </div>
@@ -7406,7 +7407,7 @@ function loadFromLocalStorage() {
             if(r.error){console.warn('Benutzer konnten nicht geladen werden:',r.error);return;}
             (r.data||[]).forEach(function(u){adminUsersCache[u.id]=u;});
             var opts=(r.data||[]).map(function(u){return '<option value="'+escapeHtmlAuth(u.id)+'">'+escapeHtmlAuth(profileDisplayName(u))+'</option>';}).join('');
-            ['production-task-user','production-task-user-filter'].forEach(function(id){var el=document.getElementById(id);if(!el)return;var value=el.value;el.innerHTML='<option value="">'+(id.endsWith('filter')?'Alle Benutzer':'Nicht zugewiesen')+'</option>'+opts;el.value=value;});
+            ['production-task-user','production-task-user-filter','production-user','production-user-filter'].forEach(function(id){var el=document.getElementById(id);if(!el)return;var value=el.value;el.innerHTML='<option value="">'+(id.endsWith('filter')?'Alle Benutzer':'Nicht zugewiesen')+'</option>'+opts;el.value=value;});
             renderProductionTasks();
         }
         function switchProductionTab(tab){document.getElementById('production-tasks-tab').style.display=tab==='tasks'?'block':'none';document.getElementById('production-finances-tab').style.display=tab==='finances'?'block':'none';}
@@ -7419,7 +7420,7 @@ function loadFromLocalStorage() {
             var now=new Date().toISOString(),status=val('status'),task={id:id,title:val('title'),category:val('category'),user:val('user'),status:status,due:val('due'),hasCost:hasCost,amount:hasCost?amount:0,party:hasCost?val('party'):'',note:val('note'),doneAt:status==='done'?(old&&old.doneAt||now):'',updatedAt:now};
             var entryId='task_cost_'+id,entry=productionEntries.find(function(e){return e.id===entryId;}),oldTasks=productionTasks.slice(),oldEntries=productionEntries.slice();
             productionTasks=productionTasks.filter(function(t){return t.id!==id;});productionTasks.push(task);
-            if(hasCost){var cost=Object.assign({},entry||{},{id:entryId,type:'expense',party:task.party,description:task.title,amount:amount,date:entry&&entry.date||productionToday(),note:'Aufgabe · '+task.category,taskId:id,updatedAt:now});productionEntries=productionEntries.filter(function(e){return e.id!==entryId;});productionEntries.push(cost);}
+            if(hasCost){var cost=Object.assign({},entry||{},{id:entryId,type:'expense',party:task.party,description:task.title,amount:amount,date:entry&&entry.date||productionToday(),note:'Aufgabe · '+task.category,user:task.user,taskId:id,updatedAt:now});productionEntries=productionEntries.filter(function(e){return e.id!==entryId;});productionEntries.push(cost);}
             else productionEntries=productionEntries.filter(function(e){return e.id!==entryId;});
             try{await writeDataModule('fees');resetProductionTaskForm();renderProductionTasks();renderProductionCosts();updateMainProgress();logCmoaActivity(old?'Produktionsaufgabe bearbeitet':'Produktionsaufgabe angelegt',task.title,'fees');}
             catch(e){productionTasks=oldTasks;productionEntries=oldEntries;alert('Aufgabe konnte nicht gespeichert werden: '+e.message);}
@@ -7427,6 +7428,16 @@ function loadFromLocalStorage() {
         async function deleteProductionTask(id){if(!hasModuleRight('fees','write'))return;var t=productionTasks.find(function(x){return x.id===id;});if(!t||!confirm('Aufgabe „'+t.title+'“ löschen?'))return;var oldTasks=productionTasks.slice(),oldEntries=productionEntries.slice();productionTasks=productionTasks.filter(function(x){return x.id!==id;});productionEntries=productionEntries.filter(function(e){return e.id!=='task_cost_'+id;});try{await writeDataModule('fees');renderProductionTasks();renderProductionCosts();logCmoaActivity('Produktionsaufgabe gelöscht',t.title,'fees');}catch(e){productionTasks=oldTasks;productionEntries=oldEntries;alert(e.message);}}
         async function setProductionTaskStatus(id,status){var t=productionTasks.find(function(x){return x.id===id;});if(!t||!hasModuleRight('fees','write'))return;var previous=t.status,stamp=t.doneAt;t.status=status;t.doneAt=status==='done'?(stamp||new Date().toISOString()):'';try{await writeDataModule('fees');renderProductionTasks();}catch(e){t.status=previous;t.doneAt=stamp;alert(e.message);}}
         function renderProductionTasks(){var box=document.getElementById('production-task-list');if(!box)return;var filter=document.getElementById('production-task-filter').value,user=document.getElementById('production-task-user-filter').value,sort=document.getElementById('production-task-sort').value,labels={open:'Offen',progress:'In Bearbeitung',done:'Erledigt'},items=productionTasks.filter(function(t){return (filter==='all'||(filter==='open'?t.status!=='done':t.status==='done'))&&(!user||t.user===user);});items.sort(function(a,b){var av=sort==='due'?a.due||'9999':sort==='user'?profileDisplayName(adminUsersCache[a.user]):sort==='category'?a.category:labels[a.status]||'',bv=sort==='due'?b.due||'9999':sort==='user'?profileDisplayName(adminUsersCache[b.user]):sort==='category'?b.category:labels[b.status]||'';return String(av).localeCompare(String(bv),'de');});box.innerHTML=items.length?items.map(function(t){return '<div class="card" style="margin:9px 0"><strong>'+escapeHtmlAuth(t.title)+'</strong><div style="font-size:.82rem;color:var(--text-muted);margin:6px 0">'+escapeHtmlAuth(t.category||'Ohne Kategorie')+' · '+escapeHtmlAuth(t.user?profileDisplayName(adminUsersCache[t.user]):'Nicht zugewiesen')+(t.due?' · fällig '+formatDateDE(t.due):'')+(t.doneAt?' · erledigt '+new Date(t.doneAt).toLocaleString('de-DE'):'')+(t.hasCost?' · '+cashEuro(t.amount):'')+'</div>'+(t.note?'<p>'+escapeHtmlAuth(t.note)+'</p>':'')+'<div style="display:flex;gap:6px;flex-wrap:wrap"><select aria-label="Bearbeitungsstatus" onchange="setProductionTaskStatus(\''+t.id+'\',this.value)">'+Object.keys(labels).map(function(k){return '<option value="'+k+'" '+(t.status===k?'selected':'')+'>'+labels[k]+'</option>';}).join('')+'</select><button class="btn-subtle" onclick="editProductionTask(\''+t.id+'\')">✎ Bearbeiten</button><button class="btn-danger" onclick="deleteProductionTask(\''+t.id+'\')">🗑</button></div></div>';}).join(''):'<p>Keine passenden Aufgaben.</p>';}
+        function exportFeesPdf(){
+            if(!hasModuleRight('fees','read'))return;
+            if(!window.jspdf||!window.jspdf.jsPDF)return alert('PDF-Modul konnte nicht geladen werden. Bitte Internetverbindung prüfen.');
+            var doc=new window.jspdf.jsPDF({unit:'mm',format:'a4'}), y=20, page=1, fmt=function(n){return Number(n||0).toLocaleString('de-DE',{minimumFractionDigits:2,maximumFractionDigits:2})+' EUR';};
+            var totals={net:0,tax:0,gross:0};
+            function header(){doc.setFillColor(24,35,53);doc.rect(0,0,210,34,'F');doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');doc.setFontSize(16);doc.text('Gagenübersicht',15,17);doc.setFontSize(9);doc.setFont('helvetica','normal');doc.text(String(currentEvent&& (currentEvent.short_name||currentEvent.name)||'Veranstaltung')+' · '+new Date().toLocaleDateString('de-DE'),15,26);doc.setTextColor(30,41,59);y=43;doc.setFont('helvetica','bold');doc.setFontSize(9);doc.text('BAND / ACT',15,y);doc.text('NETTO',108,y,{align:'right'});doc.text('STEUER',134,y,{align:'right'});doc.text('BETRAG',164,y,{align:'right'});doc.text('BRUTTO',195,y,{align:'right'});y+=3;doc.setDrawColor(190,199,210);doc.line(15,y,195,y);y+=7;}
+            header();(bands||[]).slice().sort(function(a,b){return String(a.name||'').localeCompare(String(b.name||''),'de');}).forEach(function(b,i){var net=Number(b.gage)||0,rate=Number(b.taxRate)||0,tax=net*rate/100,gross=net+tax;totals.net+=net;totals.tax+=tax;totals.gross+=gross;if(y>273){doc.addPage();page++;header();}if(i%2===0){doc.setFillColor(244,247,251);doc.rect(14,y-5,182,9,'F');}doc.setFont('helvetica','normal');doc.setFontSize(8);doc.text(doc.splitTextToSize(String(b.name||'').toUpperCase(),70)[0]||'—',16,y);doc.text(fmt(net),108,y,{align:'right'});doc.text(rate.toLocaleString('de-DE',{maximumFractionDigits:2})+' %',134,y,{align:'right'});doc.text(fmt(tax),164,y,{align:'right'});doc.text(fmt(gross),195,y,{align:'right'});y+=10;});
+            if(y>267){doc.addPage();page++;header();}doc.setDrawColor(30,41,59);doc.line(15,y,195,y);y+=8;doc.setFont('helvetica','bold');doc.setFontSize(9);doc.text('GESAMT',16,y);doc.text(fmt(totals.net),108,y,{align:'right'});doc.text(fmt(totals.tax),164,y,{align:'right'});doc.text(fmt(totals.gross),195,y,{align:'right'});
+            for(var n=1;n<=page;n++){doc.setPage(n);doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(110,120,135);doc.text('Seite '+n+' / '+page,195,288,{align:'right'});}doc.save('Gagenuebersicht_'+String(currentEvent&&currentEvent.short_name||'Event').replace(/[^a-z0-9_-]/gi,'_')+'.pdf');
+        }
         function getProductionTotals() {
             var income=0,expense=0;
             (productionEntries||[]).forEach(function(e){var amount=Number(e.amount||0);if(e.type==='income')income+=amount;else expense+=amount;});
@@ -7439,6 +7450,7 @@ function loadFromLocalStorage() {
 
         function resetProductionForm() {
             ['production-edit-id','production-party','production-description','production-amount','production-date','production-note','production-due-date','production-paid-date'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});
+            var assigned=document.getElementById('production-user');if(assigned)assigned.value='';
             var type=document.getElementById('production-type');if(type)type.value='expense';
             var payment=document.getElementById('production-payment-status');if(payment)payment.value='open';
             var title=document.getElementById('production-form-title');if(title)title.textContent='Eintrag hinzufügen';
@@ -7455,6 +7467,7 @@ function loadFromLocalStorage() {
                 id:id||('production_'+Date.now()),
                 type:isIncome?'income':'expense',
                 party:(document.getElementById('production-party').value||'').trim(),
+                user:document.getElementById('production-user').value||'',
                 description:(document.getElementById('production-description').value||'').trim(),
                 amount:Number(document.getElementById('production-amount').value||0),
                 date:document.getElementById('production-date').value||'',
@@ -7463,6 +7476,7 @@ function loadFromLocalStorage() {
                 dueDate:isIncome?'':(document.getElementById('production-due-date').value||''),
                 paidDate:isIncome?(document.getElementById('production-date').value||productionToday()):(document.getElementById('production-paid-date').value||''),
                 documents:existing&&Array.isArray(existing.documents)?existing.documents:[],
+                taskId:existing&&existing.taskId||null,
                 updatedAt:new Date().toISOString()
             };
             if(!entry.party||!entry.description||entry.amount<=0){alert('Bitte Art, Empfänger beziehungsweise Absender, Bezeichnung und einen Betrag größer als 0 angeben.');return;}
@@ -7478,6 +7492,7 @@ function loadFromLocalStorage() {
             document.getElementById('production-type').value=e.type||'expense';
             document.getElementById('production-party').value=e.party||e.category||'';
             document.getElementById('production-description').value=e.description||'';
+            document.getElementById('production-user').value=e.user||'';
             document.getElementById('production-amount').value=Number(e.amount||0);
             document.getElementById('production-date').value=e.date||'';
             document.getElementById('production-note').value=e.note||'';
@@ -7542,9 +7557,11 @@ function loadFromLocalStorage() {
             var totals=getProductionTotals();
             summary.innerHTML='<div class="production-summary-box"><span>Einnahmen</span><b style="color:var(--accent-green)">'+cashEuro(totals.income)+'</b></div><div class="production-summary-box"><span>Ausgaben</span><b style="color:#dc2626">'+cashEuro(totals.expense)+'</b></div><div class="production-summary-box"><span>Saldo (Ausgaben − Einnahmen)</span><b>'+cashEuro(totals.net)+'</b></div>';
             var allEntries=(productionEntries||[]).slice().sort(function(a,b){return String(b.date||b.updatedAt||'').localeCompare(String(a.date||a.updatedAt||''));}),search=document.getElementById('production-search'),query=String(search&&search.value||'').trim().toLocaleLowerCase('de-DE');
+            var selectedUser=document.getElementById('production-user-filter').value;
             var entries=query?allEntries.filter(function(e){return [e.description,e.party,e.category,e.note,e.type==='income'?'einnahme':'ausgabe',e.date,e.dueDate,e.paidDate,getProductionPaymentMeta(e).label,String(e.amount||'')].join(' ').toLocaleLowerCase('de-DE').indexOf(query)>=0;}):allEntries;
+            entries=entries.filter(function(e){return !selectedUser||e.user===selectedUser||(e.taskId&&productionTasks.some(function(t){return t.id===e.taskId&&t.user===selectedUser;}));});
             var result=document.getElementById('production-search-result');if(result)result.textContent=query?(entries.length+' von '+allEntries.length+' Einträgen gefunden'):allEntries.length+' Einträge insgesamt';
-            list.innerHTML=entries.map(function(e){var docs=getProductionDocuments(e),payment=getProductionPaymentMeta(e),paymentExtra=e.dueDate?(' · fällig '+formatDateDE(e.dueDate)):'';return '<div class="production-row '+(e.type==='income'?'income':'expense')+'"><span class="production-date">'+(e.date?formatDateDE(e.date):'—')+'</span><b class="production-type">'+(e.type==='income'?'Einnahme':'Ausgabe')+'</b><span class="production-desc"><b>'+escapeHtmlAuth(e.description)+'</b><span class="production-payment-badge '+payment.className+'">'+payment.label+paymentExtra+'</span>'+(docs.length?'<small style="display:block;color:var(--accent-blue);margin-top:3px;">📎 '+docs.length+' Dokument'+(docs.length===1?'':'e')+'</small>':'')+'</span><b class="production-amount">'+(e.type==='income'?'+ ':'− ')+cashEuro(e.amount)+'</b><span class="production-note">'+escapeHtmlAuth(e.party||e.category||'—')+(e.note?' · '+escapeHtmlAuth(e.note):'')+'</span><span class="production-actions"><button class="btn-primary" style="padding:5px 7px" onclick="openProductionEntryView(\''+e.id+'\')">👁 View</button><button class="btn-subtle" style="padding:5px 7px" onclick="editProductionEntry(\''+e.id+'\')">✎</button><button class="btn-danger" style="padding:5px 7px" onclick="deleteProductionEntry(\''+e.id+'\')">🗑</button></span></div>';}).join('');
+            list.innerHTML=entries.map(function(e){var docs=getProductionDocuments(e),payment=getProductionPaymentMeta(e),paymentExtra=e.dueDate?(' · fällig '+formatDateDE(e.dueDate)):'';return '<div class="production-row '+(e.type==='income'?'income':'expense')+'"><span class="production-date">'+(e.date?formatDateDE(e.date):'—')+'</span><b class="production-type">'+(e.type==='income'?'Einnahme':'Ausgabe')+'</b><span class="production-desc"><b>'+escapeHtmlAuth(e.description)+'</b><span class="production-payment-badge '+payment.className+'">'+payment.label+paymentExtra+'</span>'+(docs.length?'<small style="display:block;color:var(--accent-blue);margin-top:3px;">📎 '+docs.length+' Dokument'+(docs.length===1?'':'e')+'</small>':'')+'</span><b class="production-amount">'+(e.type==='income'?'+ ':'− ')+cashEuro(e.amount)+'</b><span class="production-note">'+escapeHtmlAuth(e.party||e.category||'—')+(e.user||e.taskId?' · 👤 '+escapeHtmlAuth(profileDisplayName(adminUsersCache[e.user]||adminUsersCache[(productionTasks.find(function(t){return t.id===e.taskId;})||{}).user])):'')+(e.note?' · '+escapeHtmlAuth(e.note):'')+'</span><span class="production-actions"><button class="btn-primary" style="padding:5px 7px" onclick="openProductionEntryView(\''+e.id+'\')">👁 View</button><button class="btn-subtle" style="padding:5px 7px" onclick="editProductionEntry(\''+e.id+'\')">✎</button><button class="btn-danger" style="padding:5px 7px" onclick="deleteProductionEntry(\''+e.id+'\')">🗑</button></span></div>';}).join('');
             if(!entries.length)list.innerHTML='<div style="text-align:center;color:var(--text-muted);padding:14px;">'+(query?'Keine passenden Einträge gefunden.':'Noch keine Einnahmen oder Ausgaben erfasst.')+'</div>';
         }
 
