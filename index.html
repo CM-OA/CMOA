@@ -2242,7 +2242,7 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
                 <div class="akk-card">
                     <div class="akk-card-title">Neue Akkreditierung</div>
 
-                    <label style="display:block; font-size:12px; font-weight:700; margin-bottom:4px; color:var(--text-muted);">Name *</label>
+                    <label style="display:block; font-size:12px; font-weight:700; margin-bottom:4px; color:var(--text-muted);">Name (außer bei Blanko) *</label>
                     <input type="text" id="in-name" placeholder="Vor- und Nachname"><label class="checkbox-group" style="display:flex;align-items:center;gap:8px;margin-top:8px"><input type="checkbox" id="in-blanko" onchange="toggleAkkBlanko()"><span>Blanko-Akkreditierung ohne Namen</span></label>
 
                     <label style="display:block; font-size:12px; font-weight:700; margin-bottom:4px; color:var(--text-muted); margin-top:10px;">Organisation</label>
@@ -4397,7 +4397,7 @@ function loadFromLocalStorage() {
 
                     if(isFree) amt = 0;
 
-                    if(!name || (blanko&&!org) || !selPerm || !selDay || isNaN(amt)) {
+                    if((!blanko&&!name) || !selPerm || !selDay || isNaN(amt)) {
                         msg.textContent = "Bitte alle Pflichtfelder (*) ausfüllen!";
                         msg.className = "akk-message show error";
                         setTimeout(function(){ msg.className = "akk-message"; }, 2500);
