@@ -2454,8 +2454,8 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
                     <input type="text" id="band-deal-text" placeholder="z. B. 1500€ Festpreis + Catering">
                 </div>
                 <div class="document-upload-box">
-                    <input type="file" id="band-deal-upload" accept=".txt,text/plain" multiple style="display:none;" onchange="uploadMultipleBandDocuments('deal',this)">
-                    <button type="button" class="btn-primary" onclick="document.getElementById('band-deal-upload').click()">⬆️ Deal als TXT hochladen</button>
+                    <input type="file" id="band-deal-upload" accept=".txt,text/plain,.pdf,application/pdf" multiple style="display:none;" onchange="uploadMultipleBandDocuments('deal',this)">
+                    <button type="button" class="btn-primary" onclick="document.getElementById('band-deal-upload').click()">⬆️ Deal als TXT oder PDF hochladen</button>
                     <button type="button" class="btn-danger" onclick="showBandDocumentManager(currentBandId,'deal',true)">📚 Deal-Dateien verwalten</button>
                     <div id="band-deal-upload-status" class="document-upload-status">Noch keine Deal-Datei hochgeladen.</div>
                 </div>
@@ -5481,12 +5481,12 @@ function loadFromLocalStorage() {
                 if(!currentEventId||!currentBandId)throw new Error('Keine Veranstaltung oder Band ausgewählt.');
                 if(!currentAuthUser)throw new Error('Bitte erneut anmelden.');
                 if(!hasModuleRight('documents','write'))throw new Error('Keine Schreibberechtigung für Dokumente.');
-                files.forEach(function(file){var ext=(file.name.split('.').pop()||'').toLowerCase();if(type==='deal'){if(ext!=='txt')throw new Error('Für Deals sind ausschließlich TXT-Dateien erlaubt.');if(file.size>1024*1024)throw new Error(file.name+' ist größer als 1 MB.');}else{if(['application/pdf','image/jpeg','image/png','image/webp'].indexOf(file.type)<0&&['pdf','jpg','jpeg','png','webp'].indexOf(ext)<0)throw new Error('Erlaubt sind PDF, JPG, PNG und WEBP.');if(file.size>15*1024*1024)throw new Error(file.name+' ist größer als 15 MB.');}});
+                files.forEach(function(file){var ext=(file.name.split('.').pop()||'').toLowerCase();if(type==='deal'){if(ext!=='txt'&&ext!=='pdf')throw new Error('Für Deals sind TXT- und PDF-Dateien erlaubt.');if(ext==='txt'&&file.size>1024*1024)throw new Error(file.name+' ist größer als 1 MB.');if(ext==='pdf'&&file.size>15*1024*1024)throw new Error(file.name+' ist größer als 15 MB.');}else{if(['application/pdf','image/jpeg','image/png','image/webp'].indexOf(file.type)<0&&['pdf','jpg','jpeg','png','webp'].indexOf(ext)<0)throw new Error('Erlaubt sind PDF, JPG, PNG und WEBP.');if(file.size>15*1024*1024)throw new Error(file.name+' ist größer als 15 MB.');}});
                 setDocumentUploadStatus(type,'⏳ '+files.length+' Datei(en) werden hochgeladen …','uploading');
                 var b=getBandById(currentBandId), docs=getBandDocumentRecords(b,type), uploaded=[];
                 for(var i=0;i<files.length;i++){
                     var file=files[i];
-                    if(type==='deal'){
+                    if(type==='deal'&&file.name.toLowerCase().endsWith('.txt')){
                         var inlineId='deal_txt_'+Date.now()+'_'+i;
                         uploaded.push({id:inlineId,name:file.name,url:'inline-text://'+inlineId,content:await file.text(),mimeType:'text/plain',uploadedAt:new Date().toISOString()});
                         continue;
