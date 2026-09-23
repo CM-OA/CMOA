@@ -1784,12 +1784,11 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
                 <button class="menu-btn menu-btn-yellow" data-module="shuttle" data-bands-required="true" onclick="showPage('shuttle-page')">Shuttle</button>
                 <button class="menu-btn" data-module="running_order" data-bands-required="true" onclick="showPage('ro-page')">Running Order</button>
                 <button class="menu-btn" data-module="payments" data-bands-required="true" onclick="showPage('payment-terms-page')">Zahlungsziel / Zahlungsweise</button>
-                <button class="menu-btn" data-module="fees" data-bands-required="true" onclick="showPage('fees-page')">Gagen</button>
                 <button id="todo-menu-btn" class="menu-btn" data-module="todos" data-bands-required="true" onclick="showPage('misc-page')">To-Do</button>
                 <button class="menu-btn menu-btn-blue" data-module="catering" data-bands-required="true" onclick="showPage('catering-page')">Catering</button>
                 <button class="menu-btn menu-btn-blue" data-module="accreditation" data-bands-required="true" onclick="showPage('akkreditierung-page')">Akkreditierung</button>
                 <button id="admin-menu-btn" class="menu-btn permission-hidden" data-module="admin" onclick="showPage('admin-page')">⚙️ Benutzer & Rechte</button>
-                <button class="menu-btn" data-module="fees" onclick="showPage('production-costs-page')">💶 Produktionskosten</button>
+                <button class="menu-btn" data-module="fees" onclick="showPage('production-costs-page')">🏗️ Produktion</button>
                 <button class="menu-btn menu-btn-yellow event-needs-hidden" data-module="todos" data-no-bands-only="true" onclick="showPage('event-needs-page')">📋 Bedarf &amp; Aufgaben</button>
             </div>
 
@@ -1964,7 +1963,22 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
         <div id="production-costs-page" class="page">
             <button class="btn-back" onclick="showPage('main-page')">← Hauptmenü</button>
             <div class="card">
-                <h3>💶 Produktionskosten & Einnahmen</h3>
+                <h3>🏗️ Produktion</h3>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px"><button class="btn-subtle" onclick="switchProductionTab('tasks')">📋 Planung & Aufgaben</button><button class="btn-subtle" onclick="switchProductionTab('finances')">💶 Kosten & Einnahmen</button></div>
+            </div>
+            <div id="production-tasks-tab">
+              <div class="card"><h3 id="production-task-form-title">Aufgabe anlegen</h3><input type="hidden" id="production-task-id"><div class="production-form-grid">
+                <div class="form-group"><label>Aufgabe</label><input id="production-task-title" placeholder="z. B. Bühne aufbauen"></div>
+                <div class="form-group"><label>Kategorie</label><input id="production-task-category" list="production-task-categories" placeholder="z. B. Aufbau"><datalist id="production-task-categories"><option value="Aufbau"><option value="Orga"><option value="Catering"><option value="Bühne"><option value="Behörden"><option value="Logistik"><option value="Erledigungen"></datalist></div>
+                <div class="form-group"><label>Zuständig</label><select id="production-task-user"><option value="">Nicht zugewiesen</option></select></div>
+                <div class="form-group"><label>Status</label><select id="production-task-status"><option value="open">Offen</option><option value="progress">In Bearbeitung</option><option value="done">Erledigt</option></select></div>
+                <div class="form-group"><label>Fällig am</label><input id="production-task-due" type="date"></div>
+                <div class="form-group"><label>Mit Kosten verbunden?</label><select id="production-task-has-cost" onchange="document.getElementById('production-task-cost-fields').style.display=this.value==='yes'?'contents':'none'"><option value="no">Nein</option><option value="yes">Ja</option></select></div>
+                <div id="production-task-cost-fields" style="display:none"><div class="form-group"><label>Betrag (€)</label><input id="production-task-amount" type="number" min="0" step="0.01"></div><div class="form-group"><label>Empfänger</label><input id="production-task-party" placeholder="Empfänger"></div></div>
+                <div class="form-group"><label>Notiz</label><input id="production-task-note"></div></div><button class="btn-primary" onclick="saveProductionTask()">💾 Aufgabe speichern</button> <button class="btn-subtle" onclick="resetProductionTaskForm()">Abbrechen</button></div>
+              <div class="card"><h3>Aufgaben</h3><div class="production-form-grid"><div class="form-group"><label>Status</label><select id="production-task-filter" onchange="renderProductionTasks()"><option value="open">Offene & in Bearbeitung</option><option value="all">Alle</option><option value="done">Erledigte</option></select></div><div class="form-group"><label>Benutzer</label><select id="production-task-user-filter" onchange="renderProductionTasks()"><option value="">Alle Benutzer</option></select></div><div class="form-group"><label>Sortieren</label><select id="production-task-sort" onchange="renderProductionTasks()"><option value="due">Fälligkeit</option><option value="user">Benutzer</option><option value="category">Kategorie</option><option value="status">Status</option></select></div></div><div id="production-task-list"></div></div>
+            </div>
+            <div id="production-finances-tab" style="display:none"><div class="card">
                 <div id="production-summary" class="production-summary"></div>
             </div>
             <div class="card">
@@ -1988,6 +2002,7 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
                 <div class="production-search-wrap"><span class="production-search-icon">🔎</span><input id="production-search" type="search" placeholder="Einträge durchsuchen, z. B. Bühne" oninput="renderProductionCosts()"></div>
                 <div id="production-search-result" class="production-search-result"></div>
                 <div id="production-list"></div>
+            </div>
             </div>
         </div>
 
@@ -2339,6 +2354,7 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
         <!-- BANDS LISTE -->
         <div id="bands-page" class="page">
             <button class="btn-back" onclick="showPage('main-page')">← Hauptmenü</button>
+            <button class="btn-primary" data-module="fees" onclick="showPage('fees-page')" style="margin-bottom:12px">💶 Übersicht Gagen</button>
             <div class="card">
                 <h3>Neue Band hinzufügen</h3>
                 <div style="display: flex; gap: 8px;">
@@ -3087,6 +3103,7 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
         var shuttleTripLog = {};
         var shuttleVehicles = [];
         var productionEntries = [];
+        var productionTasks = [];
         var currentProductionEntryId = null;
         var globalDocumentSearchResults = [];
         var openShuttleTripId = null;
@@ -3142,7 +3159,7 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
             if(module==='bands') return {bands:(bands||[]).map(function(b){return bandSlice(b,module);}),bandsEnabled:eventBandsEnabled!==false};
             if(module==='hotel') return {bands:(bands||[]).map(function(b){return bandSlice(b,module);}),hotelCostsList:Array.isArray(hotelCostsList)?hotelCostsList:[]};
             if(module==='shuttle') return {bands:(bands||[]).map(function(b){return bandSlice(b,module);}),shuttleTripLog:shuttleTripLog||{},shuttleVehicles:Array.isArray(shuttleVehicles)?shuttleVehicles:[]};
-            if(module==='fees') return {bands:(bands||[]).map(function(b){return bandSlice(b,module);}),productionEntries:Array.isArray(productionEntries)?productionEntries:[]};
+            if(module==='fees') return {bands:(bands||[]).map(function(b){return bandSlice(b,module);}),productionEntries:Array.isArray(productionEntries)?productionEntries:[],productionTasks:Array.isArray(productionTasks)?productionTasks:[]};
             return {bands:(bands||[]).map(function(b){return bandSlice(b,module);})};
         }
         function moduleHistoryFlat(data){var out={};data=data||{};(data.bands||[]).forEach(function(b){var prefix=String(b.name||b.id||'Band');Object.keys(b||{}).forEach(function(k){if(k!=='id'&&k!=='name'&&typeof b[k]!=='object')out[prefix+' · '+k]=b[k];});});['productionEntries','hotelCostsList','shuttleVehicles','manualTodos','eventNeeds','akkDb'].forEach(function(group){(data[group]||[]).forEach(function(x){var prefix=String(x.name||x.title||x.description||x.id||group);Object.keys(x||{}).forEach(function(k){if(k!=='id'&&typeof x[k]!=='object')out[prefix+' · '+k]=x[k];});});});return out;}
@@ -3161,7 +3178,7 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
             if(module==='accreditation'){akkDb=Array.isArray(data.akkDb)?data.akkDb:[];return;}
             if(module==='todos'){manualTodos=Array.isArray(data.manualTodos)?data.manualTodos:[];eventNeeds=Array.isArray(data.eventNeeds)?data.eventNeeds:[];return;}
             if(module==='hotel' && Array.isArray(data.hotelCostsList)) hotelCostsList=data.hotelCostsList;
-            if(module==='fees' && Array.isArray(data.productionEntries)) productionEntries=data.productionEntries;
+            if(module==='fees'){productionEntries=Array.isArray(data.productionEntries)?data.productionEntries:[];productionTasks=Array.isArray(data.productionTasks)?data.productionTasks:[];}
             if(module==='shuttle') {
                 shuttleTripLog=data.shuttleTripLog && typeof data.shuttleTripLog==='object' ? data.shuttleTripLog : {};
                 shuttleVehicles=Array.isArray(data.shuttleVehicles) ? data.shuttleVehicles : [];
@@ -3245,7 +3262,7 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
         }
         async function migrateLegacyStateIfNeeded(){ return false; }
         async function loadPhase2CloudData(){
-            bands=[];manualTodos=[];eventNeeds=[];hotelCostsList=[];shuttleTripLog={};shuttleVehicles=[];productionEntries=[];akkDb=[];
+            bands=[];manualTodos=[];eventNeeds=[];hotelCostsList=[];shuttleTripLog={};shuttleVehicles=[];productionEntries=[];productionTasks=[];akkDb=[];
             eventBandsEnabled=currentEvent&&currentEvent._bandsEnabled===false?false:true;
             await migrateLegacyStateIfNeeded();
             if(!currentEventId) return;
@@ -4048,7 +4065,7 @@ function loadFromLocalStorage() {
             if(!rows.length){content.innerHTML='<div class="card">Noch keine Aktivitäten protokolliert.</div>';return;}
             activityRestoreItems=[];var groups={};
             rows.forEach(function(row){var d=new Date(row.created_at),key=d.toLocaleDateString('de-DE',{year:'numeric',month:'2-digit',day:'2-digit'});if(!groups[key])groups[key]=[];groups[key].push(row);});
-            content.innerHTML=Object.keys(groups).map(function(day){return '<section class="activity-day"><div class="activity-day-title">'+day+'</div>'+groups[day].map(function(row){var d=new Date(row.created_at),change=parseCmoaChange(row.details);return '<div class="activity-row"><time>'+d.toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'})+'</time><div class="activity-user">'+escapeHtmlAuth(row.user_email||'Unbekannter Benutzer')+'</div><div><b>'+escapeHtmlAuth(row.action||'Aktion')+'</b>'+(change?renderHistoryDiff(change):(row.details?'<div class="activity-detail">'+escapeHtmlAuth(row.details)+'</div>':''))+'</div></div>';}).join('')+'</section>';}).join('');
+            content.innerHTML=Object.keys(groups).map(function(day){return '<section class="activity-day"><div class="activity-day-title">'+day+'</div>'+groups[day].map(function(row){var d=new Date(row.created_at),change=parseCmoaChange(row.details);return '<div class="activity-row"><time>'+d.toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'})+'</time><div class="activity-user">'+escapeHtmlAuth(activityUserName(row.user_email))+'</div><div><b>'+escapeHtmlAuth(row.action||'Aktion')+'</b>'+(change?renderHistoryDiff(change):(row.details?'<div class="activity-detail">'+escapeHtmlAuth(row.details)+'</div>':''))+'</div></div>';}).join('')+'</section>';}).join('');
         }
 
         async function loadCashSummaryMini() {
@@ -4250,7 +4267,7 @@ function loadFromLocalStorage() {
             if (pageId === 'catering-page') renderCateringPage();
             if (pageId === 'overview-page') renderOverview();
             if (pageId === 'fees-page') renderFees();
-            if (pageId === 'production-costs-page') renderProductionCosts();
+            if (pageId === 'production-costs-page') { renderProductionCosts();loadProductionTaskUsers();renderProductionTasks(); }
             if (pageId === 'event-needs-page') renderEventNeeds();
             if (pageId === 'global-documents-page') renderGlobalDocumentSearch();
             if (pageId === 'shuttle-page') renderShuttle();
@@ -7381,6 +7398,35 @@ function loadFromLocalStorage() {
             c.innerHTML = tableHtml;
         }
 
+        function activityUserName(email){var user=Object.values(adminUsersCache).find(function(u){return u.email===email;});return user?profileDisplayName(user):email||'Unbekannter Benutzer';}
+        function profileDisplayName(u){return String(u&&u.permissions&&u.permissions._displayName||u&&u.email||u&&u.id||'Unbekannt');}
+        function productionTaskUsers(){return Object.values(adminUsersCache||{});}
+        async function loadProductionTaskUsers(){
+            var r=await _supabase.from('profiles').select('id,email,permissions').order('email');
+            if(r.error){console.warn('Benutzer konnten nicht geladen werden:',r.error);return;}
+            (r.data||[]).forEach(function(u){adminUsersCache[u.id]=u;});
+            var opts=(r.data||[]).map(function(u){return '<option value="'+escapeHtmlAuth(u.id)+'">'+escapeHtmlAuth(profileDisplayName(u))+'</option>';}).join('');
+            ['production-task-user','production-task-user-filter'].forEach(function(id){var el=document.getElementById(id);if(!el)return;var value=el.value;el.innerHTML='<option value="">'+(id.endsWith('filter')?'Alle Benutzer':'Nicht zugewiesen')+'</option>'+opts;el.value=value;});
+            renderProductionTasks();
+        }
+        function switchProductionTab(tab){document.getElementById('production-tasks-tab').style.display=tab==='tasks'?'block':'none';document.getElementById('production-finances-tab').style.display=tab==='finances'?'block':'none';}
+        function resetProductionTaskForm(){['production-task-id','production-task-title','production-task-category','production-task-due','production-task-amount','production-task-party','production-task-note'].forEach(function(id){document.getElementById(id).value='';});document.getElementById('production-task-user').value='';document.getElementById('production-task-status').value='open';document.getElementById('production-task-has-cost').value='no';document.getElementById('production-task-cost-fields').style.display='none';document.getElementById('production-task-form-title').textContent='Aufgabe anlegen';}
+        function editProductionTask(id){var t=productionTasks.find(function(x){return x.id===id;});if(!t)return;['title','category','user','status','due','amount','party','note'].forEach(function(k){document.getElementById('production-task-'+k).value=t[k]||'';});document.getElementById('production-task-id').value=id;document.getElementById('production-task-has-cost').value=t.hasCost?'yes':'no';document.getElementById('production-task-cost-fields').style.display=t.hasCost?'contents':'none';document.getElementById('production-task-form-title').textContent='Aufgabe bearbeiten';window.scrollTo({top:0,behavior:'smooth'});}
+        async function saveProductionTask(){
+            if(!hasModuleRight('fees','write'))return alert('Keine Schreibberechtigung für Produktion.');
+            var val=function(k){return document.getElementById('production-task-'+k).value.trim();},id=val('id')||('task_'+Date.now()+'_'+Math.random().toString(36).slice(2,7)),old=productionTasks.find(function(t){return t.id===id;}),hasCost=val('has-cost')==='yes',amount=Number(val('amount'));
+            if(!val('title'))return alert('Bitte eine Aufgabe eingeben.');if(hasCost&&(!Number.isFinite(amount)||amount<=0||!val('party')))return alert('Bitte Betrag größer als 0 und Empfänger eingeben.');
+            var now=new Date().toISOString(),status=val('status'),task={id:id,title:val('title'),category:val('category'),user:val('user'),status:status,due:val('due'),hasCost:hasCost,amount:hasCost?amount:0,party:hasCost?val('party'):'',note:val('note'),doneAt:status==='done'?(old&&old.doneAt||now):'',updatedAt:now};
+            var entryId='task_cost_'+id,entry=productionEntries.find(function(e){return e.id===entryId;}),oldTasks=productionTasks.slice(),oldEntries=productionEntries.slice();
+            productionTasks=productionTasks.filter(function(t){return t.id!==id;});productionTasks.push(task);
+            if(hasCost){var cost=Object.assign({},entry||{},{id:entryId,type:'expense',party:task.party,description:task.title,amount:amount,date:entry&&entry.date||productionToday(),note:'Aufgabe · '+task.category,taskId:id,updatedAt:now});productionEntries=productionEntries.filter(function(e){return e.id!==entryId;});productionEntries.push(cost);}
+            else productionEntries=productionEntries.filter(function(e){return e.id!==entryId;});
+            try{await writeDataModule('fees');resetProductionTaskForm();renderProductionTasks();renderProductionCosts();updateMainProgress();logCmoaActivity(old?'Produktionsaufgabe bearbeitet':'Produktionsaufgabe angelegt',task.title,'fees');}
+            catch(e){productionTasks=oldTasks;productionEntries=oldEntries;alert('Aufgabe konnte nicht gespeichert werden: '+e.message);}
+        }
+        async function deleteProductionTask(id){if(!hasModuleRight('fees','write'))return;var t=productionTasks.find(function(x){return x.id===id;});if(!t||!confirm('Aufgabe „'+t.title+'“ löschen?'))return;var oldTasks=productionTasks.slice(),oldEntries=productionEntries.slice();productionTasks=productionTasks.filter(function(x){return x.id!==id;});productionEntries=productionEntries.filter(function(e){return e.id!=='task_cost_'+id;});try{await writeDataModule('fees');renderProductionTasks();renderProductionCosts();logCmoaActivity('Produktionsaufgabe gelöscht',t.title,'fees');}catch(e){productionTasks=oldTasks;productionEntries=oldEntries;alert(e.message);}}
+        async function setProductionTaskStatus(id,status){var t=productionTasks.find(function(x){return x.id===id;});if(!t||!hasModuleRight('fees','write'))return;var previous=t.status,stamp=t.doneAt;t.status=status;t.doneAt=status==='done'?(stamp||new Date().toISOString()):'';try{await writeDataModule('fees');renderProductionTasks();}catch(e){t.status=previous;t.doneAt=stamp;alert(e.message);}}
+        function renderProductionTasks(){var box=document.getElementById('production-task-list');if(!box)return;var filter=document.getElementById('production-task-filter').value,user=document.getElementById('production-task-user-filter').value,sort=document.getElementById('production-task-sort').value,labels={open:'Offen',progress:'In Bearbeitung',done:'Erledigt'},items=productionTasks.filter(function(t){return (filter==='all'||(filter==='open'?t.status!=='done':t.status==='done'))&&(!user||t.user===user);});items.sort(function(a,b){var av=sort==='due'?a.due||'9999':sort==='user'?profileDisplayName(adminUsersCache[a.user]):sort==='category'?a.category:labels[a.status]||'',bv=sort==='due'?b.due||'9999':sort==='user'?profileDisplayName(adminUsersCache[b.user]):sort==='category'?b.category:labels[b.status]||'';return String(av).localeCompare(String(bv),'de');});box.innerHTML=items.length?items.map(function(t){return '<div class="card" style="margin:9px 0"><strong>'+escapeHtmlAuth(t.title)+'</strong><div style="font-size:.82rem;color:var(--text-muted);margin:6px 0">'+escapeHtmlAuth(t.category||'Ohne Kategorie')+' · '+escapeHtmlAuth(t.user?profileDisplayName(adminUsersCache[t.user]):'Nicht zugewiesen')+(t.due?' · fällig '+formatDateDE(t.due):'')+(t.doneAt?' · erledigt '+new Date(t.doneAt).toLocaleString('de-DE'):'')+(t.hasCost?' · '+cashEuro(t.amount):'')+'</div>'+(t.note?'<p>'+escapeHtmlAuth(t.note)+'</p>':'')+'<div style="display:flex;gap:6px;flex-wrap:wrap"><select aria-label="Bearbeitungsstatus" onchange="setProductionTaskStatus(\''+t.id+'\',this.value)">'+Object.keys(labels).map(function(k){return '<option value="'+k+'" '+(t.status===k?'selected':'')+'>'+labels[k]+'</option>';}).join('')+'</select><button class="btn-subtle" onclick="editProductionTask(\''+t.id+'\')">✎ Bearbeiten</button><button class="btn-danger" onclick="deleteProductionTask(\''+t.id+'\')">🗑</button></div></div>';}).join(''):'<p>Keine passenden Aufgaben.</p>';}
         function getProductionTotals() {
             var income=0,expense=0;
             (productionEntries||[]).forEach(function(e){var amount=Number(e.amount||0);if(e.type==='income')income+=amount;else expense+=amount;});
@@ -9056,7 +9102,7 @@ function loadFromLocalStorage() {
         }
         async function cmoaLogout(){if(_supabase)await _supabase.auth.signOut();location.reload();}
         function applyCurrentUserRights(){
-          var label=document.getElementById('auth-user-label'); if(label)label.textContent=(currentAuthUser&&currentAuthUser.email?currentAuthUser.email:'')+' · '+((ROLE_PRESETS[currentUserProfile.role]||{}).label||currentUserProfile.role);
+          var label=document.getElementById('auth-user-label'); if(label)label.textContent=profileDisplayName(currentUserProfile)+' · '+((ROLE_PRESETS[currentUserProfile.role]||{}).label||currentUserProfile.role);
           document.querySelectorAll('[data-module]').forEach(function(el){var m=el.getAttribute('data-module');el.classList.toggle('permission-hidden',!hasModuleRight(m,'read'));});
           var ab=document.getElementById('admin-menu-btn');if(ab)ab.classList.toggle('permission-hidden',!hasModuleRight('admin','read')); var eb=document.getElementById('event-admin-btn');if(eb)eb.classList.toggle('permission-hidden',currentUserProfile.role!=='admin');
           var createUserCard=document.getElementById('admin-create-user-card');if(createUserCard)createUserCard.classList.toggle('permission-hidden',currentUserProfile.role!=='admin');
@@ -9176,14 +9222,14 @@ function loadFromLocalStorage() {
           var perms=effectivePermissions(u), roleOpts=''; Object.keys(ROLE_PRESETS).forEach(function(k){roleOpts+='<option value="'+k+'" '+(u.role===k?'selected':'')+'>'+ROLE_PRESETS[k].label+'</option>';});
           var rows=''; CMOA_MODULES.forEach(function(m){var v=perms[m[0]]||'none';rows+='<div class="admin-perm-row"><strong>'+m[1]+'</strong><select data-perm-user="'+u.id+'" data-perm-module="'+m[0]+'"><option value="none" '+(v==='none'?'selected':'')+'>Unsichtbar</option><option value="read" '+(v==='read'?'selected':'')+'>Nur lesen</option><option value="write" '+(v==='write'?'selected':'')+'>Bearbeiten</option><option value="delete" '+(v==='delete'?'selected':'')+'>Bearbeiten + Löschen</option></select></div>';});
           var deleteBtn=currentAuthUser&&u.id===currentAuthUser.id?'':'<button class="btn-danger" style="width:100%;margin-top:7px" onclick="deleteAdminUser(\''+u.id+'\')">🗑 Benutzer vollständig entfernen</button>';
-          return '<div class="admin-user-card"><div class="admin-user-email">'+escapeHtmlAuth(u.email||u.id)+'</div><div class="admin-user-meta">Benutzer-ID: '+escapeHtmlAuth(u.id)+'</div><label>Rolle</label><select id="role-'+u.id+'">'+roleOpts+'</select><div style="margin-top:10px">'+rows+'</div><button class="btn-primary" style="width:100%;margin-top:10px" onclick="saveAdminUserRights(\''+u.id+'\')">💾 Rechte speichern</button>'+deleteBtn+'</div>';
+          return '<div class="admin-user-card"><div class="admin-user-email">'+escapeHtmlAuth(profileDisplayName(u))+'</div><div class="admin-user-meta">'+escapeHtmlAuth(u.email||'')+' · Benutzer-ID: '+escapeHtmlAuth(u.id)+'</div><label>Anzeigename</label><input id="display-name-'+u.id+'" value="'+escapeHtmlAuth(u.permissions&&u.permissions._displayName||'')+'" placeholder="Vor- und Nachname"><label>Rolle</label><select id="role-'+u.id+'">'+roleOpts+'</select><div style="margin-top:10px">'+rows+'</div><button class="btn-primary" style="width:100%;margin-top:10px" onclick="saveAdminUserRights(\''+u.id+'\')">💾 Rechte speichern</button>'+deleteBtn+'</div>';
         }
         async function saveAdminUserRights(uid){
           if(!hasModuleRight('admin','write')){alert('Keine Schreibberechtigung für Benutzerverwaltung.');return;}
-          var role=document.getElementById('role-'+uid).value, custom={};
+          var role=document.getElementById('role-'+uid).value, custom={_displayName:document.getElementById('display-name-'+uid).value.trim()};
           document.querySelectorAll('[data-perm-user="'+uid+'"]').forEach(function(el){custom[el.getAttribute('data-perm-module')]=el.value;});
           var r=await _supabase.from('profiles').update({role:role,permissions:custom}).eq('id',uid); if(r.error){alert('Fehler: '+r.error.message);return;} alert('✅ Rechte gespeichert.');
-          if(currentAuthUser&&uid===currentAuthUser.id){currentUserProfile.role=role;currentUserProfile.permissions=custom;applyCurrentUserRights();}
+          if(adminUsersCache[uid])adminUsersCache[uid].permissions=custom; if(currentAuthUser&&uid===currentAuthUser.id){currentUserProfile.role=role;currentUserProfile.permissions=custom;applyCurrentUserRights();}
         }
         async function deleteAdminUser(uid){
           if(!currentUserProfile||currentUserProfile.role!=='admin'){alert('Nur Administratoren dürfen Benutzer entfernen.');return;}
