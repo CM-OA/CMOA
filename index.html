@@ -2243,7 +2243,7 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
                     <div class="akk-card-title">Neue Akkreditierung</div>
 
                     <label style="display:block; font-size:12px; font-weight:700; margin-bottom:4px; color:var(--text-muted);">Name *</label>
-                    <input type="text" id="in-name" placeholder="Vor- und Nachname">
+                    <input type="text" id="in-name" placeholder="Vor- und Nachname"><label class="checkbox-group" style="display:flex;align-items:center;gap:8px;margin-top:8px"><input type="checkbox" id="in-blanko" onchange="toggleAkkBlanko()"><span>Blanko-Akkreditierung ohne Namen</span></label>
 
                     <label style="display:block; font-size:12px; font-weight:700; margin-bottom:4px; color:var(--text-muted); margin-top:10px;">Organisation</label>
                     <input type="text" id="in-org" placeholder="z. B. Magazin, Band">
@@ -4317,6 +4317,7 @@ function loadFromLocalStorage() {
         // =============================================================
         // AKKREDITIERUNG LOGIK & INTERAKTIONEN
         // =============================================================
+        function toggleAkkBlanko(){var blanko=document.getElementById('in-blanko'),name=document.getElementById('in-name');if(!blanko||!name)return;if(blanko.checked)name.value='';name.disabled=blanko.checked;name.placeholder=blanko.checked?'Auf PDF steht: Blanko':'Vor- und Nachname';}
         function initAkkreditierung() {
             function switchAkkTab(secId, btn) {
                 document.querySelectorAll('#akkreditierung-page .akk-section').forEach(function(s){ s.classList.remove('active'); });
@@ -4386,7 +4387,8 @@ function loadFromLocalStorage() {
             var btnSubmit = document.getElementById('btn-submit');
             if (btnSubmit) {
                 btnSubmit.onclick = function() {
-                    var name = document.getElementById('in-name').value.trim();
+                    var blanko=document.getElementById('in-blanko').checked;
+                    var name=blanko?'Blanko':document.getElementById('in-name').value.trim();
                     var org = document.getElementById('in-org').value.trim();
                     var emailEl = document.getElementById('in-email');
                     var email = emailEl ? emailEl.value.trim() : '';
@@ -4395,7 +4397,7 @@ function loadFromLocalStorage() {
 
                     if(isFree) amt = 0;
 
-                    if(!name || !selPerm || !selDay || isNaN(amt)) {
+                    if(!name || (blanko&&!org) || !selPerm || !selDay || isNaN(amt)) {
                         msg.textContent = "Bitte alle Pflichtfelder (*) ausfüllen!";
                         msg.className = "akk-message show error";
                         setTimeout(function(){ msg.className = "akk-message"; }, 2500);
@@ -4405,6 +4407,7 @@ function loadFromLocalStorage() {
                     var newAkkRecord={
                         id: generateID(),
                         name: name,
+                        blanko: blanko,
                         org: org || "—",
                         perm: selPerm,
                         day: selDay,
@@ -4418,6 +4421,7 @@ function loadFromLocalStorage() {
                     akkDb.push(newAkkRecord);
 
                     document.getElementById('in-name').value = "";
+                    document.getElementById('in-blanko').checked=false;toggleAkkBlanko();
                     document.getElementById('in-org').value = "";
                     if (emailEl) emailEl.value = "";
                     amtIn.value = "";
@@ -4810,7 +4814,6 @@ function loadFromLocalStorage() {
                 'anbei erhältst du deine Zufahrtsgenehmigung für '+eventName+'.\n\n'+
                 'Kennzeichen: '+p.plate+'\nParkbereich: '+p.parking+'\nID: '+p.id+'\n\n'+
                 'Bitte halte die Genehmigung bei der Ankunft digital oder ausgedruckt für die Parkeinweiser bereit.\n\n'+
-                'Bitte die heruntergeladene PDF-Zufahrtsgenehmigung als Anhang hinzufügen.\n\n'+
                 'Bei Rückfragen kannst du dich gerne an uns wenden.';
             window.location.href='mailto:'+encodeURIComponent(p.email)+'?cc='+encodeURIComponent('cmoa@gmx.de')+'&subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(body);
         }
@@ -4837,10 +4840,13 @@ function loadFromLocalStorage() {
             if (!to) { alert('Für diese Akkreditierung ist keine E-Mail-Adresse hinterlegt.'); return; }
 
             var eventName = (currentEvent && (currentEvent.short_name || currentEvent.name)) || 'CMOA 2027';
-            var subject = 'Akkreditierung – ' + eventName + ' – ' + String(rec.id || '') + ' – ' + String(rec.name || '');
+            var isBlanko=rec.blanko===true||String(rec.name||'').trim().toLocaleLowerCase('de-DE')==='blanko';
+            var mailName=isBlanko?String(rec.org||'').trim():String(rec.name||'').trim();
+            if(isBlanko&&(!mailName||mailName==='—'))return alert('Für den Versand einer Blanko-Akkreditierung bitte eine Organisation hinterlegen.');
+            var subject = 'Akkreditierung – ' + eventName + ' – ' + String(rec.id || '') + ' – ' + mailName;
             // mailto unterstützt nur reinen Text. Die Unicode-Zeichen erzeugen optisch eine kursive Hinweiszeile.
             var body = '𝑑𝑖𝑒𝑠 𝑖𝑠𝑡 𝑒𝑖𝑛𝑒 𝑎𝑢𝑡𝑜𝑚𝑎𝑡𝑖𝑠𝑐ℎ 𝑔𝑒𝑛𝑒𝑟𝑖𝑒𝑟𝑡𝑒 𝑒-𝑚𝑎𝑖𝑙\n\n' +
-                'Hallo ' + String(rec.name || '') + ',\n\n' +
+                'Hallo ' + mailName + ',\n\n' +
                 'anbei erhältst du deine Akkreditierung für ' + eventName + '.\n\n' +
                 'Bitte bringe die Akkreditierung digital oder ausgedruckt zur Veranstaltung mit.\n\n' +
                 'Auf der Akkreditierung befindet sich ein QR-Code für den schnellen Check-in. Bitte halte ihn am Einlass gut sichtbar bereit.\n\n' +
