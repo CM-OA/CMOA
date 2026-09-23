@@ -2861,6 +2861,7 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
                 <div class="stat-row"><span>Gagen (Brutto):</span><span id="stat-total" class="cost-val">0,00 €</span></div>
                 <div class="stat-row"><span>Produktionsausgaben:</span><strong id="stat-production-expense" class="cost-val">0,00 €</strong></div>
                 <div class="stat-row"><span>Weitere Einnahmen:</span><strong id="stat-production-income" style="color:var(--accent-green)">0,00 €</strong></div>
+                <div class="stat-row"><span>Akkreditierungen (eingecheckt):</span><strong id="stat-accreditation-income" style="color:var(--accent-green)">0,00 €</strong></div>
                 <div class="stat-row"><span>Ausgaben insgesamt:</span><strong id="stat-all-expense-total" class="cost-val">0,00 €</strong></div>
                 <div class="stat-row"><span>Kosten nach Gegenrechnung:</span><strong id="stat-all-cost-total" class="cost-val">0,00 €</strong></div>
             </div>
@@ -3740,6 +3741,11 @@ function loadFromLocalStorage() {
             });
         }
 
+        function getCheckedAccreditationIncome(){
+            return (Array.isArray(akkDb)?akkDb:[]).reduce(function(sum,rec){
+                var amount=Number(rec&&rec.amt);return sum+(rec&&rec.chk&&Number.isFinite(amount)&&amount>0?amount:0);
+            },0);
+        }
         function calculateFestivalCosts() {
             var feesGross = 0;
             var hotelTotal = 0;
@@ -3758,8 +3764,9 @@ function loadFromLocalStorage() {
             var shuttleTotal = getShuttleCostTotals().total;
             var production=getProductionTotals();
             var expenseTotal=feesGross+hotelTotal+shuttleTotal+production.expense;
-            var netTotal=expenseTotal-production.income;
-            return { feesGross:feesGross, hotelTotal:hotelTotal, shuttleTotal:shuttleTotal, productionExpense:production.expense, productionIncome:production.income, expenseTotal:expenseTotal, total:netTotal };
+            var accreditationIncome=getCheckedAccreditationIncome();
+            var netTotal=expenseTotal-production.income-accreditationIncome;
+            return { feesGross:feesGross, hotelTotal:hotelTotal, shuttleTotal:shuttleTotal, productionExpense:production.expense, productionIncome:production.income, accreditationIncome:accreditationIncome, expenseTotal:expenseTotal, total:netTotal };
         }
 
         function buildCashEventFinancials(data) {
@@ -3854,7 +3861,8 @@ function loadFromLocalStorage() {
             var beverageTaxByCategory=finance&&finance.taxByCategory?finance.taxByCategory:{drink:{label:'Getränke',net:0,tax:0,gross:0},food:{label:'Speisen',net:0,tax:0,gross:0}};
             var depositIncome=finance?finance.depositCharged:0;
             var depositExpense=finance?finance.depositReturned:0;
-            var incomeTotal=production.income+beverageRevenue;
+            var accreditationIncome=getCheckedAccreditationIncome();
+            var incomeTotal=production.income+beverageRevenue+accreditationIncome;
             var expenseTotal=costs.expenseTotal;
             var balance=incomeTotal-expenseTotal;
             var eventTitle=(currentEvent&&(currentEvent.short_name||currentEvent.name))||'CMOA';
@@ -3941,9 +3949,10 @@ function loadFromLocalStorage() {
             section('Kennzahlen');
             row('Bands / Acts',String(bandList.length));row('Erfasste Artist- und VIP-Personen',String(artistPersons));
             row('Akkreditierungen',String(accreditationList.length));row('Davon eingecheckt',accreditedChecked+' von '+accreditationList.length);
-            row('Freie Akkreditierungen',String(accreditedFree));row('Akkreditierungsbeträge',money(accreditedAmount));
+            row('Freie Akkreditierungen',String(accreditedFree));row('Erfasste Akkreditierungsbeträge',money(accreditedAmount));row('Einnahmen aus eingecheckten Akkreditierungen',money(accreditationIncome));
 
             section('Finanzielle Auswertung');
+            row('Akkreditierungen (eingecheckt)',signedMoney(accreditationIncome,'+'),'green');
             row('Getränke netto',signedMoney(beverageTaxByCategory.drink.net,'+'),'green');row('Getränke Umsatzsteuer',signedMoney(beverageTaxByCategory.drink.tax,'+'));row('Getränke brutto',signedMoney(beverageTaxByCategory.drink.gross,'+'));row('Speisen netto',signedMoney(beverageTaxByCategory.food.net,'+'),'green');row('Speisen Umsatzsteuer',signedMoney(beverageTaxByCategory.food.tax,'+'));row('Speisen brutto',signedMoney(beverageTaxByCategory.food.gross,'+'));row('Speisen und Getränke netto gesamt',signedMoney(beverageRevenue,'+'),'green');row('Umsatzsteuer gesamt',signedMoney(beverageTax,'+'));row('Brutto gesamt',signedMoney(beverageGross,'+'));row('Weitere Einnahmen',signedMoney(production.income,'+'),'green');row('Nettoeinnahmen gesamt',signedMoney(incomeTotal,'+'),'green');
             row('Bandgagen brutto',signedMoney(costs.feesGross,'-'));row('Hotelkosten',signedMoney(costs.hotelTotal,'-'));row('Shuttlekosten',signedMoney(costs.shuttleTotal,'-'));row('Produktionsausgaben',signedMoney(costs.productionExpense,'-'));row('Ausgaben gesamt',signedMoney(expenseTotal,'-'),'red');
             row('Saldo Einnahmen minus Ausgaben',signedMoney(balance,balance>=0?'+':'-'),balance>=0?'green':'red');
@@ -4263,6 +4272,7 @@ function loadFromLocalStorage() {
                     + '<div class="cash-finance-row"><span>Produktionsausgaben</span><b>' + cashEuro(finance.costs.productionExpense) + '</b></div>'
                     + '<div class="cash-finance-row cash-finance-total"><span>Ausgaben gesamt</span><b>' + cashEuro(finance.costs.expenseTotal) + '</b></div>'
                     + '<div class="cash-finance-row"><span>Weitere Einnahmen (Tickets, Merchandise usw.)</span><b style="color:var(--accent-green)">− ' + cashEuro(finance.costs.productionIncome) + '</b></div>'
+                    + '<div class="cash-finance-row"><span>Akkreditierungen (kostenpflichtig und eingecheckt)</span><b style="color:var(--accent-green)">− ' + cashEuro(finance.costs.accreditationIncome) + '</b></div>'
                     + '<div class="cash-finance-row cash-finance-total"><span>Veranstaltungskosten nach Gegenrechnung</span><b>' + cashEuro(finance.costs.total) + '</b></div>'
                     + '<div class="cash-finance-row cash-finance-result ' + (finance.result >= 0 ? 'positive' : 'negative') + '"><span>Alle Einnahmen minus alle Ausgaben</span><b>' + cashEuro(finance.result) + '</b></div>'
                     + '<div class="cash-finance-note">Cateringkosten sind nicht enthalten, weil dafür in dieser HTML noch keine Euro-Preise erfasst werden.</div>'
@@ -7434,8 +7444,9 @@ function loadFromLocalStorage() {
             var allExpenses=(net+taxSum)+totalHotelCost+getShuttleCostTotals().total+productionTotals.expense;
             setTxt('stat-production-expense', productionTotals.expense.toLocaleString('de-DE', {minimumFractionDigits:2,maximumFractionDigits:2})+' €');
             setTxt('stat-production-income', productionTotals.income.toLocaleString('de-DE', {minimumFractionDigits:2,maximumFractionDigits:2})+' €');
+            setTxt('stat-accreditation-income',getCheckedAccreditationIncome().toLocaleString('de-DE',{minimumFractionDigits:2,maximumFractionDigits:2})+' €');
             setTxt('stat-all-expense-total', allExpenses.toLocaleString('de-DE', {minimumFractionDigits:2,maximumFractionDigits:2})+' €');
-            setTxt('stat-all-cost-total', (allExpenses-productionTotals.income).toLocaleString('de-DE', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' €');
+            setTxt('stat-all-cost-total', (allExpenses-productionTotals.income-getCheckedAccreditationIncome()).toLocaleString('de-DE', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' €');
             setTxt('stat-shuttle-count', shuttleCnt);
         }
 
