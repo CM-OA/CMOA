@@ -1511,7 +1511,7 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
         .activity-user { color:var(--accent-blue); font-weight:750; overflow-wrap:anywhere; }
         .activity-detail { color:var(--text-muted); margin-top:2px; font-size:.69rem; }
 
-        .permit-item{display:flex;align-items:center;justify-content:space-between;gap:12px;border:1px solid var(--border);border-radius:12px;padding:12px;margin:9px 0;background:var(--input-bg)}.permit-main{display:flex;flex-direction:column;gap:4px;min-width:0;overflow-wrap:anywhere}.permit-main strong{font-size:1.2rem;letter-spacing:.05em}.permit-main .badge{align-self:flex-start}.permit-main small{color:var(--text-muted)}.permit-actions{display:flex;gap:5px;flex-wrap:wrap}@media(max-width:600px){.permit-item{display:block}.permit-actions{margin-top:12px}}
+        .permit-item{display:flex;align-items:center;justify-content:space-between;gap:12px;border:1px solid var(--border);border-radius:12px;padding:12px;margin:9px 0;background:var(--input-bg)}.permit-main{display:flex;flex-direction:column;gap:4px;min-width:0;overflow-wrap:anywhere}.permit-main strong{font-size:1.2rem;letter-spacing:.05em}.permit-main .badge{align-self:flex-start}.permit-main small{color:var(--text-muted)}.permit-actions{display:flex;gap:8px;flex-wrap:wrap}.permit-actions button{min-height:42px;padding:9px 12px}.permit-actions .permit-delete{min-width:94px;font-weight:800}@media(max-width:600px){.permit-item{display:block}.permit-actions{margin-top:12px}}
         .production-hint{font-size:.81rem;color:var(--text-muted);line-height:1.5;margin:5px 0 14px}
         .production-tab-nav{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
         .production-tab{display:flex;flex-direction:column;align-items:flex-start;gap:5px;min-width:0;padding:15px;border:1px solid var(--border);border-radius:13px;background:var(--input-bg);color:var(--text);text-align:left;cursor:pointer;transition:background .15s,border-color .15s,transform .15s}
@@ -4799,19 +4799,33 @@ function loadFromLocalStorage() {
         }
         function editAccessPermit(id){var p=accessPermits.find(function(r){return r.id===id;});if(!p)return;document.getElementById('permit-edit-id').value=p.id;['name','organisation','plate','email','parking'].forEach(function(k){document.getElementById('permit-'+k).value=p[k]||'';});document.getElementById('permit-form-title').textContent='Genehmigung '+p.id+' bearbeiten';window.scrollTo({top:0,behavior:'smooth'});}
         async function deleteAccessPermit(id){if(!hasModuleRight('accreditation','write'))return;var p=accessPermits.find(function(r){return r.id===id;});if(!p||!confirm('Zufahrtsgenehmigung '+id+' für '+p.plate+' wirklich löschen?'))return;var before=accessPermits.slice();accessPermits=accessPermits.filter(function(r){return r.id!==id;});try{await writeDataModule('accreditation');if(document.getElementById('permit-edit-id').value===id)resetAccessPermitForm();renderAccessPermits();logCmoaActivity('Zufahrtsgenehmigung gelöscht',id+' · '+p.plate,'accreditation');}catch(e){accessPermits=before;alert(e.message);}}
-        function renderAccessPermits(){var box=document.getElementById('permit-list');if(!box)return;var search=document.getElementById('permit-search').value.trim().toLocaleLowerCase('de-DE'),area=document.getElementById('permit-filter').value,items=accessPermits.filter(function(p){return (!area||p.parking===area)&&(!search||[p.id,p.name,p.organisation,p.plate,p.email,p.parking].join(' ').toLocaleLowerCase('de-DE').includes(search));}).sort(function(a,b){return String(b.createdAt||'').localeCompare(String(a.createdAt||''));});document.getElementById('permit-count').textContent=items.length+' / '+accessPermits.length;box.innerHTML=items.length?items.map(function(p){return '<div class="permit-item"><div class="permit-main"><strong>'+escapeHtmlAuth(p.plate)+'</strong><span class="badge">'+escapeHtmlAuth(p.parking)+'</span><small>ID '+escapeHtmlAuth(p.id)+' · '+escapeHtmlAuth(p.name)+' · '+escapeHtmlAuth(p.organisation)+'</small><small>'+escapeHtmlAuth(p.email)+'</small></div><div class="permit-actions"><button class="btn-primary" onclick="exportAccessPermitPdf(\''+p.id+'\')">📄 PDF</button>'+(hasModuleRight('accreditation','write')?'<button class="btn-subtle" onclick="editAccessPermit(\''+p.id+'\')">✎</button><button class="btn-danger" onclick="deleteAccessPermit(\''+p.id+'\')">🗑</button>':'')+'</div></div>';}).join(''):'<p class="akk-empty">Keine Genehmigungen gefunden.</p>';}
+        function renderAccessPermits(){var box=document.getElementById('permit-list');if(!box)return;var search=document.getElementById('permit-search').value.trim().toLocaleLowerCase('de-DE'),area=document.getElementById('permit-filter').value,items=accessPermits.filter(function(p){return (!area||p.parking===area)&&(!search||[p.id,p.name,p.organisation,p.plate,p.email,p.parking].join(' ').toLocaleLowerCase('de-DE').includes(search));}).sort(function(a,b){return String(b.createdAt||'').localeCompare(String(a.createdAt||''));});document.getElementById('permit-count').textContent=items.length+' / '+accessPermits.length;box.innerHTML=items.length?items.map(function(p){return '<div class="permit-item"><div class="permit-main"><strong>'+escapeHtmlAuth(p.plate)+'</strong><span class="badge">'+escapeHtmlAuth(p.parking)+'</span><small>ID '+escapeHtmlAuth(p.id)+' · '+escapeHtmlAuth(p.name)+' · '+escapeHtmlAuth(p.organisation)+'</small><small>'+escapeHtmlAuth(p.email)+'</small></div><div class="permit-actions"><button class="btn-primary" onclick="exportAccessPermitPdf(\''+p.id+'\')">📄 PDF</button>'+(hasModuleRight('accreditation','write')?'<button class="btn-subtle" onclick="editAccessPermit(\''+p.id+'\')">✎</button><button class="btn-danger permit-delete" onclick="deleteAccessPermit(\''+p.id+'\')">🗑 Löschen</button>':'')+'</div></div>';}).join(''):'<p class="akk-empty">Keine Genehmigungen gefunden.</p>';}
+        function prepareAccessPermitEmail(id){
+            var p=accessPermits.find(function(r){return r.id===id;});if(!p)return;
+            if(!p.email)return alert('Für diese Genehmigung ist keine E-Mail-Adresse hinterlegt.');
+            var eventName=(currentEvent&&(currentEvent.short_name||currentEvent.name))||'CMOA 2027';
+            var subject='Zufahrtsgenehmigung – '+eventName+' – ID '+p.id+' – '+p.name;
+            var body='𝑑𝑖𝑒𝑠 𝑖𝑠𝑡 𝑒𝑖𝑛𝑒 𝑎𝑢𝑡𝑜𝑚𝑎𝑡𝑖𝑠𝑐ℎ 𝑔𝑒𝑛𝑒𝑟𝑖𝑒𝑟𝑡𝑒 𝑒-𝑚𝑎𝑖𝑙\n\n'+
+                'Hallo '+p.name+',\n\n'+
+                'anbei erhältst du deine Zufahrtsgenehmigung für '+eventName+'.\n\n'+
+                'Kennzeichen: '+p.plate+'\nParkbereich: '+p.parking+'\nID: '+p.id+'\n\n'+
+                'Bitte halte die Genehmigung bei der Ankunft digital oder ausgedruckt für die Parkeinweiser bereit.\n\n'+
+                'Bitte die heruntergeladene PDF-Zufahrtsgenehmigung als Anhang hinzufügen.\n\n'+
+                'Bei Rückfragen kannst du dich gerne an uns wenden.';
+            window.location.href='mailto:'+encodeURIComponent(p.email)+'?cc='+encodeURIComponent('cmoa@gmx.de')+'&subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(body);
+        }
         function exportAccessPermitPdf(id){
             if(!hasModuleRight('accreditation','read'))return;var p=accessPermits.find(function(r){return r.id===id;});if(!p)return;
             if(!window.jspdf||!window.jspdf.jsPDF)return alert('PDF-Modul konnte nicht geladen werden. Bitte Internetverbindung prüfen.');
             var doc=new window.jspdf.jsPDF({orientation:'landscape',unit:'mm',format:'a4'}),eventName=String(currentEvent&&currentEvent.short_name||currentEvent&&currentEvent.name||'VERANSTALTUNG'),plate=p.plate.toUpperCase();
             doc.setFillColor(255,255,255);doc.rect(0,0,297,210,'F');doc.setTextColor(18,23,30);
             try{doc.addImage(AKK_PDF_LOGO_2027,'PNG',13,12,45,43);doc.addImage(AKK_PDF_LOGO_2027,'PNG',239,12,45,43);}catch(e){console.warn('Logo konnte nicht eingefügt werden',e);}
-            doc.setFont('helvetica','normal');doc.setFontSize(23);doc.text('Zufahrtsgenehmigung',148.5,24,{align:'center'});
-            doc.setFont('helvetica','bold');doc.setFontSize(29);doc.text(doc.splitTextToSize(eventName.toUpperCase(),160)[0],148.5,42,{align:'center'});
-            doc.setFontSize(21);doc.text('ID '+p.id,148.5,75,{align:'center'});
-            var size=48;doc.setFont('helvetica','bold');while(size>18&&doc.getTextWidth(plate)>265){size-=2;doc.setFontSize(size);}doc.text(plate,148.5,118,{align:'center'});
-            doc.setFont('helvetica','bold');doc.setFontSize(17);doc.text('PARKBEREICH: '+p.parking.toUpperCase(),148.5,144,{align:'center'});
-            doc.setFontSize(13);doc.text('Bitte bei Ankunft den Parkeinweisern vorzeigen',148.5,172,{align:'center'});
+            doc.setFont('helvetica','normal');doc.setFontSize(19);doc.text('Zufahrtsgenehmigung',148.5,24,{align:'center'});
+            doc.setFont('helvetica','bold');doc.setFontSize(23);doc.text(doc.splitTextToSize(eventName.toUpperCase(),160)[0],148.5,41,{align:'center'});
+            doc.setFontSize(18);doc.text('ID '+p.id,148.5,68,{align:'center'});
+            var size=76;doc.setFont('helvetica','bold');doc.setFontSize(size);while(size>22&&doc.getTextWidth(plate)>270){size-=2;doc.setFontSize(size);}doc.text(plate,148.5,122,{align:'center'});
+            doc.setFont('helvetica','bold');doc.setFontSize(14);doc.text('PARKBEREICH: '+p.parking.toUpperCase(),148.5,148,{align:'center'});
+            doc.setFontSize(11);doc.text('Bitte bei Ankunft den Parkeinweisern vorzeigen',148.5,174,{align:'center'});
             doc.setDrawColor(212,218,225);doc.line(14,185,283,185);doc.setFont('helvetica','normal');doc.setFontSize(9);doc.text(doc.splitTextToSize(p.name+' · '+p.organisation,265)[0],148.5,194,{align:'center'});
             doc.save('Zufahrtsgenehmigung_'+p.id+'_'+plate.replace(/[^A-Z0-9_-]/g,'_')+'.pdf');
         }
