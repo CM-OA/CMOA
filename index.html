@@ -1976,8 +1976,14 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
         .inventory-section-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-bottom:10px}
         .inventory-stock-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:9px}
         .inventory-stock-card{border:1px solid var(--border);border-radius:12px;background:var(--input-bg);padding:11px;position:relative;overflow:hidden}
-        .inventory-stock-card.low{border-color:#f59e0b}
-        .inventory-stock-card.critical,.inventory-stock-card.negative{border-color:#dc2626}
+        .inventory-stock-card.low{
+            border-color:#f59e0b;
+            background:color-mix(in srgb,#f59e0b 16%,var(--card-bg));
+        }
+        .inventory-stock-card.critical,.inventory-stock-card.negative{
+            border-color:#dc2626;
+            background:color-mix(in srgb,#dc2626 16%,var(--card-bg));
+        }
         .inventory-stock-top{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}
         .inventory-stock-name{font-weight:900;font-size:.9rem}
         .inventory-stock-value{font-size:1.25rem;font-weight:950;white-space:nowrap}
@@ -2007,6 +2013,9 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
         .inventory-loading,.inventory-empty{padding:16px;text-align:center;color:var(--text-muted);font-size:.75rem}
         .inventory-cost-total{font-weight:950;color:#dc2626}
         body.night-mode .inventory-stock-card{background:color-mix(in srgb,var(--card-bg) 80%,#000)}
+        body.night-mode .inventory-stock-card.low{background:color-mix(in srgb,#f59e0b 20%,var(--card-bg))}
+        body.night-mode .inventory-stock-card.critical,
+        body.night-mode .inventory-stock-card.negative{background:color-mix(in srgb,#dc2626 22%,var(--card-bg))}
         @media(max-width:700px){
             .inventory-summary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
             .inventory-title-row{display:block}
