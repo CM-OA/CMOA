@@ -4182,9 +4182,10 @@ function loadFromLocalStorage() {
                         && Number(sale.total || 0) === 0
                         && Number(sale.drinks_total || 0) === 0
                         && Number(sale.deposit_returned || 0) === 0;
-                    var isToken = !isFree && Number(sale.drinks_total || 0) === 0
-                        && Number(i.unit_price || i.price || 0) > 0
-                        && Number(sale.deposit_returned || 0) === 0;
+                    var isToken = !isFree && Number(sale.total || 0) === 0
+                        && Number(sale.drinks_total || 0) === 0
+                        && Number(sale.deposit_returned || 0) === 0
+                        && !!i.drink_id;
                     var name = String(i.drink_name || i.product_name || i.name || 'Getränk');
                     var product=productById[i.drink_id]||{},v1=product.category==='food'?0:Number(product.volume1||0),v2=product.category==='food'?0:Number(product.volume2||0);
                     if (!drinkMap[name]) drinkMap[name] = { name: name, quantity: 0, paidQuantity: 0, tokenQuantity: 0, directFreeQuantity: 0, freeQuantity: 0, revenue: 0, liters: 0, paidLiters: 0, tokenLiters: 0, directFreeLiters: 0 };
@@ -4288,9 +4289,10 @@ function loadFromLocalStorage() {
                     && Number(sale.total || 0) === 0
                     && Number(sale.drinks_total || 0) === 0
                     && Number(sale.deposit_returned || 0) === 0;
-                var isToken = !isFree && Number(sale.drinks_total || 0) === 0
-                    && Number(i.unit_price || i.price || 0) > 0
-                    && Number(sale.deposit_returned || 0) === 0;
+                var isToken = !isFree && Number(sale.total || 0) === 0
+                        && Number(sale.drinks_total || 0) === 0
+                        && Number(sale.deposit_returned || 0) === 0
+                        && !!i.drink_id;
                 var name = String(i.drink_name || i.product_name || i.name || 'Getränk');
                 var product=productById[i.drink_id]||{},v1=product.category==='food'?0:Number(product.volume1||0),v2=product.category==='food'?0:Number(product.volume2||0);
                 if (!drinks[name]) drinks[name] = { name: name, quantity: 0, paidQuantity: 0, tokenQuantity: 0, directFreeQuantity: 0, freeQuantity: 0, revenue: 0, liters: 0, paidLiters: 0, tokenLiters: 0, directFreeLiters: 0 };
@@ -4636,7 +4638,7 @@ function loadFromLocalStorage() {
                 var sale=saleById[i.sale_id];if(!sale)return;
                 var qty=Number(i.quantity||0);if(qty<=0)return;
                 var isFree=sale.amount_given!==null&&sale.amount_given!==undefined&&Number(sale.amount_given)===0&&Number(sale.total||0)===0&&Number(sale.drinks_total||0)===0&&Number(sale.deposit_returned||0)===0;
-                var isToken=!isFree&&Number(sale.drinks_total||0)===0&&Number(i.unit_price||i.price||0)>0&&Number(sale.deposit_returned||0)===0;
+                var isToken=!isFree&&Number(sale.total||0)===0&&Number(sale.drinks_total||0)===0&&Number(sale.deposit_returned||0)===0&&!!i.drink_id;
                 if(isFree||isToken)return;
                 var product=productById[i.drink_id]||{},category=product.category==='food'||i.category==='food'?'food':'drink';
                 var amount=qty*Number(i.unit_price||i.price||0),vatRate=Number(product.vatRate);
