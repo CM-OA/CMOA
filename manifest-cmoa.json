@@ -1,0 +1,26 @@
+{
+  "id": "./index.html?app=cmoa",
+  "name": "CMOA Festival Management",
+  "short_name": "CMOA",
+  "description": "Festival- und Veranstaltungsmanagement",
+  "start_url": "./index.html?app=cmoa",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#f8fafc",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "./cmoa-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./cmoa-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
