@@ -9669,7 +9669,7 @@ document.addEventListener('keydown',function(e){
               if(day!==lastDay){html+='<div class="internal-chat-day">'+escapeHtmlAuth(day)+'</div>';lastDay=day;}
               html+='<div class="internal-chat-row '+(mine?'mine':'')+'"><div class="internal-chat-bubble">'
                 +'<div class="internal-chat-meta"><span class="internal-chat-sender">'+escapeHtmlAuth(m.sender_name||'Unbekannt')+'</span><span class="internal-chat-time">'+escapeHtmlAuth(internalChatTime(m.created_at))+'</span>'
-                +(internalChatIsAdmin()?'<button type="button" class="internal-chat-delete" title="Nachricht löschen" onclick="deleteInternalChatMessage(\\''+m.id+'\\')">🗑</button>':'')
+                +(internalChatIsAdmin()?'<button type="button" class="internal-chat-delete" data-chat-id="'+escapeHtmlAuth(m.id)+'" title="Nachricht löschen" onclick="deleteInternalChatMessage(this.dataset.chatId)">🗑</button>':'')
                 +'</div><div class="internal-chat-text">'+escapeHtmlAuth(m.message||'')+'</div></div></div>';
             });
             box.innerHTML=html;
