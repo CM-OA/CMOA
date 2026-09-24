@@ -1743,6 +1743,53 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
             .band-view-export-actions { grid-template-columns:1fr !important; }
             .festival-cockpit-grid { grid-template-columns:1fr; }
         }
+
+        /* ===== BENUTZERVERWALTUNG KOMPAKT ===== */
+        .admin-user-card-compact{padding:12px 14px}
+        .admin-user-card-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+        .admin-user-card-person{min-width:0}
+        .admin-user-name{font-weight:900;font-size:1rem;overflow-wrap:anywhere}
+        .admin-user-address{color:#059669;font-size:.82rem;font-weight:850;margin-top:3px;overflow-wrap:anywhere}
+        body.night-mode .admin-user-address{color:#34d399}
+        .admin-role-chip{flex:0 0 auto;padding:4px 8px;border-radius:999px;background:var(--input-bg);border:1px solid var(--border);font-size:.68rem;font-weight:800;color:var(--text-muted)}
+        .admin-user-rights{margin-top:9px;border-top:1px solid var(--border);padding-top:7px}
+        .admin-user-rights>summary{cursor:pointer;list-style:none;font-size:.78rem;font-weight:850;color:var(--text-main);display:flex;justify-content:space-between;align-items:center;padding:5px 0}
+        .admin-user-rights>summary::-webkit-details-marker{display:none}
+        .admin-user-rights>summary span{font-size:.66rem;color:var(--text-muted);font-weight:700}
+        .admin-user-rights[open]>summary span{font-size:0}
+        .admin-user-rights[open]>summary span::after{content:'zuklappen';font-size:.66rem}
+        .admin-user-rights-body{padding-top:9px}
+        .admin-permissions-box{margin-top:10px;border:1px solid var(--border);border-radius:10px;overflow:hidden}
+        .admin-permissions-box .admin-perm-row{margin:0;padding:7px 9px;border-bottom:1px solid var(--border)}
+        .admin-permissions-box .admin-perm-row:last-child{border-bottom:0}
+        .admin-cash-access{display:flex!important;align-items:center;gap:8px;margin-top:12px!important;text-transform:none!important}
+        .admin-cash-access input{width:18px!important;height:18px!important}
+        .admin-user-id{margin-top:8px;color:var(--text-muted);font-size:.64rem;overflow-wrap:anywhere}
+
+        /* ===== VERANSTALTUNGSWETTER ===== */
+        .event-weather-button{width:38px;height:38px;border:1px solid var(--border);border-radius:12px;background:var(--card-bg);color:var(--text-main);font-size:1.25rem;display:grid;place-items:center;cursor:pointer;box-shadow:0 2px 7px rgba(0,0,0,.08)}
+        .event-weather-button:hover{transform:translateY(-1px)}
+        .event-weather-dialog{width:min(900px,100%)}
+        .event-weather-meta{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:10px 12px;margin-bottom:10px;border:1px solid var(--border);border-radius:10px;background:var(--card-bg);font-size:.78rem}
+        .event-weather-meta span{color:var(--text-muted);text-align:right}
+        .event-weather-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px}
+        .event-weather-day{padding:11px 9px;border:1px solid var(--border);border-radius:12px;background:var(--card-bg);text-align:center}
+        .event-weather-day.event-day{border:2px solid var(--accent-blue);box-shadow:0 0 0 2px rgba(37,99,235,.08)}
+        .event-weather-date{display:flex;justify-content:center;align-items:center;gap:5px;color:var(--text-muted);font-size:.68rem;font-weight:800}
+        .event-weather-date b{font-size:.54rem;padding:2px 5px;border-radius:999px;background:var(--accent-blue);color:#fff}
+        .event-weather-icon{font-size:2rem;margin:7px 0 3px}
+        .event-weather-day>strong{display:block;font-size:.76rem;min-height:30px}
+        .event-weather-temp{font-size:1rem;font-weight:900;margin:6px 0}
+        .event-weather-day small{display:block;color:var(--text-muted);font-size:.64rem;line-height:1.55}
+        .event-weather-source{margin-top:10px;text-align:center;color:var(--text-muted);font-size:.64rem}
+        .event-weather-wait{text-align:center;padding:28px 15px;border:1px solid var(--border);border-radius:14px;background:var(--card-bg)}
+        .event-weather-wait-icon{font-size:3rem;margin-bottom:8px}
+        .event-weather-wait strong{font-size:1rem}
+        .event-weather-wait p{max-width:580px;margin:10px auto;line-height:1.55;color:var(--text-muted);font-size:.8rem}
+        .event-weather-wait small{color:var(--text-muted)}
+        .event-weather-countdown{margin:14px auto 0;display:inline-block;padding:7px 11px;border-radius:999px;background:var(--input-bg);font-size:.72rem;font-weight:850}
+        @media(max-width:520px){.event-weather-meta{align-items:flex-start;flex-direction:column}.event-weather-meta span{text-align:left}.event-weather-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
 </style>
     <meta name="theme-color" content="#000000">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1788,7 +1835,9 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
         <span id="connection-queue-count" class="connection-queue-count"></span>
     </button>
     <header>
-        <div style="width: 80px;"></div>
+        <div id="weather-header-slot" style="width:80px;display:flex;justify-content:flex-start;align-items:center;">
+            <button id="event-weather-button" type="button" class="event-weather-button" onclick="openEventWeather()" title="Wetter zur Veranstaltung" aria-label="Wetter zur Veranstaltung">🌦️</button>
+        </div>
         <h1 id="app-event-title">CMOA 2027</h1>
         <button class="theme-toggle-btn" onclick="toggleTheme()" id="theme-toggle-btn">🌙 Nightmode</button>
     </header>
@@ -1838,7 +1887,7 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
                 <button id="todo-menu-btn" class="menu-btn" data-module="todos" data-bands-required="true" onclick="showPage('misc-page')">To-Do</button>
                 <button class="menu-btn menu-btn-blue" data-module="catering" data-bands-required="true" onclick="showPage('catering-page')">Catering</button>
                 <button class="menu-btn menu-btn-blue" data-module="accreditation" data-bands-required="true" onclick="showPage('akkreditierung-page')">Akkreditierung</button>
-                <button id="access-permits-menu-btn" class="menu-btn menu-btn-blue" data-module="accreditation" onclick="showPage('access-permits-page')">🚗 Zufahrtsgenehmigungen</button>
+                <button id="access-permits-menu-btn" class="menu-btn menu-btn-blue" data-module="access_permits" onclick="showPage('access-permits-page')">🚗 Zufahrtsgenehmigungen</button>
                 <button class="menu-btn" data-module="fees" onclick="showPage('production-costs-page')">🏗️ Produktion</button>
                 <button id="admin-menu-btn" class="menu-btn permission-hidden" data-module="admin" onclick="showPage('admin-page')">⚙️ Benutzer & Rechte</button>
                 <button class="menu-btn menu-btn-yellow event-needs-hidden" data-module="todos" data-no-bands-only="true" onclick="showPage('event-needs-page')">📋 Bedarf &amp; Aufgaben</button>
@@ -1952,6 +2001,17 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
                 </div>
             </details>
 
+        </div>
+
+        <div id="event-weather-overlay" class="cash-summary-overlay" onclick="if(event.target===this)closeEventWeather()">
+            <div class="cash-summary-dialog event-weather-dialog">
+                <div class="cash-summary-head">
+                    <h3>🌦️ Veranstaltungswetter · <span id="event-weather-name">Veranstaltung</span></h3>
+                    <button type="button" class="cash-summary-close" onclick="loadEventWeather()">↻</button>
+                    <button type="button" class="cash-summary-close" onclick="closeEventWeather()">✕</button>
+                </div>
+                <div id="event-weather-content">Wetterdaten werden geladen …</div>
+            </div>
         </div>
 
         <div id="cash-summary-overlay" class="cash-summary-overlay" onclick="if(event.target===this)closeCashSummary()">
@@ -4184,13 +4244,13 @@ function loadFromLocalStorage() {
         }
 
         async function loadLiveReportMini(){
-            var mini=document.getElementById('live-report-mini');if(!mini||!currentEventId||!_supabase||!canViewCashSummary())return;
+            var mini=document.getElementById('live-report-mini');if(!mini||!currentEventId||!_supabase||!canViewLiveReport())return;
             mini.textContent='Wird geladen …';
             try{var rows=buildLiveRevenueStats(await fetchCashSummaryData()),total=rows.reduce(function(sum,r){return sum+r.total;},0);mini.textContent='Aktuell '+cashEuro(total);}catch(e){mini.textContent='Live-Daten nicht verfügbar';}
         }
 
         async function openLiveReport(){
-            if(!canViewCashSummary())return;
+            if(!canViewLiveReport())return;
             logCmoaActivity('Live-Bericht geöffnet','Aktuelle Einnahmen und Kassen-Ranking angesehen','overview');
             var overlay=document.getElementById('live-report-overlay');if(overlay)overlay.classList.add('show');
             await loadLiveReport();
@@ -4199,7 +4259,7 @@ function loadFromLocalStorage() {
         function closeLiveReport(){var overlay=document.getElementById('live-report-overlay');if(overlay)overlay.classList.remove('show');}
 
         async function loadLiveReport(){
-            if(!canViewCashSummary()){closeLiveReport();return;}
+            if(!canViewLiveReport()){closeLiveReport();return;}
             var content=document.getElementById('live-report-content'),eventName=document.getElementById('live-report-event-name');
             if(eventName)eventName.textContent=(currentEvent&&(currentEvent.short_name||currentEvent.name))||'Veranstaltung';
             if(!content)return;content.innerHTML='<div class="card">Live-Einnahmen werden geladen …</div>';
@@ -4333,6 +4393,7 @@ function loadFromLocalStorage() {
             for (var i = 0; i < pages.length; i++) { pages[i].classList.remove('active'); }
             var target = document.getElementById(pageId);
             if (target) target.classList.add('active');
+            var weatherSlot=document.getElementById('weather-header-slot');if(weatherSlot)weatherSlot.style.visibility=pageId==='main-page'?'visible':'hidden';
             if(target && pageId!=='main-page' && lastLoggedPageId!==pageId){
                 lastLoggedPageId=pageId;
                 var pageTitle=(target.querySelector('h2,h3')||{}).textContent||pageId;
@@ -4851,7 +4912,7 @@ function loadFromLocalStorage() {
         }
         function editAccessPermit(id){var p=accessPermits.find(function(r){return r.id===id;});if(!p)return;document.getElementById('permit-edit-id').value=p.id;['name','organisation','plate','email','parking'].forEach(function(k){document.getElementById('permit-'+k).value=p[k]||'';});document.getElementById('permit-form-title').textContent='Genehmigung '+p.id+' bearbeiten';window.scrollTo({top:0,behavior:'smooth'});}
         async function deleteAccessPermit(id){if(!hasModuleRight('accreditation','write'))return;var p=accessPermits.find(function(r){return r.id===id;});if(!p||!confirm('Zufahrtsgenehmigung '+id+' für '+p.plate+' wirklich löschen?'))return;var before=accessPermits.slice();accessPermits=accessPermits.filter(function(r){return r.id!==id;});try{await writeDataModule('accreditation');if(document.getElementById('permit-edit-id').value===id)resetAccessPermitForm();renderAccessPermits();logCmoaActivity('Zufahrtsgenehmigung gelöscht',id+' · '+p.plate,'accreditation');}catch(e){accessPermits=before;alert(e.message);}}
-        function renderAccessPermits(){var box=document.getElementById('permit-list');if(!box)return;var search=document.getElementById('permit-search').value.trim().toLocaleLowerCase('de-DE'),area=document.getElementById('permit-filter').value,items=accessPermits.filter(function(p){return (!area||p.parking===area)&&(!search||[p.id,p.name,p.organisation,p.plate,p.email,p.parking].join(' ').toLocaleLowerCase('de-DE').includes(search));}).sort(function(a,b){return String(b.createdAt||'').localeCompare(String(a.createdAt||''));});document.getElementById('permit-count').textContent=items.length+' / '+accessPermits.length;box.innerHTML=items.length?items.map(function(p){return '<div class="permit-item"><div class="permit-main"><strong>'+escapeHtmlAuth(p.plate)+'</strong><span class="badge">'+escapeHtmlAuth(p.parking)+'</span><small>ID '+escapeHtmlAuth(p.id)+' · '+escapeHtmlAuth(p.name)+' · '+escapeHtmlAuth(p.organisation)+'</small><small>'+escapeHtmlAuth(p.email)+'</small></div><div class="permit-actions"><button class="btn-primary" onclick="exportAccessPermitPdf(\''+p.id+'\')">📄 PDF</button><button class="btn-subtle" onclick="prepareAccessPermitEmail(\''+p.id+'\')">✉️ E-Mail</button>'+(hasModuleRight('accreditation','write')?'<button class="btn-subtle" onclick="editAccessPermit(\''+p.id+'\')">✎</button><button class="btn-danger permit-delete" onclick="deleteAccessPermit(\''+p.id+'\')">🗑 Löschen</button>':'')+'</div></div>';}).join(''):'<p class="akk-empty">Keine Genehmigungen gefunden.</p>';}
+        function renderAccessPermits(){var box=document.getElementById('permit-list');if(!box)return;var search=document.getElementById('permit-search').value.trim().toLocaleLowerCase('de-DE'),area=document.getElementById('permit-filter').value,items=accessPermits.filter(function(p){return (!area||p.parking===area)&&(!search||[p.id,p.name,p.organisation,p.plate,p.email,p.parking].join(' ').toLocaleLowerCase('de-DE').includes(search));}).sort(function(a,b){return String(b.createdAt||'').localeCompare(String(a.createdAt||''));});document.getElementById('permit-count').textContent=items.length+' / '+accessPermits.length;box.innerHTML=items.length?items.map(function(p){return '<div class="permit-item"><div class="permit-main"><strong>'+escapeHtmlAuth(p.plate)+'</strong><span class="badge">'+escapeHtmlAuth(p.parking)+'</span><small>ID '+escapeHtmlAuth(p.id)+' · '+escapeHtmlAuth(p.name)+' · '+escapeHtmlAuth(p.organisation)+'</small><small>'+escapeHtmlAuth(p.email)+'</small></div><div class="permit-actions"><button class="btn-primary" onclick="exportAccessPermitPdf(\''+p.id+'\')">📄 PDF</button><button class="btn-subtle" onclick="prepareAccessPermitEmail(\''+p.id+'\')">✉️ E-Mail</button>'+(hasModuleRight('access_permits','write')?'<button class="btn-subtle" onclick="editAccessPermit(\''+p.id+'\')">✎</button><button class="btn-danger permit-delete" onclick="deleteAccessPermit(\''+p.id+'\')">🗑 Löschen</button>':'')+'</div></div>';}).join(''):'<p class="akk-empty">Keine Genehmigungen gefunden.</p>';}
         function prepareAccessPermitEmail(id){
             var p=accessPermits.find(function(r){return r.id===id;});if(!p)return;
             if(!p.email)return alert('Für diese Genehmigung ist keine E-Mail-Adresse hinterlegt.');
@@ -4866,7 +4927,7 @@ function loadFromLocalStorage() {
             window.location.href='mailto:'+encodeURIComponent(p.email)+'?cc='+encodeURIComponent('cmoa@gmx.de')+'&subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(body);
         }
         function exportAccessPermitPdf(id){
-            if(!hasModuleRight('accreditation','read'))return;var p=accessPermits.find(function(r){return r.id===id;});if(!p)return;
+            if(!hasModuleRight('access_permits','read'))return;var p=accessPermits.find(function(r){return r.id===id;});if(!p)return;
             if(!window.jspdf||!window.jspdf.jsPDF)return alert('PDF-Modul konnte nicht geladen werden. Bitte Internetverbindung prüfen.');
             var doc=new window.jspdf.jsPDF({orientation:'landscape',unit:'mm',format:'a4'}),eventName=String(currentEvent&&currentEvent.short_name||currentEvent&&currentEvent.name||'VERANSTALTUNG'),plate=p.plate.toUpperCase();
             doc.setFillColor(255,255,255);doc.rect(0,0,297,210,'F');doc.setTextColor(18,23,30);
@@ -9185,13 +9246,15 @@ function loadFromLocalStorage() {
           ['overview','Übersicht'],['bands','Bands'],['hotel','Hotel'],['shuttle','Shuttle'],
           ['running_order','Running Order'],['payments','Zahlungsziele / Zahlungsweise'],['fees','Gagen / Finanzen'],
           ['todos','To-Do'],['catering','Catering'],['accreditation','Akkreditierungen'],['checkin','Check-in'],
-          ['accreditation_pdf','Akkreditierungs-PDF'],['documents','Verträge / Rider / Notizen'],['export','Export / Backup'],['admin','Benutzerverwaltung']
+          ['accreditation_pdf','Akkreditierungs-PDF'],['access_permits','Zufahrtsgenehmigungen'],
+          ['cash_report','Kassenbericht / Kassenübersicht'],['activity_log','Log-Bericht'],['live_report','Live-Bericht'],
+          ['documents','Verträge / Rider / Notizen'],['export','Export / Backup'],['admin','Benutzerverwaltung']
         ];
         var CMOA_PAGE_MODULES = {
           'overview-page':'overview','bands-page':'bands','band-view-page':'bands','band-detail-page':'bands',
           'hotel-page':'hotel','shuttle-page':'shuttle','ro-page':'running_order','payment-terms-page':'payments',
           'fees-page':'fees','misc-page':'todos','catering-page':'catering','akkreditierung-page':'accreditation',
-          'band-notes-page':'documents','global-documents-page':'documents','export-page':'export','admin-page':'admin','events-admin-page':'admin','production-costs-page':'fees','access-permits-page':'accreditation','event-needs-page':'todos'
+          'band-notes-page':'documents','global-documents-page':'documents','export-page':'export','admin-page':'admin','events-admin-page':'admin','production-costs-page':'fees','access-permits-page':'access_permits','event-needs-page':'todos'
         };
         var ROLE_PRESETS = {
           admin:{label:'Administrator', rights:'all'},
@@ -9199,7 +9262,7 @@ function loadFromLocalStorage() {
           bandcare:{label:'Bandbetreuung', modules:['overview','bands','hotel','shuttle','running_order','todos','catering','documents'], level:'write'},
           catering:{label:'Catering', modules:['overview','bands','catering'], level:'write'},
           shuttle:{label:'Shuttle', modules:['overview','bands','shuttle','hotel'], level:'write'},
-          entrance:{label:'Einlass / Akkreditierung', modules:['accreditation','checkin','accreditation_pdf'], level:'write'},
+          entrance:{label:'Einlass / Akkreditierung', modules:['accreditation','checkin','accreditation_pdf','access_permits'], level:'write'},
           cash_only:{label:'Nur Kasse', modules:[], level:'none'},
           viewer:{label:'Nur Lesen', defaults:'read'}
         };
@@ -9207,7 +9270,13 @@ function loadFromLocalStorage() {
           var out={}; CMOA_MODULES.forEach(function(m){out[m[0]]='none';});
           var p=ROLE_PRESETS[role]||ROLE_PRESETS.viewer;
           if(p.rights==='all'){CMOA_MODULES.forEach(function(m){out[m[0]]='delete';});return out;}
-          if(p.defaults){CMOA_MODULES.forEach(function(m){out[m[0]]=p.defaults;}); out.admin='none'; return out;}
+          if(p.defaults){
+            CMOA_MODULES.forEach(function(m){out[m[0]]=p.defaults;});
+            out.admin='none';
+            if(role==='viewer'){out.cash_report='none';out.activity_log='none';out.live_report='none';}
+            if(role==='management'){out.activity_log='none';}
+            return out;
+          }
           (p.modules||[]).forEach(function(m){out[m]=p.level||'read';}); return out;
         }
         function effectivePermissions(profile){
@@ -9226,18 +9295,15 @@ function loadFromLocalStorage() {
           document.querySelectorAll('[data-bands-required="true"]').forEach(function(el){el.classList.toggle('event-bands-hidden',!enabled);});
           document.querySelectorAll('[data-no-bands-only="true"]').forEach(function(el){el.classList.toggle('event-needs-hidden',enabled);});
         }
-        function canViewCashSummary(){
-          if(!currentUserProfile)return false;
-          if(currentUserProfile.role==='admin')return true;
-          var p=effectivePermissions(currentUserProfile);
-          return CMOA_MODULES.filter(function(m){return m[0]!=='admin';}).every(function(m){return rightRank(p[m[0]])>=rightRank('write');});
-        }
-        function canViewActivityLog(){return !!(currentUserProfile&&currentUserProfile.role==='admin');}
+        function canViewCashSummary(){return hasModuleRight('cash_report','read');}
+        function canViewActivityLog(){return hasModuleRight('activity_log','read');}
+        function canViewLiveReport(){return hasModuleRight('live_report','read');}
         function canViewPlanningControl(){
           if(!currentUserProfile)return false;
           if(currentUserProfile.role==='admin')return true;
           var p=effectivePermissions(currentUserProfile);
-          return CMOA_MODULES.filter(function(m){return m[0]!=='admin';}).every(function(m){return rightRank(p[m[0]])>=rightRank('write');});
+          var excluded={admin:true,access_permits:true,cash_report:true,activity_log:true,live_report:true};
+          return CMOA_MODULES.filter(function(m){return !excluded[m[0]];}).every(function(m){return rightRank(p[m[0]])>=rightRank('write');});
         }
         function showAuthError(msg){var e=document.getElementById('auth-error');if(e)e.textContent=msg||'';}
         function invitedUserNeedsPassword(user){return !!(user&&user.user_metadata&&user.user_metadata.invited_by&&!user.user_metadata.password_set);}
@@ -9294,17 +9360,84 @@ function loadFromLocalStorage() {
           if(todoBtn)todoBtn.classList.toggle('permission-hidden',!planningAllowed);
           if(progress)progress.classList.toggle('permission-hidden',!planningAllowed);
           var cashLaunch=document.getElementById('cash-summary-launch'),cashButton=document.getElementById('cash-summary-button'),logButton=document.getElementById('activity-log-button'),liveButton=document.getElementById('live-report-button');
-          if(cashLaunch)cashLaunch.classList.toggle('permission-hidden',!canViewCashSummary()&&!canViewActivityLog());
+          if(cashLaunch)cashLaunch.classList.toggle('permission-hidden',!canViewCashSummary()&&!canViewActivityLog()&&!canViewLiveReport());
           if(cashButton)cashButton.classList.toggle('permission-hidden',!canViewCashSummary());
           if(logButton)logButton.classList.toggle('permission-hidden',!canViewActivityLog());
-          if(liveButton)liveButton.classList.toggle('permission-hidden',!canViewCashSummary());
-          if(!canViewCashSummary()){closeCashSummary();closeLiveReport();}if(!canViewActivityLog())closeActivityLog();
+          if(liveButton)liveButton.classList.toggle('permission-hidden',!canViewLiveReport());
+          if(!canViewCashSummary())closeCashSummary();if(!canViewLiveReport())closeLiveReport();if(!canViewActivityLog())closeActivityLog();
           applyEventBandMode();
         }
         function updateRightsBanner(pageId){
           var b=document.getElementById('rights-banner'); if(!b)return; var m=CMOA_PAGE_MODULES[pageId];
           if(m&&hasModuleRight(m,'read')&&!hasModuleRight(m,'write')){b.textContent='👁 Nur Leseberechtigung für diesen Bereich';b.classList.add('show');}else b.classList.remove('show');
         }
+        function closeEventWeather(){var o=document.getElementById('event-weather-overlay');if(o)o.classList.remove('show');}
+        function eventWeatherDate(d){return d.toLocaleDateString('de-DE',{weekday:'short',day:'2-digit',month:'2-digit'});}
+        function eventWeatherIso(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+        function weatherCodeInfo(code){
+          code=Number(code);if(code===0)return['☀️','Klar'];if(code===1)return['🌤️','Überwiegend klar'];if(code===2)return['⛅','Teilweise bewölkt'];if(code===3)return['☁️','Bewölkt'];
+          if(code===45||code===48)return['🌫️','Nebel'];if([51,53,55,56,57].includes(code))return['🌦️','Nieselregen'];if([61,63,65,66,67].includes(code))return['🌧️','Regen'];
+          if([71,73,75,77].includes(code))return['🌨️','Schnee'];if([80,81,82].includes(code))return['🌦️','Regenschauer'];if([85,86].includes(code))return['🌨️','Schneeschauer'];
+          if([95,96,99].includes(code))return['⛈️','Gewitter'];return['🌦️','Wechselhaft'];
+        }
+        async function openEventWeather(){
+          var o=document.getElementById('event-weather-overlay');if(o)o.classList.add('show');await loadEventWeather();
+        }
+        async function geocodeEventLocation(name){
+          async function lookup(q){
+            var url='https://geocoding-api.open-meteo.com/v1/search?count=5&language=de&format=json&name='+encodeURIComponent(q);
+            var r=await fetch(url);if(!r.ok)throw new Error('Ortssuche nicht erreichbar.');var j=await r.json();return (j.results||[]);
+          }
+          var rows=await lookup(name);
+          if(!rows.length&&/\(.+\)/.test(name))rows=await lookup(name.replace(/\s*\([^)]*\)\s*/g,' ').trim());
+          if(!rows.length)return null;
+          var needle=String(name||'').toLocaleLowerCase('de-DE');
+          rows.sort(function(a,b){
+            var at=[a.name,a.admin1,a.admin2,a.country].filter(Boolean).join(' ').toLocaleLowerCase('de-DE');
+            var bt=[b.name,b.admin1,b.admin2,b.country].filter(Boolean).join(' ').toLocaleLowerCase('de-DE');
+            return Number(bt.includes(needle))-Number(at.includes(needle)) || Number(b.population||0)-Number(a.population||0);
+          });
+          return rows[0];
+        }
+        async function loadEventWeather(){
+          var content=document.getElementById('event-weather-content'),nameEl=document.getElementById('event-weather-name');
+          if(!content)return;
+          var ev=currentEvent||null;if(nameEl)nameEl.textContent=ev&&(ev.short_name||ev.name)||'Veranstaltung';
+          if(!ev){content.innerHTML='<div class="card">Keine Veranstaltung ausgewählt.</div>';return;}
+          if(!ev.start_date){content.innerHTML='<div class="card">Für diese Veranstaltung ist noch kein Beginn-Datum hinterlegt.</div>';return;}
+          if(!ev.location){content.innerHTML='<div class="card">Für diese Veranstaltung ist noch kein Ort hinterlegt. Bitte den Veranstaltungsort in den Veranstaltungsdaten ergänzen.</div>';return;}
+          var start=new Date(ev.start_date+'T12:00:00'),end=new Date((ev.end_date||ev.start_date)+'T12:00:00');
+          var windowStart=new Date(start);windowStart.setDate(windowStart.getDate()-7);
+          var today=new Date();today.setHours(12,0,0,0);
+          var rangeText=eventWeatherDate(windowStart)+' bis '+eventWeatherDate(end);
+          if(today<windowStart){
+            var days=Math.ceil((windowStart-today)/86400000);
+            content.innerHTML='<div class="event-weather-wait"><div class="event-weather-wait-icon">🌦️</div><strong>Wettervorhersage noch nicht aktiv</strong><p>Die Vorhersage für <b>'+escapeHtmlAuth(ev.location)+'</b> wird ab <b>'+eventWeatherDate(windowStart)+'</b> angezeigt – also 7 Tage vor Veranstaltungsbeginn.</p><small>Vorgesehener Wetterzeitraum: '+rangeText+'</small><div class="event-weather-countdown">Noch '+days+' Tag'+(days===1?'':'e')+' bis zum Wetterfenster</div></div>';
+            return;
+          }
+          if(today>end){
+            content.innerHTML='<div class="event-weather-wait"><div class="event-weather-wait-icon">📅</div><strong>Veranstaltungszeitraum beendet</strong><p>Der Wetterzeitraum '+rangeText+' liegt bereits in der Vergangenheit.</p></div>';
+            return;
+          }
+          content.innerHTML='<div class="card">Ort wird gesucht und Wetterdaten werden geladen …</div>';
+          try{
+            var geo=await geocodeEventLocation(ev.location);if(!geo)throw new Error('Der hinterlegte Veranstaltungsort „'+ev.location+'“ wurde nicht gefunden.');
+            var api='https://api.open-meteo.com/v1/forecast?latitude='+encodeURIComponent(geo.latitude)+'&longitude='+encodeURIComponent(geo.longitude)
+              +'&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,precipitation_sum,wind_speed_10m_max'
+              +'&timezone=auto&past_days=14&forecast_days=16';
+            var r=await fetch(api);if(!r.ok)throw new Error('Wetterdienst nicht erreichbar.');var data=await r.json(),d=data.daily||{},rows=[];
+            (d.time||[]).forEach(function(day,i){
+              if(day<eventWeatherIso(windowStart)||day>eventWeatherIso(end))return;
+              rows.push({day:day,code:d.weather_code[i],max:d.temperature_2m_max[i],min:d.temperature_2m_min[i],rain:d.precipitation_probability_max[i],sum:d.precipitation_sum[i],wind:d.wind_speed_10m_max[i]});
+            });
+            if(!rows.length)throw new Error('Für den gewünschten Veranstaltungszeitraum sind noch keine Vorhersagedaten verfügbar.');
+            var place=[geo.name,geo.admin1,geo.country].filter(Boolean).join(', ');
+            content.innerHTML='<div class="event-weather-meta"><strong>'+escapeHtmlAuth(place)+'</strong><span>'+rangeText+'</span></div><div class="event-weather-grid">'
+              +rows.map(function(x){var info=weatherCodeInfo(x.code),date=new Date(x.day+'T12:00:00'),eventDay=x.day>=ev.start_date&&x.day<=(ev.end_date||ev.start_date);return '<div class="event-weather-day '+(eventDay?'event-day':'')+'"><div class="event-weather-date">'+eventWeatherDate(date)+(eventDay?'<b>EVENT</b>':'')+'</div><div class="event-weather-icon">'+info[0]+'</div><strong>'+info[1]+'</strong><div class="event-weather-temp">'+Math.round(Number(x.max))+'° / '+Math.round(Number(x.min))+'°</div><small>🌧️ '+(x.rain==null?'–':Math.round(Number(x.rain))+' %')+' · '+(x.sum==null?'–':Number(x.sum).toLocaleString('de-DE',{maximumFractionDigits:1})+' mm')+'</small><small>💨 '+(x.wind==null?'–':Math.round(Number(x.wind))+' km/h')+'</small></div>';}).join('')
+              +'</div><div class="event-weather-source">Automatische Wettervorhersage über Open-Meteo · Aktualisierung beim Öffnen/↻</div>';
+          }catch(e){content.innerHTML='<div class="card" style="color:#dc2626">Wetter konnte nicht geladen werden: '+escapeHtmlAuth(e.message||String(e))+'</div>';}
+        }
+
         async function loadAccessibleEvents(){
           var r=await _supabase.from('events').select('*').order('start_date',{ascending:false});
           if(r.error){showAuthError('Veranstaltungen konnten nicht geladen werden: '+r.error.message);return false;}
@@ -9331,8 +9464,8 @@ function loadFromLocalStorage() {
         }
         async function loadEventsAdminPage(){
           if(!currentUserProfile||currentUserProfile.role!=='admin')return;
-          var pr=await _supabase.from('profiles').select('id,email,role').order('email'); var users=pr.data||[];
-          var box=document.getElementById('event-new-users'); if(box)box.innerHTML=users.map(function(u){return '<label class="event-user-row"><input type="checkbox" data-new-event-user="'+u.id+'" '+(u.id===currentAuthUser.id?'checked':'')+'><span>'+escapeHtmlAuth(u.email||u.id)+(u.role==='admin'?' · Admin':'')+'</span></label>';}).join('');
+          var pr=await _supabase.from('profiles').select('id,email,role,permissions').order('email'); var users=(pr.data||[]).slice().sort(function(a,b){return profileDisplayName(a).localeCompare(profileDisplayName(b),'de',{sensitivity:'base'});});
+          var box=document.getElementById('event-new-users'); if(box)box.innerHTML=users.map(function(u){return '<label class="event-user-row"><input type="checkbox" data-new-event-user="'+u.id+'" '+(u.id===currentAuthUser.id?'checked':'')+'><span>'+escapeHtmlAuth(profileDisplayName(u))+' · '+escapeHtmlAuth(u.email||u.id)+(u.role==='admin'?' · Admin':'')+'</span></label>';}).join('');
           var er=await _supabase.from('events').select('*').order('start_date',{ascending:false}); if(er.error){document.getElementById('events-admin-list').textContent='Fehler: '+er.error.message;return;}
           availableEvents=er.data||[]; var list=document.getElementById('events-admin-list'); list.innerHTML='',eventSettingsById={};
           var sr=await _supabase.from('cmoa_module_state').select('event_id,data').eq('module','bands');
@@ -9376,8 +9509,12 @@ function loadFromLocalStorage() {
           if(!hasModuleRight('admin','read'))return; var c=document.getElementById('admin-users-list'); if(!c)return; c.innerHTML='<div class="card">Lade Benutzer…</div>';
           renderAdminNewUserEvents();
           var r=await _supabase.from('profiles').select('*').order('email'); if(r.error){c.innerHTML='<div class="card">Fehler: '+escapeHtmlAuth(r.error.message)+'</div>';return;}
-          adminUsersCache={};c.innerHTML=''; (r.data||[]).forEach(function(u){adminUsersCache[u.id]=u;c.insertAdjacentHTML('beforeend',renderAdminUser(u));});
-          (r.data||[]).forEach(function(u){syncCashOnlyRoleUi(u.id);});
+          var users=(r.data||[]).slice().sort(function(a,b){
+            var an=profileDisplayName(a).trim(),bn=profileDisplayName(b).trim();
+            return an.localeCompare(bn,'de',{sensitivity:'base'})||String(a.email||'').localeCompare(String(b.email||''),'de',{sensitivity:'base'});
+          });
+          adminUsersCache={};c.innerHTML=''; users.forEach(function(u){adminUsersCache[u.id]=u;c.insertAdjacentHTML('beforeend',renderAdminUser(u));});
+          users.forEach(function(u){syncCashOnlyRoleUi(u.id);});
         }
         function renderAdminNewUserEvents(){
           var box=document.getElementById('admin-new-user-events');if(!box)return;
@@ -9411,7 +9548,19 @@ function loadFromLocalStorage() {
           var deleteBtn=currentAuthUser&&u.id===currentAuthUser.id?'':'<button class="btn-danger" style="width:100%;margin-top:7px" onclick="deleteAdminUser(\''+u.id+'\')">🗑 Benutzer vollständig entfernen</button>';
           var cashChecked=(u.role==='admin'||u.role==='cash_only'||(u.permissions&&u.permissions._cashAccess===true))?'checked':'';
           var cashDisabled=u.role==='admin'?'disabled title="Administratoren haben immer Kassenzugang"':'';
-          return '<div class="admin-user-card"><div class="admin-user-email">'+escapeHtmlAuth(profileDisplayName(u))+'</div><div class="admin-user-meta">'+escapeHtmlAuth(u.email||'')+' · Benutzer-ID: '+escapeHtmlAuth(u.id)+'</div><label>Anzeigename</label><input id="display-name-'+u.id+'" value="'+escapeHtmlAuth(u.permissions&&u.permissions._displayName||'')+'" placeholder="Vor- und Nachname"><label>Rolle</label><select id="role-'+u.id+'" onchange="syncCashOnlyRoleUi(\''+u.id+'\')">'+roleOpts+'</select><div style="margin-top:10px">'+rows+'</div><label style="display:flex;align-items:center;gap:8px;margin-top:12px;text-transform:none;"><input type="checkbox" id="cash-access-'+u.id+'" '+cashChecked+' '+cashDisabled+' style="width:18px;height:18px;"> <span>🧾 Zugang zur Kassen-App</span></label><button class="btn-primary" style="width:100%;margin-top:10px" onclick="saveAdminUserRights(\''+u.id+'\')">💾 Rechte speichern</button><button class="btn-subtle" style="width:100%;margin-top:7px" onclick="prepareCashInvite(\''+u.id+'\')">✉️ Kassen-Link separat senden</button>'+deleteBtn+'</div>';
+          var display=profileDisplayName(u),roleLabel=(ROLE_PRESETS[u.role]||{}).label||u.role||'';
+          return '<div class="admin-user-card admin-user-card-compact">'
+            +'<div class="admin-user-card-head"><div class="admin-user-card-person"><div class="admin-user-name">'+escapeHtmlAuth(display)+'</div><div class="admin-user-address">'+escapeHtmlAuth(u.email||'')+'</div></div><span class="admin-role-chip">'+escapeHtmlAuth(roleLabel)+'</span></div>'
+            +'<details class="admin-user-rights"><summary>⚙️ Rechte &amp; Einstellungen <span>aufklappen</span></summary><div class="admin-user-rights-body">'
+            +'<label>Anzeigename</label><input id="display-name-'+u.id+'" value="'+escapeHtmlAuth(u.permissions&&u.permissions._displayName||'')+'" placeholder="Vor- und Nachname">'
+            +'<label>Rolle</label><select id="role-'+u.id+'" onchange="syncCashOnlyRoleUi(\''+u.id+'\')">'+roleOpts+'</select>'
+            +'<div class="admin-permissions-box">'+rows+'</div>'
+            +'<label class="admin-cash-access"><input type="checkbox" id="cash-access-'+u.id+'" '+cashChecked+' '+cashDisabled+'> <span>🧾 Zugang zur Kassen-App</span></label>'
+            +'<button class="btn-primary" style="width:100%;margin-top:10px" onclick="saveAdminUserRights(\''+u.id+'\')">💾 Rechte speichern</button>'
+            +'<button class="btn-subtle" style="width:100%;margin-top:7px" onclick="prepareCashInvite(\''+u.id+'\')">✉️ Kassen-Link separat senden</button>'
+            +deleteBtn
+            +'<div class="admin-user-id">Benutzer-ID: '+escapeHtmlAuth(u.id)+'</div>'
+            +'</div></details></div>';
         }
         function syncCashOnlyRoleUi(uid){
           var roleEl=document.getElementById('role-'+uid),cashBox=document.getElementById('cash-access-'+uid);
