@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"><meta http-equiv="Pragma" content="no-cache"><meta http-equiv="Expires" content="0"><title>CMOA Kasse · Version 15</title>
+<html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"><meta http-equiv="Pragma" content="no-cache"><meta http-equiv="Expires" content="0"><title>CMOA Kasse · Version 16</title>
 <meta name="theme-color" content="#111827">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -34,7 +34,7 @@
   <div id="cashInvitePasswordError" style="color:#ef4444;text-align:center;margin-top:10px"></div>
 </div></div>
 <div id="tillGate" class="tillGate hidden"><div class="tillGateInner"><h2>🏪 Kasse auswählen</h2><p class="muted" style="text-align:center">Bitte an der Verkaufsstelle einchecken, an der du jetzt arbeitest.</p><div id="tillGateGrid" class="tillGateGrid"></div></div></div>
-<header><h1>🍺 Schnellkasse <small style="font-size:11px;color:var(--muted);white-space:nowrap">Version 15</small></h1><div class="headInfo"><div class="headTill" id="headTill">Keine Kasse</div><button class="switchTill" onclick="showTillCheckin()">Kasse wechseln</button><div class="cash" id="cashTop">0,00 €</div></div></header>
+<header><h1>🍺 Schnellkasse <small style="font-size:11px;color:var(--muted);white-space:nowrap">Version 16</small></h1><div class="headInfo"><div class="headTill" id="headTill">Keine Kasse</div><button class="switchTill" onclick="showTillCheckin()">Kasse wechseln</button><div class="cash" id="cashTop">0,00 €</div></div></header>
 <main>
 <section id="sale" class="section active"><div id="noTill" class="card hidden"><b>Bitte zuerst eine Kasse auswählen.</b></div><div class="saleTopActions"><button class="btn emptyQuick" onclick="showEmptyingDialog()">💶 ZL / KL</button><button class="btn tokenQuick" onclick="startTokenMode()">🎟️ Marke</button><button class="btn depositQuick" onclick="startStandaloneDeposit()">↩ Pfand</button><button class="btn freeQuick" onclick="startFreeMode()">⭐ FREE</button></div><div id="modeBanner" class="modeBanner"></div><div id="drinkGrid" class="grid"></div></section>
 <section id="history" class="section"><div class="card"><h2>Kassen-Historie</h2><div class="row"><label>Kasse<select id="historyTill" onchange="renderHistory()"></select></label></div><div class="historyTabs"><button id="historyAllBtn" class="btn active" onclick="setHistoryView('all')">Alle Buchungen</button><button id="historyEmptyBtn" class="btn" onclick="setHistoryView('emptyings')">ZL / KL</button></div><div id="historyList" class="list"></div></div></section>
@@ -55,7 +55,7 @@ const K='barKasseV2';
 const defaultDrinks=[['Bier',3.5,'#d99b16'],['Radler',3.5,'#f2c94c'],['Alkfreies Bier',3.5,'#bf7b18'],['Wasser',2.5,'#3b82f6'],['Rotwein',4,'#7f1d1d'],['Weißwein',4,'#e7d48a'],['Cola',3,'#5c2b16'],['Fanta',3,'#f97316'],['Sprite',3,'#b7e4c7'],['Schnaps',2.5,'#64748b'],['Mixgetränke',5,'#c026d3']].map((x,i)=>({id:'d'+i,name:x[0],price:x[1],color:x[2],depositId:null}));
 const defaultFoods=[['Nudeln mit Gulasch','#b45309'],['Roster','#dc2626'],['Steak','#7f1d1d'],['Fleischkäse','#db6b55'],['Veganes Chili','#16a34a']];
 let db=JSON.parse(localStorage.getItem(K)||'null')||{theme:'dark',tills:[{id:'t1',name:'Bierwagen'}],activeTillId:'t1',operator:'',deposits:[{id:'p1',name:'Pfand',value:2}],drinks:defaultDrinks.map(d=>({...d,depositId:'p1'})),sales:[],cashEvents:[]};
-let flow={},editDrinkId=null,historyView='all',tillCheckedIn=false;const $=id=>document.getElementById(id);const euro=n=>(Number(n)||0).toLocaleString('de-DE',{style:'currency',currency:'EUR'});const liter=n=>(Number(n)||0).toLocaleString('de-DE',{minimumFractionDigits:0,maximumFractionDigits:3})+' l';const now=()=>new Date().toISOString();const uid=()=>crypto.randomUUID();
+let flow={},editDrinkId=null,historyView='all',tillCheckedIn=false,specialChoiceEditorState=null;const $=id=>document.getElementById(id);const euro=n=>(Number(n)||0).toLocaleString('de-DE',{style:'currency',currency:'EUR'});const liter=n=>(Number(n)||0).toLocaleString('de-DE',{minimumFractionDigits:0,maximumFractionDigits:3})+' l';const now=()=>new Date().toISOString();const uid=()=>crypto.randomUUID();
 const defaultSpecialDrinkChoices={
   schnaps:['Kräuter','Korn','Wodka','Whisky','Tequila','Obstler','Likör'],
   mixgetränke:['Wodka-Cola','Whisky-Cola','Rum-Cola','Gin-Tonic','Wodka-Energy','Korn-Fanta']
@@ -92,11 +92,11 @@ function drinkAvailableAtTill(d,tillId){return !Array.isArray(d.tillIds)||d.till
 function articleTiles(items,mode){return items.map(d=>{let p=depFor(d),free=mode==='free',token=mode==='token';return `<button class="drink" style="background:linear-gradient(145deg,${d.color},color-mix(in srgb,${d.color} 76%,#000));color:${textColor(d.color)};border:1px solid color-mix(in srgb,${d.color} 70%,#fff)" onclick="selectDrink('${d.id}')"><span style="font-size:34px;line-height:1;margin-bottom:7px">${drinkSymbol(d.name)}</span>${esc(d.name)}<small>${token?'1 Marke · kein Pfand':free?'FREE · kein Pfand':euro(d.price)+(p?' · Pfand '+euro(p.value):'')}</small></button>`}).join('')}
 function renderDrinks(){let ok=!!activeTill(),mode=flow.active?flow.mode:'sale',token=mode==='token',free=mode==='free',available=ok?db.drinks.filter(d=>drinkAvailableAtTill(d,db.activeTillId)):[],drinks=available.filter(d=>d.category!=='food'),foods=available.filter(d=>d.category==='food');$('noTill').classList.toggle('hidden',ok);$('modeBanner').className='modeBanner'+(token?' show token':free?' show free':'');$('modeBanner').innerHTML=token?'🎟️ MARKENMODUS · Artikel werden ohne Geld erfasst <button class="btn" style="margin-left:8px;padding:5px 9px" onclick="cancelSaleMode()">Beenden</button>':free?'⭐ FREE-MODUS · Artikel werden ohne Geld und ohne Marke erfasst <button class="btn" style="margin-left:8px;padding:5px 9px" onclick="cancelSaleMode()">Beenden</button>':'';$('drinkGrid').innerHTML=ok?(available.length?(drinks.length?'<div class="articleHeading">Getränke</div>'+articleTiles(drinks,mode):'')+(foods.length?'<div class="articleHeading">Speisen</div>'+articleTiles(foods,mode):''):'<div class="card" style="grid-column:1/-1"><b>Für diese Kasse sind noch keine Artikel freigegeben.</b><div class="muted" style="margin-top:6px">Die Zuordnung erfolgt unter Einstellungen → Getränke & Speisen → Kassen.</div></div>'):''}
 function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
-function selectDrink(id){let d=db.drinks.find(x=>x.id===id);if(!d)return;if(!flow.active)flow={active:true,mode:'sale',cart:[],returns:0,depositId:null,input:''};let choices=specialChoicesFor(d);if(choices){flow.parentDrink=d;return showSpecialDrinkChoices(d,choices)}flow.parentDrink=null;flow.drink=d;showQty()}
+function selectDrink(id){let d=db.drinks.find(x=>x.id===id);if(!d)return;if(!flow.active)flow={active:true,mode:'sale',cart:[],returns:0,depositId:null,input:''};let choices=specialChoicesFor(d);if(choices&&choices.length){flow.parentDrink=d;return showSpecialDrinkChoices(d,choices)}flow.parentDrink=null;flow.drink=d;showQty()}
 function startTokenMode(){if(!activeTill())return alert('Bitte zuerst eine Kasse auswählen.');flow={active:true,mode:'token',cart:[],returns:0,depositId:null,input:''};document.body.classList.add('tokenMode');document.body.classList.remove('freeMode');renderAll()}
 function startFreeMode(){if(!activeTill())return alert('Bitte zuerst eine Kasse auswählen.');flow={active:true,mode:'free',cart:[],returns:0,depositId:null,input:''};document.body.classList.add('freeMode');document.body.classList.remove('tokenMode');renderAll()}
 function cancelSaleMode(){flow={};document.body.classList.remove('tokenMode','freeMode');renderAll()}
-function showSpecialDrinkChoices(d,choices){$('dialog').innerHTML=`<h2>${drinkSymbol(d.name)} ${esc(d.name)} auswählen</h2><div class="grid">${choices.map((name,i)=>`<button class="btn big" onclick="chooseSpecialDrink(${i})"><span style="font-size:28px;display:block;margin-bottom:5px">${drinkSymbol(name)}</span>${esc(name)}</button>`).join('')}</div><button class="btn back" onclick="cancelSpecialDrinkChoice()">← Zurück zu den Getränken</button>`;$('modal').classList.add('show')}
+function showSpecialDrinkChoices(d,choices){$('dialog').innerHTML=`<h2>${esc(d.name)} auswählen</h2><div class="grid">${choices.map((name,i)=>`<button class="btn big" onclick="chooseSpecialDrink(${i})">${esc(name)}</button>`).join('')}</div><button class="btn back" onclick="cancelSpecialDrinkChoice()">← Zurück zu den Getränken</button>`;$('modal').classList.add('show')}
 function chooseSpecialDrink(index){let parent=flow.parentDrink,choices=specialChoicesFor(parent),name=choices&&choices[index];if(!parent||!name)return;flow.drink={...parent,name};showQty()}
 function cancelSpecialDrinkChoice(){flow.parentDrink=null;if(flow.cart.length){$('modal').classList.remove('show');return}closeModal(true)}
 function keys(action){return `<div class="keypad">${[1,2,3,4,5,6,7,8,9].map(n=>`<button onclick="${action}(${n})">${n}</button>`).join('')}<button onclick="clearInput()">C</button><button onclick="${action}(0)">0</button><button onclick="backspace()">⌫</button></div>`}
@@ -145,52 +145,71 @@ renderStats=function(){renderStatsWithoutTax();let taxes=calculateTaxStats(selec
 function currentOpeningEvents(id){let closings=tillEvents(id).filter(x=>x.type==='closing'),lastClose=closings.length?Math.max(...closings.map(x=>new Date(x.time).getTime())):0;return tillEvents(id).filter(x=>x.type==='opening'&&new Date(x.time).getTime()>lastClose).sort((a,b)=>new Date(a.time)-new Date(b.time))}
 function openingBalance(id){return currentOpeningEvents(id).reduce((sum,x)=>sum+Number(x.amount||0),0)}
 function renderSettings(){fillTillSelect($('activeTill'));$('activeTill').value=db.activeTillId;$('operator').value=db.operator||'';$('tillList').innerHTML=db.tills.map(t=>`<div class="item"><div class="grow"><b>${esc(t.name)}</b><div class="muted">Anfangsbestand: ${euro(openingBalance(t.id))}${t.id===db.activeTillId?' · Aktiv':''}</div></div><button class="btn" onclick="editTill('${t.id}')">✏️ Bearbeiten</button><button class="btn danger" onclick="deleteTill('${t.id}')">🗑️</button></div>`).join('')||'<div class="muted">Noch keine Kasse angelegt.</div>';$('dDeposit').innerHTML='<option value="">Kein Pfand</option>'+db.deposits.map(p=>`<option value="${p.id}">${esc(p.name)} · ${euro(p.value)}</option>`).join('');$('depositList').innerHTML=db.deposits.map(p=>`<div class="item"><div class="grow"><b>${esc(p.name)}</b><div class="muted">${euro(p.value)} pro Stück · ${db.drinks.filter(d=>d.depositId===p.id).length} Getränke</div></div><button class="btn" onclick="editDeposit('${p.id}')">✏️</button><button class="btn danger" onclick="deleteDeposit('${p.id}')">🗑️</button></div>`).join('')||'<div class="muted">Noch kein Pfand angelegt.</div>';$('drinkSettings').innerHTML=db.drinks.map(d=>{let p=depFor(d),food=d.category==='food',vat=Number.isFinite(Number(d.vatRate))?Number(d.vatRate):(food?7:19),priceMode=d.priceMode==='gross'?'Brutto':'Netto',volumeText=!food&&Number(d.volume1)>0?'<br>Menge: '+esc(d.part1||d.name)+' '+liter(d.volume1)+(Number(d.volume2)>0?' + '+esc(d.part2||'Komponente 2')+' '+liter(d.volume2):''):'<br>Menge: noch nicht hinterlegt';return `<div class="item"><span style="font-size:28px">${drinkSymbol(d.name)}</span><span class="colorDot" style="background:${d.color}"></span><div class="grow"><b>${esc(d.name)}</b> <span class="${food?'freeBadge':'eventBadge'}">${food?'SPEISE':'GETRÄNK'}</span><div class="muted">${euro(d.price)} ${priceMode} · ${vat.toLocaleString('de-DE')} % USt. · ${food?'kein Pfand':p?'Pfand '+euro(p.value):'kein Pfand'}${food?'':volumeText}<br>Verfügbar: ${esc(drinkTillLabel(d))}</div></div><button class="btn" title="Kassen zuordnen" onclick="assignDrinkTills('${d.id}')">🏪 Kassen</button><button class="btn" onclick="editDrink('${d.id}')">✏️</button><button class="btn danger" onclick="deleteDrink('${d.id}')">🗑️</button></div>`}).join('');renderClosing()}
-function articleSettingsHtml(d){let p=depFor(d),food=d.category==='food',vat=Number.isFinite(Number(d.vatRate))?Number(d.vatRate):(food?7:19),priceMode=d.priceMode==='gross'?'Brutto':'Netto',volumeText=food?'Keine Literangabe':Number(d.volume1)>0?esc(d.part1||d.name)+' '+liter(d.volume1)+(Number(d.volume2)>0?' + '+esc(d.part2||'Komponente 2')+' '+liter(d.volume2):''):'Menge noch nicht hinterlegt',pfandText=food?'Kein Pfand':p?'Pfand '+euro(p.value):'Kein Pfand';return `<div class="item article-setting"><div class="article-setting-icon">${drinkSymbol(d.name)}</div><div class="article-setting-main"><div class="article-setting-title"><b>${esc(d.name)}</b><span class="${food?'freeBadge':'eventBadge'} article-kind">${food?'SPEISE':'GETRÄNK'}</span></div><div class="article-meta"><span class="article-chip">${euro(d.price)} ${priceMode}</span><span class="article-chip">${vat.toLocaleString('de-DE')} % USt.</span><span class="article-chip">${pfandText}</span></div></div><div class="article-actions"><button class="btn" title="Kassen zuordnen" aria-label="Kassen zuordnen" onclick="assignDrinkTills('${d.id}')">🏪</button>${isSpecialParentDrink(d)?`<button class="btn" title="Untermenü bearbeiten" aria-label="Untermenü bearbeiten" onclick="editSpecialChoices('${d.id}')">☰</button>`:''}<button class="btn" title="Artikel bearbeiten" aria-label="Artikel bearbeiten" onclick="editDrink('${d.id}')">✏️</button><button class="btn danger" title="Artikel löschen" aria-label="Artikel löschen" onclick="deleteDrink('${d.id}')">🗑️</button></div><div class="article-detail article-detail-wide">${food?'🍽️ Speise':'🥤 '+volumeText}<br>🏪 ${esc(drinkTillLabel(d))}</div></div>`}
+function articleSettingsHtml(d){let p=depFor(d),food=d.category==='food',vat=Number.isFinite(Number(d.vatRate))?Number(d.vatRate):(food?7:19),priceMode=d.priceMode==='gross'?'Brutto':'Netto',volumeText=food?'Keine Literangabe':Number(d.volume1)>0?esc(d.part1||d.name)+' '+liter(d.volume1)+(Number(d.volume2)>0?' + '+esc(d.part2||'Komponente 2')+' '+liter(d.volume2):''):'Menge noch nicht hinterlegt',pfandText=food?'Kein Pfand':p?'Pfand '+euro(p.value):'Kein Pfand';return `<div class="item article-setting"><div class="article-setting-icon">${drinkSymbol(d.name)}</div><div class="article-setting-main"><div class="article-setting-title"><b>${esc(d.name)}</b><span class="${food?'freeBadge':'eventBadge'} article-kind">${food?'SPEISE':'GETRÄNK'}</span></div><div class="article-meta"><span class="article-chip">${euro(d.price)} ${priceMode}</span><span class="article-chip">${vat.toLocaleString('de-DE')} % USt.</span><span class="article-chip">${pfandText}</span></div></div><div class="article-actions"><button class="btn" title="Kassen zuordnen" aria-label="Kassen zuordnen" onclick="assignDrinkTills('${d.id}')">🏪</button>${isSpecialParentDrink(d)?`<button class="btn" title="Untermenü bearbeiten" aria-label="Untermenü bearbeiten" onclick="editSpecialChoices('${d.id}')">☰</button>`:''}<button class="btn" title="Artikel bearbeiten" aria-label="Artikel bearbeiten" onclick="editDrink('${d.id}')">✏️</button><button class="btn danger" title="Artikel löschen" aria-label="Artikel löschen" onclick="deleteDrink('${d.id}')">🗑️</button></div><div class="article-detail article-detail-wide">${food?'🍽️ Speise':'🥤 '+volumeText}${isSpecialParentDrink(d)?'<br>☰ Untermenü: '+(specialChoicesFor(d)||[]).length+' Einträge':''}<br>🏪 ${esc(drinkTillLabel(d))}</div></div>`}
 const renderSettingsBeforeArticleLayout=renderSettings;renderSettings=function(){renderSettingsBeforeArticleLayout();let list=$('drinkSettings');if(list){list.className='list article-settings-list';list.innerHTML=db.drinks.map(articleSettingsHtml).join('')||'<div class="muted">Noch keine Artikel angelegt.</div>'}}
 
 function editSpecialChoices(id){
   let d=db.drinks.find(x=>x.id===id);if(!d)return;
-  let choices=(specialChoicesFor(d)||[]).slice();
-  d.specialChoices=choices;
-  $('dialog').innerHTML=`<h2>☰ Untermenü · ${esc(d.name)}</h2>
-    <div class="muted" style="text-align:center;margin-bottom:12px">Diese Einträge erscheinen beim Klick auf „${esc(d.name)}“ in der Kassenmaske.</div>
+  let choices=(specialChoicesFor(d)||[]).map(x=>String(x));
+  specialChoiceEditorState={id:id,draft:choices.slice()};
+  $('dialog').innerHTML=`<h2>Untermenü · ${esc(d.name)}</h2>
+    <div class="muted" style="text-align:center;margin-bottom:12px">Hier kannst du die Auswahl bearbeiten, die beim Klick auf „${esc(d.name)}“ erscheint.</div>
     <div id="specialChoiceList" class="list"></div>
-    <div class="row" style="margin-top:14px"><label>Neuer Eintrag<input id="specialChoiceNew" placeholder="z. B. Jägermeister"></label></div>
+    <div class="row" style="margin-top:14px"><label>Neuer Eintrag<input id="specialChoiceNew" placeholder="z. B. Jägermeister" onkeydown="if(event.key==='Enter'){event.preventDefault();addSpecialChoice('${id}')}"></label></div>
     <button class="btn blue" style="width:100%" onclick="addSpecialChoice('${id}')">＋ Eintrag hinzufügen</button>
     <button class="btn primary big" style="width:100%;margin-top:12px" onclick="saveSpecialChoices('${id}')">Untermenü speichern</button>
-    <button class="btn back" onclick="closeModal()">Abbrechen</button>`;
+    <button class="btn back" onclick="cancelSpecialChoiceEditor()">Abbrechen</button>`;
   renderSpecialChoiceEditor(id);
   $('modal').classList.add('show');
 }
+function specialChoiceDraftFor(id){
+  if(!specialChoiceEditorState||specialChoiceEditorState.id!==id)return null;
+  return specialChoiceEditorState.draft;
+}
 function renderSpecialChoiceEditor(id){
-  let d=db.drinks.find(x=>x.id===id),box=$('specialChoiceList');if(!d||!box)return;
-  let choices=Array.isArray(d.specialChoices)?d.specialChoices:[];
-  box.innerHTML=choices.map((name,i)=>`<div class="item">
-    <div class="grow"><input id="specialChoice_${i}" value="${esc(name)}" oninput="updateSpecialChoiceDraft('${id}',${i},this.value)" style="margin:0"></div>
-    <button class="btn danger" title="Eintrag löschen" onclick="removeSpecialChoice('${id}',${i})">🗑️</button>
+  let draft=specialChoiceDraftFor(id),box=$('specialChoiceList');if(!draft||!box)return;
+  box.innerHTML=draft.map((name,i)=>`<div class="item">
+    <div class="grow"><input value="${esc(name)}" aria-label="Untermenü-Eintrag ${i+1}" oninput="updateSpecialChoiceDraft('${id}',${i},this.value)" style="margin:0"></div>
+    <button class="btn danger" title="Eintrag löschen" aria-label="Eintrag löschen" onclick="removeSpecialChoice('${id}',${i})">🗑️</button>
   </div>`).join('')||'<div class="muted" style="text-align:center;padding:12px">Noch keine Unterpunkte vorhanden.</div>';
 }
 function updateSpecialChoiceDraft(id,index,value){
-  let d=db.drinks.find(x=>x.id===id);if(!d||!Array.isArray(d.specialChoices))return;
-  d.specialChoices[index]=value;
+  let draft=specialChoiceDraftFor(id);if(!draft||index<0||index>=draft.length)return;
+  draft[index]=value;
 }
 function addSpecialChoice(id){
-  let d=db.drinks.find(x=>x.id===id),input=$('specialChoiceNew');if(!d||!input)return;
+  let draft=specialChoiceDraftFor(id),input=$('specialChoiceNew');if(!draft||!input)return;
   let name=input.value.trim();if(!name)return alert('Bitte einen Namen eingeben.');
-  if(!Array.isArray(d.specialChoices))d.specialChoices=[];
-  if(d.specialChoices.some(x=>String(x).trim().toLocaleLowerCase('de-DE')===name.toLocaleLowerCase('de-DE')))return alert('Dieser Eintrag ist bereits vorhanden.');
-  d.specialChoices.push(name);input.value='';renderSpecialChoiceEditor(id);
+  let key=name.toLocaleLowerCase('de-DE');
+  if(draft.some(x=>String(x).trim().toLocaleLowerCase('de-DE')===key))return alert('Dieser Eintrag ist bereits vorhanden.');
+  draft.push(name);
+  input.value='';
+  renderSpecialChoiceEditor(id);
+  setTimeout(()=>{let el=$('specialChoiceNew');if(el)el.focus()},0);
 }
 function removeSpecialChoice(id,index){
-  let d=db.drinks.find(x=>x.id===id);if(!d||!Array.isArray(d.specialChoices))return;
-  d.specialChoices.splice(index,1);renderSpecialChoiceEditor(id);
+  let draft=specialChoiceDraftFor(id);if(!draft||index<0||index>=draft.length)return;
+  draft.splice(index,1);
+  renderSpecialChoiceEditor(id);
+}
+function cancelSpecialChoiceEditor(){
+  specialChoiceEditorState=null;
+  closeModal();
 }
 function saveSpecialChoices(id){
-  let d=db.drinks.find(x=>x.id===id);if(!d)return;
-  let cleaned=(Array.isArray(d.specialChoices)?d.specialChoices:[]).map(x=>String(x).trim()).filter(Boolean);
-  let seen=new Set();cleaned=cleaned.filter(x=>{let k=x.toLocaleLowerCase('de-DE');if(seen.has(k))return false;seen.add(k);return true});
+  let draft=specialChoiceDraftFor(id);if(!draft)return alert('Der Untermenü-Editor ist nicht mehr aktiv. Bitte erneut öffnen.');
+  let cleaned=draft.map(x=>String(x).trim());
+  if(cleaned.some(x=>!x))return alert('Bitte leere Einträge benennen oder löschen.');
+  let seen=new Set();
+  for(let name of cleaned){
+    let key=name.toLocaleLowerCase('de-DE');
+    if(seen.has(key))return alert('Der Eintrag „'+name+'“ ist doppelt vorhanden.');
+    seen.add(key);
+  }
   if(!cleaned.length&&!confirm('Das Untermenü ist leer. Wirklich ohne Unterpunkte speichern?'))return;
+  let d=db.drinks.find(x=>x.id===id);if(!d)return alert('Der Hauptartikel wurde nicht gefunden.');
   d.specialChoices=cleaned;
+  specialChoiceEditorState=null;
   closeModal();
   save();
 }
@@ -338,5 +357,5 @@ async function syncCloudData(){
 async function cloudDelete(table,id,throwOnError=false){if(cloudReady&&isUuid(id)){let {error}=await cashSb.from(table).delete().eq('id',id);if(error){setCloudStatus('Löschen fehlgeschlagen: '+error.message,true);if(throwOnError)throw error}}}
 
 document.querySelectorAll('.nav button').forEach(b=>b.onclick=()=>{document.querySelectorAll('.nav button').forEach(x=>x.classList.remove('active'));b.classList.add('active');document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));$(b.dataset.sec).classList.add('active');renderAll()});renderAll();initCloud();
-if('serviceWorker' in navigator){window.addEventListener('load',async()=>{try{let regs=await navigator.serviceWorker.getRegistrations();await Promise.all(regs.filter(r=>r.scope===new URL('./',location.href).href).map(r=>r.unregister()));let reg=await navigator.serviceWorker.register('./service-worker-kasse.js?v=14',{updateViaCache:'none'});await reg.update()}catch(e){console.warn('Service Worker:',e)}})}
+if('serviceWorker' in navigator){window.addEventListener('load',async()=>{try{let regs=await navigator.serviceWorker.getRegistrations();await Promise.all(regs.filter(r=>r.scope===new URL('./',location.href).href).map(r=>r.unregister()));let reg=await navigator.serviceWorker.register('./service-worker-kasse.js?v=16',{updateViaCache:'none'});await reg.update()}catch(e){console.warn('Service Worker:',e)}})}
 </script></body></html>
