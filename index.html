@@ -9845,7 +9845,22 @@ function loadFromLocalStorage() {
           alert('✅ Veranstaltung angelegt.'); await loadAccessibleEvents(); await loadEventsAdminPage();
         }
         async function saveEventUsers(eventId){
-          if(currentUserProfile.role!=='admin')return; var ids=[];document.querySelectorAll('[data-event-user-event="'+eventId+'"]:checked').forEach(function(x){ids.push(x.value);}); var d=await _supabase.from('event_users').delete().eq('event_id',eventId);if(d.error){alert('Fehler: '+d.error.message);return;} if(ids.length){var ins=await _supabase.from('event_users').insert(ids.map(function(uid){return {event_id:eventId,user_id:uid};}));if(ins.error){alert('Fehler: '+ins.error.message);return;}} alert('✅ Veranstaltungszugriffe gespeichert.');
+          if(currentUserProfile.role!=='admin')return;
+          var ids=[];document.querySelectorAll('[data-event-user-event="'+eventId+'"]:checked').forEach(function(x){ids.push(x.value);});
+          var current=await _supabase.from('event_users').select('user_id').eq('event_id',eventId);
+          if(current.error){alert('Fehler: '+current.error.message);return;}
+          var existing=(current.data||[]).map(function(x){return x.user_id;});
+          var toAdd=ids.filter(function(uid){return existing.indexOf(uid)<0;});
+          var toRemove=existing.filter(function(uid){return ids.indexOf(uid)<0;});
+          if(toRemove.length){
+            var d=await _supabase.from('event_users').delete().eq('event_id',eventId).in('user_id',toRemove);
+            if(d.error){alert('Fehler: '+d.error.message);return;}
+          }
+          if(toAdd.length){
+            var ins=await _supabase.from('event_users').insert(toAdd.map(function(uid){return {event_id:eventId,user_id:uid};}));
+            if(ins.error){alert('Fehler: '+ins.error.message);return;}
+          }
+          alert('✅ Veranstaltungszugriffe gespeichert.');
         }
         async function duplicateCmoaEvent(sourceId){
           if(currentUserProfile.role!=='admin')return; var src=availableEvents.find(function(e){return e.id===sourceId;});if(!src)return; var shortName=prompt('Kurzname der Kopie:',(src.short_name||src.name)+' KOPIE');if(!shortName)return;var name=prompt('Name der Kopie:',src.name+' – Kopie');if(!name)return;
