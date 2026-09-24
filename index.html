@@ -147,8 +147,9 @@
             top: 0;
             z-index: 100;
             box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-            display: flex;
-            justify-content: space-between;
+            display: grid;
+            grid-template-columns: 116px minmax(0,1fr) 116px;
+            gap: 8px;
             align-items: center;
         }
 
@@ -158,24 +159,52 @@
             font-weight: 800;
             letter-spacing: 1.5px;
             text-transform: uppercase;
-            flex-grow: 1;
             text-align: center;
-        }
-
-        .theme-toggle-btn {
-            background: rgba(255, 255, 255, 0.1);
-            color: var(--text-main);
-            border: 1px solid var(--border);
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: 0.8rem;
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.2s ease;
+            margin: 0;
+            min-width: 0;
             white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
-        .theme-toggle-btn:hover { background: rgba(255, 255, 255, 0.2); }
+        .header-control-balance { width:116px; height:38px; }
+        .header-quick-actions {
+            width:116px;
+            justify-self:end;
+            display:grid;
+            grid-template-columns:repeat(3,34px);
+            gap:7px;
+            align-items:center;
+            justify-content:end;
+        }
+        .header-icon-slot { width:34px; height:34px; display:block; }
+        .header-icon-reserved { visibility:hidden; }
+        .header-icon-btn,
+        .theme-toggle-btn,
+        .event-weather-button {
+            width:34px;
+            height:34px;
+            min-width:34px;
+            padding:0;
+            border-radius:10px;
+            border:1px solid rgba(255,255,255,.24);
+            background:rgba(255,255,255,.10);
+            color:var(--header-text);
+            display:grid;
+            place-items:center;
+            font-size:1.05rem;
+            line-height:1;
+            font-weight:800;
+            cursor:pointer;
+            transition:all .18s ease;
+            box-shadow:none;
+        }
+        .header-icon-btn:hover,
+        .theme-toggle-btn:hover,
+        .event-weather-button:hover {
+            background:rgba(255,255,255,.20);
+            transform:translateY(-1px);
+        }
 
         .container {
             max-width: 760px;
@@ -1678,25 +1707,33 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
         /* ===== MOBILE FEINSCHLIFF: TOUCH, UMBRUCH UND BREITE ===== */
         @media(max-width:600px) {
             header {
-                display:grid;
-                grid-template-columns:1fr auto;
-                gap:8px;
+                grid-template-columns:108px minmax(0,1fr) 108px;
+                gap:5px;
                 align-items:center;
-                padding:10px 12px;
+                padding:9px 10px;
             }
-            header > div:first-child { display:none; }
+            .header-control-balance,
+            .header-quick-actions { width:108px; }
+            .header-quick-actions { grid-template-columns:repeat(3,32px);gap:6px; }
+            .header-icon-slot { width:32px;height:32px; }
+            .header-icon-btn,
+            header .theme-toggle-btn,
+            header .event-weather-button {
+                width:32px;
+                height:32px;
+                min-width:32px;
+                min-height:32px;
+                padding:0 !important;
+                font-size:1rem;
+            }
             header h1 {
                 min-width:0;
-                text-align:left;
-                font-size:1rem !important;
-                letter-spacing:.8px;
-                overflow-wrap:anywhere;
-            }
-            header .theme-toggle-btn {
-                width:auto;
-                max-width:132px;
-                min-height:42px;
-                padding:8px 10px !important;
+                text-align:center;
+                font-size:1.12rem !important;
+                letter-spacing:1px;
+                white-space:nowrap;
+                overflow:hidden;
+                text-overflow:ellipsis;
             }
             .container { padding:10px 8px; }
             .menu-grid { grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:8px; }
@@ -1735,9 +1772,12 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
         }
 
         @media(max-width:360px) {
-            header { grid-template-columns:1fr; }
-            header h1 { text-align:center; }
-            header .theme-toggle-btn { width:100%; max-width:none; }
+            header { grid-template-columns:94px minmax(0,1fr) 94px; padding-left:7px;padding-right:7px; }
+            .header-control-balance,.header-quick-actions{width:94px}
+            .header-quick-actions{grid-template-columns:repeat(3,28px);gap:5px}
+            .header-icon-slot{width:28px;height:28px}
+            .header-icon-btn,header .theme-toggle-btn,header .event-weather-button{width:28px;height:28px;min-width:28px;min-height:28px;font-size:.9rem}
+            header h1 { text-align:center;font-size:1rem !important;letter-spacing:.6px; }
             .menu-grid { gap:6px; }
             .menu-grid > .menu-btn { min-height:56px; font-size:.78rem !important; }
             .band-view-export-actions { grid-template-columns:1fr !important; }
@@ -1767,7 +1807,7 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
         .admin-user-id{margin-top:8px;color:var(--text-muted);font-size:.64rem;overflow-wrap:anywhere}
 
         /* ===== VERANSTALTUNGSWETTER ===== */
-        .event-weather-button{width:38px;height:38px;border:1px solid var(--border);border-radius:12px;background:var(--card-bg);color:var(--text-main);font-size:1.25rem;display:grid;place-items:center;cursor:pointer;box-shadow:0 2px 7px rgba(0,0,0,.08)}
+        .event-weather-button{font-size:1.05rem}
         .event-weather-button:hover{transform:translateY(-1px)}
         .event-weather-dialog{width:min(900px,100%)}
         .event-weather-meta{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:10px 12px;margin-bottom:10px;border:1px solid var(--border);border-radius:10px;background:var(--card-bg);font-size:.78rem}
@@ -1835,11 +1875,17 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
         <span id="connection-queue-count" class="connection-queue-count"></span>
     </button>
     <header>
-        <div id="weather-header-slot" style="width:80px;display:flex;justify-content:flex-start;align-items:center;">
-            <button id="event-weather-button" type="button" class="event-weather-button" onclick="openEventWeather()" title="Wetter zur Veranstaltung" aria-label="Wetter zur Veranstaltung">🌦️</button>
-        </div>
+        <div class="header-control-balance" aria-hidden="true"></div>
         <h1 id="app-event-title">CMOA 2027</h1>
-        <button class="theme-toggle-btn" onclick="toggleTheme()" id="theme-toggle-btn">🌙 Nightmode</button>
+        <div class="header-quick-actions">
+            <span id="weather-header-slot" class="header-icon-slot">
+                <button id="event-weather-button" type="button" class="header-icon-btn event-weather-button" onclick="openEventWeather()" title="Wetter zur Veranstaltung" aria-label="Wetter zur Veranstaltung">🌦️</button>
+            </span>
+            <button class="header-icon-btn theme-toggle-btn" onclick="toggleTheme()" id="theme-toggle-btn" title="Nightmode aktivieren" aria-label="Nightmode aktivieren">🌙</button>
+            <span class="header-icon-slot header-icon-reserved" aria-hidden="true">
+                <button type="button" class="header-icon-btn" tabindex="-1">•</button>
+            </span>
+        </div>
     </header>
 
     
@@ -3423,7 +3469,7 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
             catch(e){ showAuthError('Phase-2-Daten konnten nicht geladen werden: '+e.message); console.error(e); return; }
             try {
                 var designSaved=localStorage.getItem('cmoa_design_v1')||'steel';document.body.setAttribute('data-design',designSaved);updateDesignButtons();
-                var themeSaved=localStorage.getItem('cmoa_theme_v1');if(themeSaved==='night'){document.body.classList.add('night-mode');var btn=document.getElementById('theme-toggle-btn');if(btn)btn.innerText='☀️ Daymode';}
+                var themeSaved=localStorage.getItem('cmoa_theme_v1');if(themeSaved==='night'){document.body.classList.add('night-mode');}syncThemeButton();
             } catch(e) {}
             if(!Array.isArray(bands))bands=[];if(!Array.isArray(manualTodos))manualTodos=[];if(!Array.isArray(eventNeeds))eventNeeds=[];if(!Array.isArray(hotelCostsList))hotelCostsList=[];if(!shuttleTripLog||typeof shuttleTripLog!=='object')shuttleTripLog={};if(!Array.isArray(shuttleVehicles))shuttleVehicles=[];if(!Array.isArray(productionEntries))productionEntries=[];if(!Array.isArray(akkDb))akkDb=[];
             try{updateMainProgress();renderBandsList();initAkkreditierung();}catch(err){console.error('Init error:',err);}
@@ -3679,11 +3725,17 @@ function loadFromLocalStorage() {
             updateDesignButtons();
         }
 
+        function syncThemeButton(){
+            var btn=document.getElementById('theme-toggle-btn');if(!btn)return;
+            var isNight=document.body.classList.contains('night-mode');
+            btn.textContent=isNight?'☀️':'🌙';
+            btn.title=isNight?'Daymode aktivieren':'Nightmode aktivieren';
+            btn.setAttribute('aria-label',isNight?'Daymode aktivieren':'Nightmode aktivieren');
+        }
         function toggleTheme() {
             var isNight = document.body.classList.toggle('night-mode');
             try { localStorage.setItem('cmoa_theme_v1', isNight ? 'night' : 'day'); } catch(e) {}
-            var btn = document.getElementById('theme-toggle-btn');
-            if (btn) btn.innerText = isNight ? '☀️ Daymode' : '🌙 Nightmode';
+            syncThemeButton();
         }
 
         function cashEuro(value) {
