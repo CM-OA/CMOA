@@ -7413,15 +7413,7 @@ function loadFromLocalStorage() {
                 '.shuttle-highlight{margin-top:7px;padding:8px 10px;border:1px solid #60a5fa;border-left:5px solid #2563eb;border-radius:6px;background:#eff6ff;color:#1e3a8a;line-height:1.55}.shuttle-highlight-title{font-weight:900;color:#1d4ed8;margin-bottom:2px}.shuttle-none{margin-top:5px;color:#64748b;font-size:8.5pt}.shuttle-overview{border-left-color:#0ea5e9}'+
                 '.hotel-summary-box{margin-top:12px;border:2px solid #2563eb;border-radius:7px;padding:10px;background:#f8fafc;page-break-inside:avoid}.hotel-summary-title{font-size:9pt;font-weight:900;color:#1d4ed8;margin-bottom:6px}.hotel-summary-row,.hotel-summary-total{display:grid;grid-template-columns:1fr 2fr auto;gap:10px;padding:5px 3px;border-bottom:1px solid #dbeafe;align-items:center}.hotel-summary-total{border-bottom:0;border-top:2px solid #2563eb;margin-top:4px;padding-top:7px;color:#1e3a8a}'+
                 '@media(max-width:650px){.payment-line{grid-template-columns:1fr 1fr}.payment-status{justify-self:end}}'+
-                '</style></head><body><header class="report-head"><h1>CHRONICAL MOSHERS OPEN AIR 2027</h1><p>'+akkEscape(subtitle)+'</p></header>'+reportHtml+'<script>
-document.addEventListener('keydown',function(e){
-  if(e.target&&e.target.id==='internal-chat-input'&&e.key==='Enter'&&!e.shiftKey){
-    e.preventDefault();
-    sendInternalChatMessage();
-  }
-});
-</script>
-</body></html>');
+                '</style></head><body><header class="report-head"><h1>CHRONICAL MOSHERS OPEN AIR 2027</h1><p>'+akkEscape(subtitle)+'</p></header>'+reportHtml+'</body></html>');
             d.close();
             setTimeout(function(){ try{frame.contentWindow.focus();frame.contentWindow.print();}catch(e){alert('Die Druckansicht konnte nicht geöffnet werden.');} setTimeout(function(){frame.remove();},1500); },350);
         }
@@ -9725,6 +9717,13 @@ document.addEventListener('keydown',function(e){
           startInternalChatRealtime();
           await loadInternalChatUnreadCount();
         }
+
+        document.addEventListener('keydown',function(e){
+          if(e.target&&e.target.id==='internal-chat-input'&&e.key==='Enter'&&!e.shiftKey){
+            e.preventDefault();
+            sendInternalChatMessage();
+          }
+        });
 
         function closeEventWeather(){var o=document.getElementById('event-weather-overlay');if(o)o.classList.remove('show');}
         function eventWeatherDate(d){return d.toLocaleDateString('de-DE',{weekday:'short',day:'2-digit',month:'2-digit'});}
