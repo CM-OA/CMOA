@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"><meta http-equiv="Pragma" content="no-cache"><meta http-equiv="Expires" content="0"><title>CMOA Kasse · Version 19</title>
+<html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"><meta http-equiv="Pragma" content="no-cache"><meta http-equiv="Expires" content="0"><title>CMOA Kasse · Version 20</title>
 <meta name="theme-color" content="#111827">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -16,6 +16,11 @@
 .article-setting.subarticle{margin-left:28px;border-left:3px solid var(--blue);background:color-mix(in srgb,var(--panel2) 88%,var(--blue))}
 .article-sort{display:flex;gap:4px}.article-sort .btn{min-width:30px;width:30px;height:30px;padding:0;font-size:14px}
 .article-save-status{min-height:22px;margin-top:8px;font-size:13px;font-weight:900;color:var(--green)}
+.article-transfer-bar{margin-top:12px;padding:11px;border:1px solid var(--line);border-radius:12px;background:var(--panel2);display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px 12px;align-items:center}
+.article-transfer-bar #articleTransferCount{grid-column:1/-1}
+.article-transfer-check{width:20px!important;height:20px!important;margin:0!important;accent-color:var(--blue);flex:none}
+.protection-code-input{font-size:30px!important;letter-spacing:.45em;text-align:center;font-weight:900;max-width:180px;margin:10px auto!important;display:block}
+@media(max-width:600px){.article-transfer-bar{grid-template-columns:1fr}.article-transfer-bar .btn{width:100%}}
 .subarticle-label{font-size:9px!important;padding:2px 6px!important;background:var(--blue);color:#fff;border-radius:999px}
 @media(max-width:600px){.article-setting.subarticle{margin-left:14px}.article-sort{margin-right:auto}}
 </style>
@@ -39,18 +44,33 @@
   <div id="cashInvitePasswordError" style="color:#ef4444;text-align:center;margin-top:10px"></div>
 </div></div>
 <div id="tillGate" class="tillGate hidden"><div class="tillGateInner"><h2>🏪 Kasse auswählen</h2><p class="muted" style="text-align:center">Bitte an der Verkaufsstelle einchecken, an der du jetzt arbeitest.</p><div id="tillGateGrid" class="tillGateGrid"></div></div></div>
-<header><h1>🍺 Schnellkasse <small style="font-size:11px;color:var(--muted);white-space:nowrap">Version 19</small></h1><div class="headInfo"><div class="headTill" id="headTill">Keine Kasse</div><button class="switchTill" onclick="showTillCheckin()">Kasse wechseln</button><div class="cash" id="cashTop">0,00 €</div></div></header>
+<header><h1>🍺 Schnellkasse <small style="font-size:11px;color:var(--muted);white-space:nowrap">Version 20</small></h1><div class="headInfo"><div class="headTill" id="headTill">Keine Kasse</div><button class="switchTill" onclick="showTillCheckin()">Kasse wechseln</button><div class="cash" id="cashTop">0,00 €</div></div></header>
 <main>
 <section id="sale" class="section active"><div id="noTill" class="card hidden"><b>Bitte zuerst eine Kasse auswählen.</b></div><div class="saleTopActions"><button class="btn emptyQuick" onclick="showEmptyingDialog()">💶 ZL / KL</button><button class="btn tokenQuick" onclick="startTokenMode()">🎟️ Marke</button><button class="btn depositQuick" onclick="startStandaloneDeposit()">↩ Pfand</button><button class="btn freeQuick" onclick="startFreeMode()">⭐ FREE</button></div><div id="modeBanner" class="modeBanner"></div><div id="drinkGrid" class="grid"></div></section>
 <section id="history" class="section"><div class="card"><h2>Kassen-Historie</h2><div class="row"><label>Kasse<select id="historyTill" onchange="renderHistory()"></select></label></div><div class="historyTabs"><button id="historyAllBtn" class="btn active" onclick="setHistoryView('all')">Alle Buchungen</button><button id="historyEmptyBtn" class="btn" onclick="setHistoryView('emptyings')">ZL / KL</button></div><div id="historyList" class="list"></div></div></section>
 <section id="stats" class="section"><div class="card"><h2>Statistik</h2><div class="row"><label>Kasse<select id="statsTill" onchange="renderStats()"></select></label></div></div><div id="statsBox"></div></section>
 <section id="settings" class="section">
 <div class="card"><h2>Cloud-Verbindung</h2><div class="row"><label>Veranstaltung<select id="cloudEvent" onchange="changeCloudEvent()"></select></label><div><div class="muted">Angemeldet als</div><div id="cloudUser" style="font-weight:800;margin:6px 0">–</div><button class="btn" onclick="cashLogout()">Abmelden</button></div></div><div id="cloudStatus" class="muted">Nicht verbunden</div></div>
+<div class="card"><h2>🔒 Schutzcode</h2>
+  <div id="protectionStatus" class="muted" style="margin-bottom:10px">Noch kein Schutzcode eingerichtet.</div>
+  <div class="row">
+    <label>3-stelliger Code
+      <input id="protectionCodeNew" type="password" inputmode="numeric" maxlength="3" pattern="[0-9]{3}" placeholder="•••">
+    </label>
+  </div>
+  <button class="btn primary" onclick="saveProtectionCode()">Schutzcode speichern / ändern</button>
+</div>
 <div class="card"><h2>Darstellung</h2><div class="toolbar"><button class="btn" onclick="setTheme('light')">☀️ Daymode</button><button class="btn" onclick="setTheme('dark')">🌙 Darkmode</button></div></div>
 <div class="card"><h2>Kasse / Bediener</h2><div class="row"><label>Aktive Kasse<select id="activeTill" onchange="changeTill()"></select></label><label>Bediener (optional)<input id="operator" placeholder="z. B. Jan" onchange="saveOperator()"></label></div><div class="row"><label>Neue Kasse<input id="newTill" placeholder="z. B. Bierwagen"></label></div><button class="btn primary" onclick="addTill()">+ Kasse anlegen</button><div id="tillList" class="list" style="margin-top:12px"></div></div>
 <div class="card"><h2>Anfangsbestand</h2><div class="row"><label>Betrag €<input id="opening" type="number" step="0.01" inputmode="decimal"></label></div><button class="btn primary" onclick="bookOpening()">Anfangsbestand buchen</button></div>
 <div class="card"><h2>Pfand</h2><div class="row"><label>Bezeichnung<input id="depName" placeholder="z. B. Becherpfand"></label><label>Pfand pro Stück €<input id="depValue" type="number" step="0.01" inputmode="decimal"></label><label>Zuweisen<select id="depAssign"><option value="none">Noch nicht zuweisen</option><option value="all">Allen Getränken zuweisen</option></select></label></div><button class="btn primary" onclick="addDeposit()">+ Pfand anlegen</button><div id="depositList" class="list" style="margin-top:12px"></div></div>
-<div class="card"><h2>Getränke & Speisen</h2><div id="drinkEditContext" class="muted" style="display:none;margin:-4px 0 10px"></div><div class="row"><label>Name<input id="dName"></label><label>Art<select id="dCategory" onchange="applyCategoryVatDefault()"><option value="drink">Getränk</option><option value="food">Speise</option></select></label><label>Preis €<input id="dPrice" type="number" step="0.01" inputmode="decimal"></label><label>Preisangabe<select id="dPriceMode"><option value="net">Netto – Steuer kommt hinzu</option><option value="gross">Brutto – Steuer ist enthalten</option></select></label><label>Umsatzsteuer %<input id="dVatRate" type="number" min="0" max="100" step="0.01" inputmode="decimal" value="19"></label><label>Pfand<select id="dDeposit"></select></label><label>Farbe<input id="dColor" type="color" value="#2563eb"></label><label class="switch" style="align-self:end;color:var(--text)"><input id="dNoSymbol" type="checkbox"> Kein Symbol auf Kachel</label></div><h3 style="margin:14px 0 4px">Menge pro verkauftem Getränk</h3><div class="muted">Bei normalen Getränken genügt Komponente 1. Für Mischgetränke kann zusätzlich Komponente 2 eingetragen werden.</div><div class="row"><label>Komponente 1<input id="dPart1" placeholder="z. B. Whisky oder Cola"></label><label>Menge 1 in Liter<input id="dVolume1" type="number" min="0" step="0.001" inputmode="decimal" placeholder="z. B. 0,04"></label><label>Komponente 2 (optional)<input id="dPart2" placeholder="z. B. Cola"></label><label>Menge 2 in Liter (optional)<input id="dVolume2" type="number" min="0" step="0.001" inputmode="decimal" placeholder="z. B. 0,20"></label></div><button class="btn primary" id="drinkSaveBtn" onclick="saveDrink()">+ Artikel anlegen</button><button class="btn hidden" id="drinkCancelBtn" onclick="cancelDrinkEdit()">Bearbeitung abbrechen</button><div id="drinkSaveStatus" class="article-save-status" aria-live="polite"></div><div id="drinkSettings" class="list" style="margin-top:12px"></div></div>
+<div class="card"><h2>Getränke & Speisen</h2><div id="drinkEditContext" class="muted" style="display:none;margin:-4px 0 10px"></div><div class="row"><label>Name<input id="dName"></label><label>Art<select id="dCategory" onchange="applyCategoryVatDefault()"><option value="drink">Getränk</option><option value="food">Speise</option></select></label><label>Preis €<input id="dPrice" type="number" step="0.01" inputmode="decimal"></label><label>Preisangabe<select id="dPriceMode"><option value="net">Netto – Steuer kommt hinzu</option><option value="gross">Brutto – Steuer ist enthalten</option></select></label><label>Umsatzsteuer %<input id="dVatRate" type="number" min="0" max="100" step="0.01" inputmode="decimal" value="19"></label><label>Pfand<select id="dDeposit"></select></label><label>Farbe<input id="dColor" type="color" value="#2563eb"></label><label class="switch" style="align-self:end;color:var(--text)"><input id="dNoSymbol" type="checkbox"> Kein Symbol auf Kachel</label></div><h3 style="margin:14px 0 4px">Menge pro verkauftem Getränk</h3><div class="muted">Bei normalen Getränken genügt Komponente 1. Für Mischgetränke kann zusätzlich Komponente 2 eingetragen werden.</div><div class="row"><label>Komponente 1<input id="dPart1" placeholder="z. B. Whisky oder Cola"></label><label>Menge 1 in Liter<input id="dVolume1" type="number" min="0" step="0.001" inputmode="decimal" placeholder="z. B. 0,04"></label><label>Komponente 2 (optional)<input id="dPart2" placeholder="z. B. Cola"></label><label>Menge 2 in Liter (optional)<input id="dVolume2" type="number" min="0" step="0.001" inputmode="decimal" placeholder="z. B. 0,20"></label></div><button class="btn primary" id="drinkSaveBtn" onclick="saveDrink()">+ Artikel anlegen</button><button class="btn hidden" id="drinkCancelBtn" onclick="cancelDrinkEdit()">Bearbeitung abbrechen</button><div id="drinkSaveStatus" class="article-save-status" aria-live="polite"></div>
+<div class="article-transfer-bar">
+  <div><b>Artikel auf andere Kassen übertragen</b><div class="muted">Artikel unten auswählen und anschließend Zielkasse(n) festlegen.</div></div>
+  <button class="btn blue" onclick="openArticleTransferDialog()">↗ Ausgewählte übertragen</button>
+  <div id="articleTransferCount" class="muted">0 Artikel ausgewählt</div>
+</div>
+<div id="drinkSettings" class="list" style="margin-top:12px"></div></div>
 <div class="card"><h2>Tagesabschluss</h2><div class="row"><label>Gezählter Endbestand €<input id="countedCash" type="number" step="0.01" inputmode="decimal" oninput="renderClosing()"></label><div><div class="muted">Sollbestand</div><div class="stat" id="expectedCash">0,00 €</div></div><div><div class="muted">Differenz</div><div class="stat" id="cashDiff">0,00 €</div></div></div><button class="btn danger" onclick="bookClosing()">Tagesendbestand buchen</button></div>
 <div class="card"><button class="btn danger" onclick="resetAll()">Alle Kassendaten zurücksetzen</button></div>
 </section></main>
@@ -60,7 +80,7 @@ const K='barKasseV2';
 const defaultDrinks=[['Bier',3.5,'#d99b16'],['Radler',3.5,'#f2c94c'],['Alkfreies Bier',3.5,'#bf7b18'],['Wasser',2.5,'#3b82f6'],['Rotwein',4,'#7f1d1d'],['Weißwein',4,'#e7d48a'],['Cola',3,'#5c2b16'],['Fanta',3,'#f97316'],['Sprite',3,'#b7e4c7'],['Schnaps',2.5,'#64748b'],['Mixgetränke',5,'#c026d3']].map((x,i)=>({id:'d'+i,name:x[0],price:x[1],color:x[2],depositId:null}));
 const defaultFoods=[['Nudeln mit Gulasch','#b45309'],['Roster','#dc2626'],['Steak','#7f1d1d'],['Fleischkäse','#db6b55'],['Veganes Chili','#16a34a']];
 let db=JSON.parse(localStorage.getItem(K)||'null')||{theme:'dark',tills:[{id:'t1',name:'Bierwagen'}],activeTillId:'t1',operator:'',deposits:[{id:'p1',name:'Pfand',value:2}],drinks:defaultDrinks.map(d=>({...d,depositId:'p1'})),sales:[],cashEvents:[]};
-let flow={},editDrinkId=null,historyView='all',tillCheckedIn=false,specialChoiceEditorState=null,pendingDrinkDeleteIds=[];const $=id=>document.getElementById(id);const euro=n=>(Number(n)||0).toLocaleString('de-DE',{style:'currency',currency:'EUR'});const liter=n=>(Number(n)||0).toLocaleString('de-DE',{minimumFractionDigits:0,maximumFractionDigits:3})+' l';const now=()=>new Date().toISOString();const uid=()=>crypto.randomUUID();
+let flow={},editDrinkId=null,historyView='all',tillCheckedIn=false,specialChoiceEditorState=null,pendingDrinkDeleteIds=[],protectedSectionsUnlocked=false,pendingProtectedSection=null;const $=id=>document.getElementById(id);const euro=n=>(Number(n)||0).toLocaleString('de-DE',{style:'currency',currency:'EUR'});const liter=n=>(Number(n)||0).toLocaleString('de-DE',{minimumFractionDigits:0,maximumFractionDigits:3})+' l';const now=()=>new Date().toISOString();const uid=()=>crypto.randomUUID();
 const specialParentNames=new Set(['schnaps','mixgetränke']);
 const defaultSpecialDrinkChoices={};
 const drinkSymbols={bier:'🍺',radler:'🍺','alkfreies bier':'🍺',wasser:'💧',rotwein:'🍷','weißwein':'🍷',cola:'🥤',fanta:'🍊',sprite:'🥤',schnaps:'🥃','mixgetränke':'🍹',kräuter:'🌿',korn:'🥃',wodka:'🧊',whisky:'🥃',tequila:'🌵',obstler:'🍐','likör':'🍸','wodka-cola':'🍹','whisky-cola':'🥃','rum-cola':'🍹','gin-tonic':'🍸','wodka-energy':'⚡','korn-fanta':'🍊','nudeln mit gulasch':'🍝',roster:'🌭',steak:'🥩','fleischkäse':'🍖','veganes chili':'🌶️'};
@@ -82,8 +102,8 @@ function isCmoa2027Event(){let e=cloudEvents.find(x=>x.id===cloudEventId),name=S
 function ensureBackstageSetup(){if(!isCmoa2027Event())return false;let changed=false,backstage=db.tills.find(t=>String(t.name||'').trim().toLocaleLowerCase('de-DE')==='backstage');if(!backstage){backstage={id:uid(),name:'Backstage'};db.tills.push(backstage);changed=true}defaultFoods.forEach(([name,color])=>{let item=db.drinks.find(d=>String(d.name||'').trim().toLocaleLowerCase('de-DE')===name.toLocaleLowerCase('de-DE'));if(!item){db.drinks.push({id:uid(),name,price:0,color,depositId:null,category:'food',tillIds:[backstage.id]});changed=true}else{if(item.category!=='food'){item.category='food';changed=true}if(item.depositId){item.depositId=null;changed=true}if(!Array.isArray(item.tillIds)||!item.tillIds.includes(backstage.id)){item.tillIds=[...new Set([...(Array.isArray(item.tillIds)?item.tillIds:[]),backstage.id])];changed=true}}});return changed}
 function textColor(hex){let h=hex.replace('#',''),r=parseInt(h.slice(0,2),16),g=parseInt(h.slice(2,4),16),b=parseInt(h.slice(4,6),16);return(r*299+g*587+b*114)/1000>160?'#111827':'#fff'}
 function decodeMetaText(v){try{return decodeURIComponent(v||'')}catch(e){return String(v||'')}}
-function decodeDrinkColor(raw){let parts=String(raw||'#2563eb').split('|'),color=/^#[0-9a-f]{6}$/i.test(parts[0])?parts[0]:'#2563eb',tillPart=parts.find(x=>x.startsWith('tills:')),categoryPart=parts.find(x=>x.startsWith('category:')),part1=parts.find(x=>x.startsWith('part1:')),part2=parts.find(x=>x.startsWith('part2:')),vol1=parts.find(x=>x.startsWith('vol1:')),vol2=parts.find(x=>x.startsWith('vol2:')),vatPart=parts.find(x=>x.startsWith('vat:')),modePart=parts.find(x=>x.startsWith('priceMode:')),choicesPart=parts.find(x=>x.startsWith('choices:')),parentPart=parts.find(x=>x.startsWith('parent:')),noSymbol=parts.includes('nosymbol:1'),subMenuInitialized=parts.includes('submenu:1'),category=categoryPart&&categoryPart.slice(9)==='food'?'food':'drink',specialChoices=null;if(choicesPart){try{let parsed=JSON.parse(decodeMetaText(choicesPart.slice(8)));if(Array.isArray(parsed))specialChoices=parsed.map(x=>String(x)).filter(Boolean)}catch(e){specialChoices=null}}return {color,tillIds:tillPart?tillPart.slice(6).split(',').filter(Boolean):null,category,part1:decodeMetaText(part1?part1.slice(6):''),part2:decodeMetaText(part2?part2.slice(6):''),volume1:Number(vol1?vol1.slice(5):0)||0,volume2:Number(vol2?vol2.slice(5):0)||0,vatRate:vatPart?Number(vatPart.slice(4)):(category==='food'?7:19),priceMode:modePart&&modePart.slice(10)==='gross'?'gross':'net',specialChoices,parentId:parentPart?parentPart.slice(7):null,noSymbol,subMenuInitialized}}
-function encodeDrinkColor(d){return d.color+(Array.isArray(d.tillIds)?'|tills:'+d.tillIds.join(','):'')+(d.category==='food'?'|category:food':'')+(d.part1?'|part1:'+encodeURIComponent(d.part1):'')+(Number(d.volume1)>0?'|vol1:'+Number(d.volume1):'')+(d.part2?'|part2:'+encodeURIComponent(d.part2):'')+(Number(d.volume2)>0?'|vol2:'+Number(d.volume2):'')+(d.parentId?'|parent:'+d.parentId:'')+(d.noSymbol?'|nosymbol:1':'')+(d.subMenuInitialized?'|submenu:1':'')+(Array.isArray(d.specialChoices)?'|choices:'+encodeURIComponent(JSON.stringify(d.specialChoices)):'')+'|vat:'+Number(d.vatRate||(d.category==='food'?7:19))+'|priceMode:'+(d.priceMode==='gross'?'gross':'net')}
+function decodeDrinkColor(raw){let parts=String(raw||'#2563eb').split('|'),color=/^#[0-9a-f]{6}$/i.test(parts[0])?parts[0]:'#2563eb',tillPart=parts.find(x=>x.startsWith('tills:')),categoryPart=parts.find(x=>x.startsWith('category:')),part1=parts.find(x=>x.startsWith('part1:')),part2=parts.find(x=>x.startsWith('part2:')),vol1=parts.find(x=>x.startsWith('vol1:')),vol2=parts.find(x=>x.startsWith('vol2:')),vatPart=parts.find(x=>x.startsWith('vat:')),modePart=parts.find(x=>x.startsWith('priceMode:')),choicesPart=parts.find(x=>x.startsWith('choices:')),parentPart=parts.find(x=>x.startsWith('parent:')),lockPart=parts.find(x=>x.startsWith('lockhash:')),noSymbol=parts.includes('nosymbol:1'),subMenuInitialized=parts.includes('submenu:1'),category=categoryPart&&categoryPart.slice(9)==='food'?'food':'drink',specialChoices=null;if(choicesPart){try{let parsed=JSON.parse(decodeMetaText(choicesPart.slice(8)));if(Array.isArray(parsed))specialChoices=parsed.map(x=>String(x)).filter(Boolean)}catch(e){specialChoices=null}}return {color,tillIds:tillPart?tillPart.slice(6).split(',').filter(Boolean):null,category,part1:decodeMetaText(part1?part1.slice(6):''),part2:decodeMetaText(part2?part2.slice(6):''),volume1:Number(vol1?vol1.slice(5):0)||0,volume2:Number(vol2?vol2.slice(5):0)||0,vatRate:vatPart?Number(vatPart.slice(4)):(category==='food'?7:19),priceMode:modePart&&modePart.slice(10)==='gross'?'gross':'net',specialChoices,parentId:parentPart?parentPart.slice(7):null,noSymbol,subMenuInitialized,lockHash:lockPart?lockPart.slice(9):''}}
+function encodeDrinkColor(d){return d.color+(Array.isArray(d.tillIds)?'|tills:'+d.tillIds.join(','):'')+(d.category==='food'?'|category:food':'')+(d.part1?'|part1:'+encodeURIComponent(d.part1):'')+(Number(d.volume1)>0?'|vol1:'+Number(d.volume1):'')+(d.part2?'|part2:'+encodeURIComponent(d.part2):'')+(Number(d.volume2)>0?'|vol2:'+Number(d.volume2):'')+(d.parentId?'|parent:'+d.parentId:'')+(d.noSymbol?'|nosymbol:1':'')+(d.subMenuInitialized?'|submenu:1':'')+(db.lockHash?'|lockhash:'+db.lockHash:'')+(Array.isArray(d.specialChoices)?'|choices:'+encodeURIComponent(JSON.stringify(d.specialChoices)):'')+'|vat:'+Number(d.vatRate||(d.category==='food'?7:19))+'|priceMode:'+(d.priceMode==='gross'?'gross':'net')}
 function drinkTillLabel(d){if(!Array.isArray(d.tillIds))return 'Alle Kassen';let names=d.tillIds.map(id=>{let t=db.tills.find(x=>x.id===id);return t?t.name:null}).filter(Boolean);return names.length?names.join(', '):'Keine Kasse'}
 function setTheme(t){db.theme=t;document.body.classList.toggle('dark',t==='dark');save()}
 function tillSales(id){return db.sales.filter(x=>x.tillId===id)}function tillEvents(id){return db.cashEvents.filter(x=>x.tillId===id)}function cashNow(id=db.activeTillId){let openings=tillEvents(id).filter(x=>x.type==='opening').reduce((s,x)=>s+x.amount,0),closings=tillEvents(id).filter(x=>x.type==='closing');let lastClose=closings.length?Math.max(...closings.map(x=>new Date(x.time).getTime())):0;let baseEvents=tillEvents(id).filter(x=>new Date(x.time).getTime()>lastClose);let opening=baseEvents.filter(x=>x.type==='opening').reduce((s,x)=>s+x.amount,0);let sales=tillSales(id).filter(x=>!x.voided&&new Date(x.time).getTime()>lastClose).reduce((s,x)=>s+x.total,0);let empties=baseEvents.filter(x=>x.type==='emptying').reduce((s,x)=>s+x.amount,0);return opening+sales-empties}
@@ -146,9 +166,9 @@ function openingBalance(id){return currentOpeningEvents(id).reduce((sum,x)=>sum+
 function renderSettings(){fillTillSelect($('activeTill'));$('activeTill').value=db.activeTillId;$('operator').value=db.operator||'';$('tillList').innerHTML=db.tills.map(t=>`<div class="item"><div class="grow"><b>${esc(t.name)}</b><div class="muted">Anfangsbestand: ${euro(openingBalance(t.id))}${t.id===db.activeTillId?' · Aktiv':''}</div></div><button class="btn" onclick="editTill('${t.id}')">✏️ Bearbeiten</button><button class="btn danger" onclick="deleteTill('${t.id}')">🗑️</button></div>`).join('')||'<div class="muted">Noch keine Kasse angelegt.</div>';$('dDeposit').innerHTML='<option value="">Kein Pfand</option>'+db.deposits.map(p=>`<option value="${p.id}">${esc(p.name)} · ${euro(p.value)}</option>`).join('');$('depositList').innerHTML=db.deposits.map(p=>`<div class="item"><div class="grow"><b>${esc(p.name)}</b><div class="muted">${euro(p.value)} pro Stück · ${db.drinks.filter(d=>d.depositId===p.id).length} Getränke</div></div><button class="btn" onclick="editDeposit('${p.id}')">✏️</button><button class="btn danger" onclick="deleteDeposit('${p.id}')">🗑️</button></div>`).join('')||'<div class="muted">Noch kein Pfand angelegt.</div>';$('drinkSettings').innerHTML=db.drinks.map(d=>{let p=depFor(d),food=d.category==='food',vat=Number.isFinite(Number(d.vatRate))?Number(d.vatRate):(food?7:19),priceMode=d.priceMode==='gross'?'Brutto':'Netto',volumeText=!food&&Number(d.volume1)>0?'<br>Menge: '+esc(d.part1||d.name)+' '+liter(d.volume1)+(Number(d.volume2)>0?' + '+esc(d.part2||'Komponente 2')+' '+liter(d.volume2):''):'<br>Menge: noch nicht hinterlegt';return `<div class="item"><span style="font-size:28px">${drinkSymbol(d.name)}</span><span class="colorDot" style="background:${d.color}"></span><div class="grow"><b>${esc(d.name)}</b> <span class="${food?'freeBadge':'eventBadge'}">${food?'SPEISE':'GETRÄNK'}</span><div class="muted">${euro(d.price)} ${priceMode} · ${vat.toLocaleString('de-DE')} % USt. · ${food?'kein Pfand':p?'Pfand '+euro(p.value):'kein Pfand'}${food?'':volumeText}<br>Verfügbar: ${esc(drinkTillLabel(d))}</div></div><button class="btn" title="Kassen zuordnen" onclick="assignDrinkTills('${d.id}')">🏪 Kassen</button><button class="btn" onclick="editDrink('${d.id}')">✏️</button><button class="btn danger" onclick="deleteDrink('${d.id}')">🗑️</button></div>`}).join('');renderClosing()}
 function articleSettingsHtml(d){
  let p=depFor(d),food=d.category==='food',vat=Number.isFinite(Number(d.vatRate))?Number(d.vatRate):(food?7:19),priceMode=d.priceMode==='gross'?'Brutto':'Netto',volumeText=food?'Keine Literangabe':Number(d.volume1)>0?esc(d.part1||d.name)+' '+liter(d.volume1)+(Number(d.volume2)>0?' + '+esc(d.part2||'Komponente 2')+' '+liter(d.volume2):''):'Menge noch nicht hinterlegt',parent=d.parentId?db.drinks.find(x=>x.id===d.parentId):null,symbol=d.noSymbol?'':drinkSymbol(d.name),submenuCount=isSpecialParentDrink(d)?childArticlesFor(d).length:0;
- return `<div class="item article-setting${d.parentId?' subarticle':''}"><div class="article-setting-icon">${symbol}</div><div class="article-setting-main"><div class="article-setting-title"><b>${d.parentId?'↳ ':''}${esc(d.name)}</b>${d.parentId?`<span class="subarticle-label">UNTERARTIKEL · ${esc(parent?parent.name:'')}</span>`:`<span class="${food?'freeBadge':'eventBadge'} article-kind">${food?'SPEISE':'GETRÄNK'}</span>`}</div><div class="article-meta"><span class="article-chip">${euro(d.price)} ${priceMode}</span><span class="article-chip">${vat.toLocaleString('de-DE')} % USt.</span>${d.parentId?'<span class="article-chip">eigener Preis & Menge</span>':`<span class="article-chip">${food?'Kein Pfand':p?'Pfand '+euro(p.value):'Kein Pfand'}</span>`}</div></div><div class="article-actions"><div class="article-sort"><button class="btn" title="Nach oben" onclick="moveArticle('${d.id}',-1)">↑</button><button class="btn" title="Nach unten" onclick="moveArticle('${d.id}',1)">↓</button></div><button class="btn" title="Kassen zuordnen" onclick="assignDrinkTills('${d.id}')">🏪</button>${isSpecialParentDrink(d)?`<button class="btn" title="Untermenü verwalten" onclick="editSpecialChoices('${d.id}')">☰</button>`:''}<button class="btn" title="Artikel bearbeiten" onclick="editDrink('${d.id}')">✏️</button><button class="btn danger" title="Artikel löschen" onclick="deleteDrink('${d.id}')">🗑️</button></div><div class="article-detail article-detail-wide">${food?'🍽️ Speise':'Menge: '+volumeText}${submenuCount?'<br>☰ Untermenü: '+submenuCount+' Artikel':''}${d.noSymbol&&!d.parentId?'<br>Symbol auf Kachel: aus':''}<br>🏪 ${esc(drinkTillLabel(d))}</div></div>`
+ return `<div class="item article-setting${d.parentId?' subarticle':''}"><input class="articleTransferCheck article-transfer-check" type="checkbox" value="${d.id}" onchange="updateArticleTransferCount()"><div class="article-setting-icon">${symbol}</div><div class="article-setting-main"><div class="article-setting-title"><b>${d.parentId?'↳ ':''}${esc(d.name)}</b>${d.parentId?`<span class="subarticle-label">UNTERARTIKEL · ${esc(parent?parent.name:'')}</span>`:`<span class="${food?'freeBadge':'eventBadge'} article-kind">${food?'SPEISE':'GETRÄNK'}</span>`}</div><div class="article-meta"><span class="article-chip">${euro(d.price)} ${priceMode}</span><span class="article-chip">${vat.toLocaleString('de-DE')} % USt.</span>${d.parentId?'<span class="article-chip">eigener Preis & Menge</span>':`<span class="article-chip">${food?'Kein Pfand':p?'Pfand '+euro(p.value):'Kein Pfand'}</span>`}</div></div><div class="article-actions"><div class="article-sort"><button class="btn" title="Nach oben" onclick="moveArticle('${d.id}',-1)">↑</button><button class="btn" title="Nach unten" onclick="moveArticle('${d.id}',1)">↓</button></div><button class="btn" title="Kassen zuordnen" onclick="assignDrinkTills('${d.id}')">🏪</button>${isSpecialParentDrink(d)?`<button class="btn" title="Untermenü verwalten" onclick="editSpecialChoices('${d.id}')">☰</button>`:''}<button class="btn" title="Artikel bearbeiten" onclick="editDrink('${d.id}')">✏️</button><button class="btn danger" title="Artikel löschen" onclick="deleteDrink('${d.id}')">🗑️</button></div><div class="article-detail article-detail-wide">${food?'🍽️ Speise':'Menge: '+volumeText}${submenuCount?'<br>☰ Untermenü: '+submenuCount+' Artikel':''}${d.noSymbol&&!d.parentId?'<br>Symbol auf Kachel: aus':''}<br>🏪 ${esc(drinkTillLabel(d))}</div></div>`
 }
-const renderSettingsBeforeArticleLayout=renderSettings;renderSettings=function(){renderSettingsBeforeArticleLayout();let list=$('drinkSettings');if(list){list.className='list article-settings-list';list.innerHTML=db.drinks.map(articleSettingsHtml).join('')||'<div class="muted">Noch keine Artikel angelegt.</div>'}}
+const renderSettingsBeforeArticleLayout=renderSettings;renderSettings=function(){renderSettingsBeforeArticleLayout();let list=$('drinkSettings');if(list){list.className='list article-settings-list';list.innerHTML=db.drinks.map(articleSettingsHtml).join('')||'<div class="muted">Noch keine Artikel angelegt.</div>'}renderProtectionStatus();updateArticleTransferCount()}
 function moveArticle(id,direction){let item=db.drinks.find(x=>x.id===id);if(!item)return;if(item.parentId){let s=childArticlesFor(item.parentId),i=s.findIndex(x=>x.id===id),j=i+direction;if(j<0||j>=s.length)return;[s[i],s[j]]=[s[j],s[i]];rebuildDrinkOrder(null,item.parentId,s)}else{let t=db.drinks.filter(x=>!x.parentId),i=t.findIndex(x=>x.id===id),j=i+direction;if(j<0||j>=t.length)return;[t[i],t[j]]=[t[j],t[i]];rebuildDrinkOrder(t)}save();showArticleSaved('✓ Reihenfolge gespeichert')}
 function editSpecialChoices(id){let parent=db.drinks.find(x=>x.id===id);if(!parent)return;parent.subMenuInitialized=true;$('dialog').innerHTML=`<h2>Untermenü · ${esc(parent.name)}</h2><div class="muted" style="text-align:center;margin-bottom:12px">Jeder Unterartikel ist ein eigener Artikel mit eigenem Preis, Menge und Bestand.</div><div id="specialChoiceList" class="list"></div><div class="row" style="margin-top:14px"><label>Neuen Unterartikel anlegen<input id="specialChoiceNew" placeholder="z. B. Jägermeister" onkeydown="if(event.key==='Enter'){event.preventDefault();addSpecialChoice('${id}')}"></label></div><button class="btn blue" style="width:100%" onclick="addSpecialChoice('${id}')">＋ Unterartikel anlegen</button><button class="btn back" onclick="closeModal()">Schließen</button>`;renderSpecialChoiceEditor(id);$('modal').classList.add('show')}
 function renderSpecialChoiceEditor(parentId){let parent=db.drinks.find(x=>x.id===parentId),box=$('specialChoiceList');if(!parent||!box)return;let children=childArticlesFor(parentId);box.innerHTML=children.map(d=>`<div class="item" style="align-items:flex-start"><div class="grow"><b>${esc(d.name)}</b><div class="muted">${euro(d.price)} · ${Number(d.volume1)>0?esc(d.part1||d.name)+' '+liter(d.volume1):'Menge noch nicht hinterlegt'}${Number(d.volume2)>0?' + '+esc(d.part2||'Komponente 2')+' '+liter(d.volume2):''}</div></div><button class="btn" onclick="moveSpecialChoice('${parentId}','${d.id}',-1)">↑</button><button class="btn" onclick="moveSpecialChoice('${parentId}','${d.id}',1)">↓</button><button class="btn" onclick="editSubArticle('${d.id}')">✏️</button><button class="btn danger" onclick="removeSpecialChoice('${parentId}','${d.id}')">🗑️</button></div>`).join('')||'<div class="muted" style="text-align:center;padding:12px">Noch keine Unterartikel vorhanden.</div>'}
@@ -156,6 +176,118 @@ function addSpecialChoice(parentId){let parent=db.drinks.find(x=>x.id===parentId
 function editSubArticle(id){closeModal();editDrink(id)}
 async function removeSpecialChoice(parentId,childId){let d=db.drinks.find(x=>x.id===childId);if(!d)return;if(!confirm(`Unterartikel „${d.name}“ wirklich löschen?`))return;try{await cloudDelete('cash_drinks',childId,true);db.drinks=db.drinks.filter(x=>x.id!==childId);save();if($('specialChoiceList'))renderSpecialChoiceEditor(parentId);showArticleSaved('✓ Unterartikel gelöscht')}catch(e){alert('Unterartikel konnte nicht gelöscht werden: '+e.message)}}
 function moveSpecialChoice(parentId,childId,direction){let s=childArticlesFor(parentId),i=s.findIndex(x=>x.id===childId),j=i+direction;if(i<0||j<0||j>=s.length)return;[s[i],s[j]]=[s[j],s[i]];rebuildDrinkOrder(null,parentId,s);save();renderSpecialChoiceEditor(parentId)}
+function updateArticleTransferCount(){
+  let count=document.querySelectorAll('.articleTransferCheck:checked').length,el=$('articleTransferCount');
+  if(el)el.textContent=count+' Artikel ausgewählt';
+}
+function selectedArticleTransferIds(){
+  return [...document.querySelectorAll('.articleTransferCheck:checked')].map(x=>x.value);
+}
+function expandedArticleTransferIds(ids){
+  let result=new Set();
+  ids.forEach(id=>{
+    let d=db.drinks.find(x=>x.id===id);if(!d)return;
+    result.add(d.id);
+    if(d.parentId)result.add(d.parentId);
+    else childArticlesFor(d).forEach(c=>result.add(c.id));
+  });
+  return [...result];
+}
+function openArticleTransferDialog(){
+  let selected=selectedArticleTransferIds();
+  if(!selected.length)return alert('Bitte zuerst mindestens einen Artikel in der Artikelliste auswählen.');
+  if(db.tills.length<2)return alert('Es ist nur eine Kasse angelegt.');
+  let expanded=expandedArticleTransferIds(selected),names=selected.map(id=>{let d=db.drinks.find(x=>x.id===id);return d?d.name:''}).filter(Boolean);
+  $('dialog').innerHTML=`<h2>↗ Artikel übertragen</h2>
+    <div class="muted" style="text-align:center;margin-bottom:12px">${selected.length} ausgewählte Artikel: ${esc(names.join(', '))}</div>
+    <div class="card"><b>Übernommen werden automatisch:</b><div class="muted" style="margin-top:5px">Preis · Pfand · Mengen/Komponenten · Steuer · Farbe und sonstige Artikeleinstellungen. Es wird kein doppelter Artikel angelegt – derselbe Artikel wird zusätzlich an den gewählten Kassen angeboten.</div></div>
+    <div class="list">${db.tills.map(t=>`<label class="item" style="color:var(--text);font-size:16px"><input class="articleTransferTill" type="checkbox" value="${t.id}" style="width:auto;margin:0"><span>${esc(t.name)}${t.id===db.activeTillId?' · aktuelle Kasse':''}</span></label>`).join('')}</div>
+    <button class="btn primary big" style="width:100%;margin-top:14px" onclick="commitArticleTransfer(${JSON.stringify(expanded).replace(/"/g,'&quot;')})">Auf ausgewählte Kassen übertragen</button>
+    <button class="btn back" onclick="closeModal()">Abbrechen</button>`;
+  $('modal').classList.add('show');
+}
+function commitArticleTransfer(ids){
+  let targetIds=[...document.querySelectorAll('.articleTransferTill:checked')].map(x=>x.value);
+  if(!targetIds.length)return alert('Bitte mindestens eine Zielkasse auswählen.');
+  let changed=0;
+  ids.forEach(id=>{
+    let d=db.drinks.find(x=>x.id===id);if(!d)return;
+    if(d.tillIds===null||!Array.isArray(d.tillIds))return; // bereits in allen Kassen
+    let before=d.tillIds.length;
+    d.tillIds=[...new Set([...d.tillIds,...targetIds])];
+    if(d.tillIds.length!==before)changed++;
+  });
+  closeModal();save();
+  document.querySelectorAll('.articleTransferCheck').forEach(x=>x.checked=false);updateArticleTransferCount();
+  showArticleSaved(changed?'✓ Artikel auf Zielkasse(n) übertragen':'✓ Auswahl war dort bereits verfügbar');
+}
+
+async function protectionFingerprint(code){
+  let value=String(code||'');
+  try{
+    if(window.crypto&&crypto.subtle){
+      let bytes=new TextEncoder().encode('CMOA-KASSE|'+value);
+      let digest=await crypto.subtle.digest('SHA-256',bytes);
+      return 'sha256-'+[...new Uint8Array(digest)].map(b=>b.toString(16).padStart(2,'0')).join('');
+    }
+  }catch(e){}
+  let h=2166136261;
+  for(let ch of 'CMOA-KASSE|'+value){h^=ch.charCodeAt(0);h=Math.imul(h,16777619)}
+  return 'fallback-'+(h>>>0).toString(16).padStart(8,'0');
+}
+function protectionConfigured(){return !!String(db.lockHash||'')}
+function renderProtectionStatus(){
+  let el=$('protectionStatus');if(!el)return;
+  el.innerHTML=protectionConfigured()?'<b style="color:var(--green)">🔒 Schutz aktiv</b> · Statistik und Einstellungen sind mit einem 3-stelligen Code gesperrt.':'Noch kein Schutzcode eingerichtet. Nach dem Speichern werden Statistik und Einstellungen gesperrt.';
+}
+async function saveProtectionCode(){
+  let input=$('protectionCodeNew'),code=String(input&&input.value||'').trim();
+  if(!/^\d{3}$/.test(code))return alert('Bitte genau drei Ziffern eingeben.');
+  db.lockHash=await protectionFingerprint(code);
+  protectedSectionsUnlocked=true;
+  if(input)input.value='';
+  persist();save();renderProtectionStatus();showArticleSaved('✓ Schutzcode gespeichert');
+}
+function showProtectionGate(section,button){
+  pendingProtectedSection={section,button};
+  $('dialog').innerHTML=`<h2>🔒 Code erforderlich</h2>
+    <div class="muted" style="text-align:center">Für ${section==='stats'?'Statistik':'Einstellungen'} bitte den 3-stelligen Schutzcode eingeben.</div>
+    <input id="protectionCodeEntry" class="protection-code-input" type="password" inputmode="numeric" maxlength="3" pattern="[0-9]{3}" autocomplete="off" onkeydown="if(event.key==='Enter'){event.preventDefault();confirmProtectionCode()}">
+    <div id="protectionCodeError" style="color:#ef4444;text-align:center;min-height:22px"></div>
+    <button class="btn primary big" style="width:100%" onclick="confirmProtectionCode()">Entsperren</button>
+    <button class="btn back" onclick="cancelProtectionGate()">Abbrechen</button>`;
+  $('modal').classList.add('show');
+  setTimeout(()=>{let el=$('protectionCodeEntry');if(el)el.focus()},40);
+}
+async function confirmProtectionCode(){
+  let code=String($('protectionCodeEntry')?.value||'').trim(),err=$('protectionCodeError');
+  if(!/^\d{3}$/.test(code)){if(err)err.textContent='Bitte genau drei Ziffern eingeben.';return}
+  let hash=await protectionFingerprint(code);
+  if(hash!==db.lockHash){if(err)err.textContent='Code ist nicht korrekt.';return}
+  let target=pendingProtectedSection;pendingProtectedSection=null;protectedSectionsUnlocked=true;$('modal').classList.remove('show');
+  if(target)openCashSection(target.section,target.button);
+}
+function cancelProtectionGate(){pendingProtectedSection=null;$('modal').classList.remove('show')}
+function openCashSection(section,button){
+  document.querySelectorAll('.nav button').forEach(x=>x.classList.remove('active'));
+  if(button)button.classList.add('active');
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  $(section).classList.add('active');renderAll();
+}
+function requestCashSection(section,button){
+  let protectedSection=section==='settings'||section==='stats';
+  if(!protectedSection){
+    protectedSectionsUnlocked=false;
+    openCashSection(section,button);return;
+  }
+  if(!protectionConfigured()){
+    if(section==='stats')return alert('Bitte zuerst unter Einstellungen einen 3-stelligen Schutzcode einrichten.');
+    openCashSection(section,button);return;
+  }
+  if(protectedSectionsUnlocked){openCashSection(section,button);return}
+  showProtectionGate(section,button);
+}
+
 function changeTill(){db.activeTillId=$('activeTill').value;save()}function saveOperator(){db.operator=$('operator').value.trim();save()}function addTill(){let n=$('newTill').value.trim();if(!n)return alert('Bitte Kassenname eingeben.');let id=uid();db.tills.push({id,name:n});db.activeTillId=id;$('newTill').value='';save()}
 function editTill(id){let t=db.tills.find(x=>x.id===id);if(!t)return;$('dialog').innerHTML=`<h2>Kasse bearbeiten</h2><label>Name der Kasse<input id="editTillName" value="${esc(t.name)}"></label><label style="margin-top:12px">Anfangsbestand €<input id="editTillOpening" type="number" min="0" step="0.01" inputmode="decimal" value="${openingBalance(id)}"></label><div class="muted" style="margin-top:8px">Der Anfangsbestand des aktuell laufenden Kassenzeitraums wird angepasst.</div><button class="btn primary big" style="width:100%;margin-top:14px" onclick="saveTillEdit('${id}')">Änderungen speichern</button><button class="btn back" onclick="closeModal()">Abbrechen</button>`;$('modal').classList.add('show')}
 async function saveTillEdit(id){let t=db.tills.find(x=>x.id===id),name=$('editTillName').value.trim(),amount=Number($('editTillOpening').value);if(!t)return closeModal();if(!name)return alert('Bitte Kassenname eingeben.');if(!Number.isFinite(amount)||amount<0)return alert('Bitte einen gültigen Anfangsbestand eingeben.');let openings=currentOpeningEvents(id);t.name=name;if(openings.length){openings[0].amount=amount;for(let extra of openings.slice(1)){await cloudDelete('cash_movements',extra.id);db.cashEvents=db.cashEvents.filter(x=>x.id!==extra.id)}}else db.cashEvents.push({id:uid(),type:'opening',tillId:id,time:now(),amount:amount,who:db.operator||''});closeModal();save()}
@@ -224,7 +356,7 @@ async function cashLogin(){
   if(error){$('loginError').textContent=error.message;return}
   await afterCashLogin(data.user);
 }
-async function cashLogout(){cloudReady=false;await cashSb.auth.signOut();location.reload()}
+async function cashLogout(){protectedSectionsUnlocked=false;cloudReady=false;await cashSb.auth.signOut();location.reload()}
 async function initCloud(){
   let {data}=await cashSb.auth.getSession();
   if(data.session&&data.session.user){
@@ -249,7 +381,7 @@ async function afterCashLogin(user){
   clearInterval(cloudReloadTimer);cloudReloadTimer=setInterval(()=>{if(cloudReady&&!cloudSyncing)loadCloudData(true)},15000);
 }
 async function changeCloudEvent(){
-  cloudEventId=$('cloudEvent').value;tillCheckedIn=false;localStorage.setItem('cash_event_id',cloudEventId);await loadCloudData();
+  protectedSectionsUnlocked=false;cloudEventId=$('cloudEvent').value;tillCheckedIn=false;localStorage.setItem('cash_event_id',cloudEventId);await loadCloudData();
 }
 async function loadCloudData(silent=false){
   if(!cloudEventId||!cloudUser)return;
@@ -270,7 +402,7 @@ async function loadCloudData(silent=false){
   let itemBySale={};ir.forEach(i=>itemBySale[i.sale_id]=i);
   db.tills=rr.map(x=>({id:x.id,name:x.name}));
   db.deposits=pr.map(x=>({id:x.id,name:x.name,value:Number(x.amount)}));
-  db.drinks=dr.map(x=>{let style=decodeDrinkColor(x.color);return {id:x.id,name:x.name,price:Number(x.price),depositId:x.deposit_type_id||null,color:style.color,tillIds:style.tillIds,category:style.category,part1:style.part1,volume1:style.volume1,part2:style.part2,volume2:style.volume2,vatRate:style.vatRate,priceMode:style.priceMode,specialChoices:style.specialChoices,parentId:style.parentId,noSymbol:style.noSymbol,subMenuInitialized:style.subMenuInitialized}});
+  db.lockHash='';db.drinks=dr.map(x=>{let style=decodeDrinkColor(x.color);if(style.lockHash&&!db.lockHash)db.lockHash=style.lockHash;return {id:x.id,name:x.name,price:Number(x.price),depositId:x.deposit_type_id||null,color:style.color,tillIds:style.tillIds,category:style.category,part1:style.part1,volume1:style.volume1,part2:style.part2,volume2:style.volume2,vatRate:style.vatRate,priceMode:style.priceMode,specialChoices:style.specialChoices,parentId:style.parentId,noSymbol:style.noSymbol,subMenuInitialized:style.subMenuInitialized}});
   let defaultDrinksAdded=ensureDefaultDrinks();
   let backstageAdded=ensureBackstageSetup();
   let submenuMigrated=ensureSpecialSubArticles();
@@ -305,6 +437,6 @@ async function syncCloudData(){
 }
 async function cloudDelete(table,id,throwOnError=false){if(cloudReady&&isUuid(id)){let {error}=await cashSb.from(table).delete().eq('id',id);if(error){setCloudStatus('Löschen fehlgeschlagen: '+error.message,true);if(throwOnError)throw error}}}
 
-document.querySelectorAll('.nav button').forEach(b=>b.onclick=()=>{document.querySelectorAll('.nav button').forEach(x=>x.classList.remove('active'));b.classList.add('active');document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));$(b.dataset.sec).classList.add('active');renderAll()});renderAll();initCloud();
-if('serviceWorker' in navigator){window.addEventListener('load',async()=>{try{let regs=await navigator.serviceWorker.getRegistrations();await Promise.all(regs.filter(r=>r.scope===new URL('./',location.href).href).map(r=>r.unregister()));let reg=await navigator.serviceWorker.register('./service-worker-kasse.js?v=19',{updateViaCache:'none'});await reg.update()}catch(e){console.warn('Service Worker:',e)}})}
+document.querySelectorAll('.nav button').forEach(b=>b.onclick=()=>requestCashSection(b.dataset.sec,b));renderAll();initCloud();
+if('serviceWorker' in navigator){window.addEventListener('load',async()=>{try{let regs=await navigator.serviceWorker.getRegistrations();await Promise.all(regs.filter(r=>r.scope===new URL('./',location.href).href).map(r=>r.unregister()));let reg=await navigator.serviceWorker.register('./service-worker-kasse.js?v=20',{updateViaCache:'none'});await reg.update()}catch(e){console.warn('Service Worker:',e)}})}
 </script></body></html>
