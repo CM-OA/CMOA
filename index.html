@@ -1961,6 +1961,63 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
             .internal-chat-messages{padding-left:0;padding-right:0}
         }
 
+
+        /* ===== GETRÄNKEBESTAND ===== */
+        .inventory-title-card{overflow:visible}
+        .inventory-title-row{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+        .inventory-title-row h3{margin-bottom:3px}
+        .inventory-title-row p,.inventory-section-head p{margin:0;color:var(--text-muted);font-size:.76rem;line-height:1.4}
+        .inventory-head-actions{display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end}
+        .inventory-info-note{margin-top:11px;padding:9px 11px;border:1px solid var(--border);background:var(--input-bg);border-radius:10px;font-size:.72rem;line-height:1.45;color:var(--text-muted)}
+        .inventory-summary-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin-bottom:12px}
+        .inventory-summary-card{background:var(--card-bg);border:1px solid var(--border);border-radius:13px;padding:12px;box-shadow:var(--shadow)}
+        .inventory-summary-card span{display:block;color:var(--text-muted);font-size:.65rem;font-weight:800;text-transform:uppercase;letter-spacing:.45px}
+        .inventory-summary-card strong{display:block;font-size:1.18rem;margin-top:4px;color:var(--text-main)}
+        .inventory-section-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-bottom:10px}
+        .inventory-stock-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:9px}
+        .inventory-stock-card{border:1px solid var(--border);border-radius:12px;background:var(--input-bg);padding:11px;position:relative;overflow:hidden}
+        .inventory-stock-card.low{border-color:#f59e0b}
+        .inventory-stock-card.critical,.inventory-stock-card.negative{border-color:#dc2626}
+        .inventory-stock-top{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}
+        .inventory-stock-name{font-weight:900;font-size:.9rem}
+        .inventory-stock-value{font-size:1.25rem;font-weight:950;white-space:nowrap}
+        .inventory-stock-card.low .inventory-stock-value{color:#d97706}
+        .inventory-stock-card.critical .inventory-stock-value,.inventory-stock-card.negative .inventory-stock-value{color:#dc2626}
+        .inventory-stock-bar{height:6px;border-radius:999px;background:color-mix(in srgb,var(--border) 70%,transparent);overflow:hidden;margin:9px 0 8px}
+        .inventory-stock-bar > span{display:block;height:100%;background:var(--accent-green);border-radius:999px}
+        .inventory-stock-card.low .inventory-stock-bar > span{background:#f59e0b}
+        .inventory-stock-card.critical .inventory-stock-bar > span,.inventory-stock-card.negative .inventory-stock-bar > span{background:#dc2626}
+        .inventory-stock-breakdown{font-size:.65rem;line-height:1.55;color:var(--text-muted)}
+        .inventory-stock-warning{margin-top:6px;font-size:.65rem;font-weight:850;color:#d97706}
+        .inventory-stock-card.critical .inventory-stock-warning,.inventory-stock-card.negative .inventory-stock-warning{color:#dc2626}
+        .inventory-details summary{cursor:pointer;font-weight:900;font-size:.9rem}
+        .inventory-form-body{padding-top:12px}
+        .inventory-help{font-size:.72rem;color:var(--text-muted);margin:0 0 11px;line-height:1.45}
+        .inventory-purchase-line-box{margin:12px 0;padding:11px;border:1px dashed var(--border);border-radius:11px;background:var(--input-bg)}
+        .inventory-purchase-line-box h4{margin:0 0 8px;font-size:.8rem}
+        .inventory-purchase-draft{margin:10px 0}
+        .inventory-draft-row,.inventory-history-row,.inventory-purchase-row{display:grid;gap:8px;align-items:center;border-bottom:1px solid var(--border);padding:8px 2px;font-size:.72rem}
+        .inventory-draft-row{grid-template-columns:minmax(0,1.3fr) minmax(0,.9fr) minmax(0,.75fr) auto}
+        .inventory-history-row{grid-template-columns:110px minmax(0,1.1fr) minmax(0,.8fr) minmax(0,1.2fr) auto}
+        .inventory-purchase-row{grid-template-columns:105px minmax(0,1fr) 100px minmax(0,1.25fr) auto}
+        .inventory-history-row:last-child,.inventory-purchase-row:last-child,.inventory-draft-row:last-child{border-bottom:0}
+        .inventory-movement-positive{color:var(--accent-green);font-weight:900}
+        .inventory-movement-negative{color:#dc2626;font-weight:900}
+        .inventory-type-badge{display:inline-flex;padding:2px 6px;border-radius:999px;background:var(--input-bg);border:1px solid var(--border);font-size:.61rem;font-weight:850}
+        .inventory-loading,.inventory-empty{padding:16px;text-align:center;color:var(--text-muted);font-size:.75rem}
+        .inventory-cost-total{font-weight:950;color:#dc2626}
+        body.night-mode .inventory-stock-card{background:color-mix(in srgb,var(--card-bg) 80%,#000)}
+        @media(max-width:700px){
+            .inventory-summary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+            .inventory-title-row{display:block}
+            .inventory-head-actions{justify-content:flex-start;margin-top:10px}
+            .inventory-history-row,.inventory-purchase-row{grid-template-columns:1fr auto;gap:4px 8px}
+            .inventory-history-row > :nth-child(2),.inventory-history-row > :nth-child(4),
+            .inventory-purchase-row > :nth-child(2),.inventory-purchase-row > :nth-child(4){grid-column:1/-1}
+            .inventory-draft-row{grid-template-columns:1fr auto}
+            .inventory-draft-row > :nth-child(2),.inventory-draft-row > :nth-child(3){grid-column:1}
+        }
+
 </style>
     <meta name="theme-color" content="#000000">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -2071,6 +2128,7 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
                 <button class="menu-btn menu-btn-blue" data-module="accreditation" data-bands-required="true" onclick="showPage('akkreditierung-page')">Akkreditierung</button>
                 <button id="access-permits-menu-btn" class="menu-btn menu-btn-blue" data-module="access_permits" onclick="showPage('access-permits-page')">🚗 Zufahrtsgenehmigungen</button>
                 <button class="menu-btn" data-module="fees" onclick="showPage('production-costs-page')">🏗️ Produktion</button>
+                <button class="menu-btn menu-btn-blue" data-module="cash_report" onclick="showPage('inventory-page')">📦 Getränkebestand</button>
                 <button id="admin-menu-btn" class="menu-btn permission-hidden" data-module="admin" onclick="showPage('admin-page')">⚙️ Benutzer & Rechte</button>
                 <button class="menu-btn menu-btn-yellow event-needs-hidden" data-module="todos" data-no-bands-only="true" onclick="showPage('event-needs-page')">📋 Bedarf &amp; Aufgaben</button>
             </div>
@@ -2249,6 +2307,118 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
             </div>
         </div>
 
+
+
+        <!-- GETRÄNKEBESTAND -->
+        <div id="inventory-page" class="page">
+            <button class="btn-back" onclick="showPage('main-page')">← Hauptmenü</button>
+
+            <div class="card inventory-title-card">
+                <div class="inventory-title-row">
+                    <div>
+                        <h3>📦 Getränkebestand</h3>
+                        <p id="inventory-event-label">Bestand der ausgewählten Veranstaltung</p>
+                    </div>
+                    <div class="inventory-head-actions">
+                        <button type="button" class="btn-subtle" onclick="loadInventoryPage()">↻ Aktualisieren</button>
+                        <button id="inventory-sync-btn" type="button" class="btn-subtle inventory-admin-only" onclick="syncInventoryCashLinks()">🔗 Kassenartikel abgleichen</button>
+                    </div>
+                </div>
+                <div class="inventory-info-note">
+                    Sollbestand = Übernommener Bestand + Einkäufe ± Korrekturen − Verkauf − Marken − FREE. Pfand verändert den Getränkebestand nicht.
+                </div>
+            </div>
+
+            <div id="inventory-summary" class="inventory-summary-grid">
+                <div class="inventory-summary-card"><span>Aktueller Bestand</span><strong>–</strong></div>
+                <div class="inventory-summary-card"><span>Lagerartikel</span><strong>–</strong></div>
+                <div class="inventory-summary-card"><span>Niedriger Bestand</span><strong>–</strong></div>
+                <div class="inventory-summary-card"><span>Getränkeeinkäufe</span><strong>–</strong></div>
+            </div>
+
+            <div class="card">
+                <div class="inventory-section-head">
+                    <div>
+                        <h3>Aktueller Sollbestand</h3>
+                        <p>Die Mengen werden aus den Kassenbuchungen automatisch fortgeschrieben.</p>
+                    </div>
+                </div>
+                <div id="inventory-stock-list" class="inventory-stock-grid">
+                    <div class="inventory-loading">Bestand wird geladen …</div>
+                </div>
+            </div>
+
+            <div id="inventory-admin-area" class="inventory-admin-only">
+                <details class="card inventory-details" open>
+                    <summary>📥 Übernommenen Bestand erfassen</summary>
+                    <div class="inventory-form-body">
+                        <p class="inventory-help">Bestand, der bereits vorhanden ist und für diese Veranstaltung keine neue Ausgabe verursacht.</p>
+                        <div class="production-form-grid">
+                            <div class="form-group"><label>Getränk / Lagerartikel</label><select id="inventory-carryover-item"></select></div>
+                            <div class="form-group"><label>Menge in Litern</label><input id="inventory-carryover-liters" type="number" min="0.001" step="0.001" inputmode="decimal" placeholder="z. B. 80"></div>
+                            <div class="form-group"><label>Datum</label><input id="inventory-carryover-date" type="date"></div>
+                            <div class="form-group"><label>Notiz</label><input id="inventory-carryover-note" placeholder="z. B. Bestand aus Vorjahr"></div>
+                        </div>
+                        <button type="button" class="btn-primary" onclick="saveInventoryManualMovement('carryover')">💾 Bestand hinzufügen</button>
+                    </div>
+                </details>
+
+                <details class="card inventory-details">
+                    <summary>🛒 Getränkeeinkauf erfassen</summary>
+                    <div class="inventory-form-body">
+                        <p class="inventory-help">Der Einkauf erhöht den Bestand und wird automatisch in den Veranstaltungskosten berücksichtigt.</p>
+                        <div class="production-form-grid">
+                            <div class="form-group"><label>Lieferant</label><input id="inventory-purchase-supplier" placeholder="z. B. Getränkemarkt"></div>
+                            <div class="form-group"><label>Einkaufsdatum</label><input id="inventory-purchase-date" type="date"></div>
+                            <div class="form-group"><label>Beleg / Rechnungsnummer</label><input id="inventory-purchase-receipt" placeholder="optional"></div>
+                            <div class="form-group"><label>Zahlungsstatus</label><select id="inventory-purchase-status"><option value="open">Offen</option><option value="paid">Bezahlt</option></select></div>
+                            <div class="form-group"><label>Betragsbasis</label><select id="inventory-purchase-basis"><option value="gross">Brutto</option><option value="net">Netto</option></select></div>
+                            <div class="form-group"><label>Notiz</label><input id="inventory-purchase-note" placeholder="optional"></div>
+                        </div>
+
+                        <div class="inventory-purchase-line-box">
+                            <h4>Position hinzufügen</h4>
+                            <div class="production-form-grid">
+                                <div class="form-group"><label>Getränk / Lagerartikel</label><select id="inventory-purchase-item"></select></div>
+                                <div class="form-group"><label>Anzahl Gebinde</label><input id="inventory-package-count" type="number" min="0.001" step="0.001" inputmode="decimal" value="1"></div>
+                                <div class="form-group"><label>Gebinde</label><select id="inventory-package-label"><option>Kasten</option><option>Fass</option><option>Karton</option><option>Kanister</option><option>Flasche</option><option>Einheit</option></select></div>
+                                <div class="form-group"><label>Einheiten je Gebinde</label><input id="inventory-units-per-package" type="number" min="0.001" step="0.001" inputmode="decimal" value="1"></div>
+                                <div class="form-group"><label>Liter je Einheit</label><input id="inventory-liters-per-unit" type="number" min="0.001" step="0.001" inputmode="decimal" placeholder="z. B. 0,5 oder 50"></div>
+                                <div class="form-group"><label>Kosten dieser Position €</label><input id="inventory-line-cost" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0,00"></div>
+                            </div>
+                            <button type="button" class="btn-subtle" onclick="addInventoryPurchaseDraftLine()">＋ Position hinzufügen</button>
+                        </div>
+
+                        <div id="inventory-purchase-draft" class="inventory-purchase-draft"></div>
+                        <button id="inventory-purchase-save-btn" type="button" class="btn-primary" onclick="saveInventoryPurchase()">💾 Einkauf speichern</button>
+                    </div>
+                </details>
+
+                <details class="card inventory-details">
+                    <summary>⚖️ Bestandskorrektur / Verlust</summary>
+                    <div class="inventory-form-body">
+                        <p class="inventory-help">Positive Werte erhöhen, negative Werte reduzieren den Bestand. Beispiel Verlust: <strong>−2,5 l</strong>.</p>
+                        <div class="production-form-grid">
+                            <div class="form-group"><label>Getränk / Lagerartikel</label><select id="inventory-correction-item"></select></div>
+                            <div class="form-group"><label>Korrektur in Litern</label><input id="inventory-correction-liters" type="number" step="0.001" inputmode="decimal" placeholder="z. B. -2,5 oder 4"></div>
+                            <div class="form-group"><label>Datum</label><input id="inventory-correction-date" type="date"></div>
+                            <div class="form-group"><label>Grund</label><input id="inventory-correction-note" placeholder="z. B. Bruch, Verschütten, Fund"></div>
+                        </div>
+                        <button type="button" class="btn-primary" onclick="saveInventoryManualMovement('correction')">💾 Korrektur buchen</button>
+                    </div>
+                </details>
+            </div>
+
+            <div class="card">
+                <div class="inventory-section-head"><div><h3>🧾 Einkäufe</h3><p>Alle für diese Veranstaltung erfassten Getränkeeinkäufe.</p></div></div>
+                <div id="inventory-purchase-list"><div class="inventory-loading">Einkäufe werden geladen …</div></div>
+            </div>
+
+            <div class="card">
+                <div class="inventory-section-head"><div><h3>↕ Bestandsbewegungen</h3><p>Übernommener Bestand, Einkäufe, Kassenabgänge und Korrekturen.</p></div></div>
+                <div id="inventory-movement-list"><div class="inventory-loading">Historie wird geladen …</div></div>
+            </div>
+        </div>
 
         <!-- BENUTZER & RECHTE -->
         <div id="admin-page" class="page">
@@ -3160,6 +3330,7 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
                 <div class="stat-row"><span>Steuern (Gesamt):</span><span id="stat-tax" class="cost-val">0,00 €</span></div>
                 <div class="stat-row"><span>Gagen (Brutto):</span><span id="stat-total" class="cost-val">0,00 €</span></div>
                 <div class="stat-row"><span>Produktionsausgaben:</span><strong id="stat-production-expense" class="cost-val">0,00 €</strong></div>
+                <div class="stat-row"><span>Getränkeeinkäufe:</span><strong id="stat-beverage-purchases" class="cost-val">0,00 €</strong></div>
                 <div class="stat-row"><span>Weitere Einnahmen:</span><strong id="stat-production-income" style="color:var(--accent-green)">0,00 €</strong></div>
                 <div class="stat-row"><span>Akkreditierungen (eingecheckt):</span><strong id="stat-accreditation-income" style="color:var(--accent-green)">0,00 €</strong></div>
                 <div class="stat-row"><span>Ausgaben insgesamt:</span><strong id="stat-all-expense-total" class="cost-val">0,00 €</strong></div>
@@ -3434,6 +3605,11 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
         var shuttleVehicles = [];
         var productionEntries = [];
         var productionTasks = [];
+        var inventoryPurchases = [];
+        var inventoryPurchaseTotal = 0;
+        var inventoryState = {items:[],stock:[],movements:[],purchases:[],purchaseItems:[]};
+        var inventoryPurchaseDraft = [];
+        var inventoryChannel = null;
         var productionCategories = ['Aufbau','Orga','Catering','Bühne','Behörden','Logistik','Erledigungen'];
         var currentProductionEntryId = null;
         var globalDocumentSearchResults = [];
@@ -3594,13 +3770,23 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
         }
         async function migrateLegacyStateIfNeeded(){ return false; }
         async function loadPhase2CloudData(){
-            bands=[];manualTodos=[];eventNeeds=[];hotelCostsList=[];shuttleTripLog={};shuttleVehicles=[];productionEntries=[];productionTasks=[];productionCategories=['Aufbau','Orga','Catering','Bühne','Behörden','Logistik','Erledigungen'];akkDb=[];accessPermits=[];
+            bands=[];manualTodos=[];eventNeeds=[];hotelCostsList=[];shuttleTripLog={};shuttleVehicles=[];productionEntries=[];productionTasks=[];productionCategories=['Aufbau','Orga','Catering','Bühne','Behörden','Logistik','Erledigungen'];akkDb=[];accessPermits=[];inventoryPurchases=[];inventoryPurchaseTotal=0;
             eventBandsEnabled=currentEvent&&currentEvent._bandsEnabled===false?false:true;
             await migrateLegacyStateIfNeeded();
             if(!currentEventId) return;
-            var r=await _supabase.from('cmoa_module_state').select('module,data').eq('event_id',currentEventId);
+            var results=await Promise.all([
+                _supabase.from('cmoa_module_state').select('module,data').eq('event_id',currentEventId),
+                _supabase.from('beverage_inventory_purchases').select('*').eq('event_id',currentEventId).order('purchase_date',{ascending:false})
+            ]);
+            var r=results[0],inv=results[1];
             if(r.error) throw new Error(r.error.message);
             (r.data||[]).forEach(function(row){applyDataModule(row.module,row.data);});
+            if(!inv.error){
+                inventoryPurchases=inv.data||[];
+                inventoryPurchaseTotal=inventoryPurchases.reduce(function(sum,x){return sum+Number(x.total_cost||0);},0);
+            }else{
+                console.warn('Getränkeeinkäufe konnten nicht geladen werden:',inv.error.message);
+            }
             moduleHistorySnapshots={};CMOA_DATA_MODULES.forEach(function(module){moduleHistorySnapshots[module]=historyClone(payloadForDataModule(module));});
             normalizeAllBandNames();
             applyEventBandMode();
@@ -3621,7 +3807,7 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
             initSupabaseClient();
             if (!_supabase) { showAuthError('Supabase konnte nicht geladen werden.'); return; }
             var authOk = await initCmoaAuth(); if (!authOk) return;
-            try { var eventOk=await loadAccessibleEvents(); if(!eventOk)return; await loadPhase2CloudData(); startPhase2Realtime(); await initInternalChat(); recordLoginActivity(); }
+            try { var eventOk=await loadAccessibleEvents(); if(!eventOk)return; await loadPhase2CloudData(); startPhase2Realtime(); startInventoryRealtime(); await initInternalChat(); recordLoginActivity(); }
             catch(e){ showAuthError('Phase-2-Daten konnten nicht geladen werden: '+e.message); console.error(e); return; }
             try {
                 var designSaved=localStorage.getItem('cmoa_design_v1')||'steel';document.body.setAttribute('data-design',designSaved);updateDesignButtons();
@@ -4069,10 +4255,11 @@ function loadFromLocalStorage() {
             });
             var shuttleTotal = getShuttleCostTotals().total;
             var production=getProductionTotals();
-            var expenseTotal=feesGross+hotelTotal+shuttleTotal+production.expense;
+            var beveragePurchases=Number(inventoryPurchaseTotal||0);
+            var expenseTotal=feesGross+hotelTotal+shuttleTotal+production.expense+beveragePurchases;
             var accreditationIncome=getCheckedAccreditationIncome();
             var netTotal=expenseTotal-production.income-accreditationIncome;
-            return { feesGross:feesGross, hotelTotal:hotelTotal, shuttleTotal:shuttleTotal, productionExpense:production.expense, productionIncome:production.income, accreditationIncome:accreditationIncome, expenseTotal:expenseTotal, total:netTotal };
+            return { feesGross:feesGross, hotelTotal:hotelTotal, shuttleTotal:shuttleTotal, productionExpense:production.expense, beveragePurchases:beveragePurchases, productionIncome:production.income, accreditationIncome:accreditationIncome, expenseTotal:expenseTotal, total:netTotal };
         }
 
         function buildCashEventFinancials(data) {
@@ -4260,7 +4447,7 @@ function loadFromLocalStorage() {
             section('Finanzielle Auswertung');
             row('Akkreditierungen (eingecheckt)',signedMoney(accreditationIncome,'+'),'green');
             row('Getränke netto',signedMoney(beverageTaxByCategory.drink.net,'+'),'green');row('Getränke Umsatzsteuer',signedMoney(beverageTaxByCategory.drink.tax,'+'));row('Getränke brutto',signedMoney(beverageTaxByCategory.drink.gross,'+'));row('Speisen netto',signedMoney(beverageTaxByCategory.food.net,'+'),'green');row('Speisen Umsatzsteuer',signedMoney(beverageTaxByCategory.food.tax,'+'));row('Speisen brutto',signedMoney(beverageTaxByCategory.food.gross,'+'));row('Speisen und Getränke netto gesamt',signedMoney(beverageRevenue,'+'),'green');row('Umsatzsteuer gesamt',signedMoney(beverageTax,'+'));row('Brutto gesamt',signedMoney(beverageGross,'+'));row('Weitere Einnahmen',signedMoney(production.income,'+'),'green');row('Nettoeinnahmen gesamt',signedMoney(incomeTotal,'+'),'green');
-            row('Bandgagen brutto',signedMoney(costs.feesGross,'-'));row('Hotelkosten',signedMoney(costs.hotelTotal,'-'));row('Shuttlekosten',signedMoney(costs.shuttleTotal,'-'));row('Produktionsausgaben',signedMoney(costs.productionExpense,'-'));row('Ausgaben gesamt',signedMoney(expenseTotal,'-'),'red');
+            row('Bandgagen brutto',signedMoney(costs.feesGross,'-'));row('Hotelkosten',signedMoney(costs.hotelTotal,'-'));row('Shuttlekosten',signedMoney(costs.shuttleTotal,'-'));row('Produktionsausgaben',signedMoney(costs.productionExpense,'-'));row('Getränkeeinkäufe',signedMoney(costs.beveragePurchases,'-'));row('Ausgaben gesamt',signedMoney(expenseTotal,'-'),'red');
             row('Saldo Einnahmen minus Ausgaben',signedMoney(balance,balance>=0?'+':'-'),balance>=0?'green':'red');
             note('Cateringkosten ohne hinterlegten Euro-Preis sind nicht enthalten.');
             if(cashNote)note(cashNote);
@@ -4576,6 +4763,7 @@ function loadFromLocalStorage() {
                     + '<div class="cash-finance-row"><span>Hotelkosten</span><b>' + cashEuro(finance.costs.hotelTotal) + '</b></div>'
                     + '<div class="cash-finance-row"><span>Shuttlekosten</span><b>' + cashEuro(finance.costs.shuttleTotal) + '</b></div>'
                     + '<div class="cash-finance-row"><span>Produktionsausgaben</span><b>' + cashEuro(finance.costs.productionExpense) + '</b></div>'
+                    + '<div class="cash-finance-row"><span>Getränkeeinkäufe</span><b>' + cashEuro(finance.costs.beveragePurchases) + '</b></div>'
                     + '<div class="cash-finance-row cash-finance-total"><span>Ausgaben gesamt</span><b>' + cashEuro(finance.costs.expenseTotal) + '</b></div>'
                     + '<div class="cash-finance-row"><span>Weitere Einnahmen (Tickets, Merchandise usw.)</span><b style="color:var(--accent-green)">− ' + cashEuro(finance.costs.productionIncome) + '</b></div>'
                     + '<div class="cash-finance-row"><span>Akkreditierungen (kostenpflichtig und eingecheckt)</span><b style="color:var(--accent-green)">− ' + cashEuro(finance.costs.accreditationIncome) + '</b></div>'
@@ -4626,6 +4814,7 @@ function loadFromLocalStorage() {
             if (pageId === 'akkreditierung-page') renderAkk();
             if (pageId === 'admin-page') loadAdminUsers();
             if (pageId === 'events-admin-page') loadEventsAdminPage();
+            if (pageId === 'inventory-page') loadInventoryPage();
             if (pageId === 'main-page') { updateFestivalCockpit(); loadCashSummaryMini(); loadLiveReportMini(); }
             updateRightsBanner(pageId);
             window.scrollTo(0, 0);
@@ -7748,8 +7937,10 @@ function loadFromLocalStorage() {
             setTxt('stat-hotel-cost-total', totalHotelCost.toLocaleString('de-DE', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' €');
             setTxt('stat-shuttle-cost-total', getShuttleCostTotals().total.toLocaleString('de-DE', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' €');
             var productionTotals=getProductionTotals();
-            var allExpenses=(net+taxSum)+totalHotelCost+getShuttleCostTotals().total+productionTotals.expense;
+            var beveragePurchases=Number(inventoryPurchaseTotal||0);
+            var allExpenses=(net+taxSum)+totalHotelCost+getShuttleCostTotals().total+productionTotals.expense+beveragePurchases;
             setTxt('stat-production-expense', productionTotals.expense.toLocaleString('de-DE', {minimumFractionDigits:2,maximumFractionDigits:2})+' €');
+            setTxt('stat-beverage-purchases', beveragePurchases.toLocaleString('de-DE', {minimumFractionDigits:2,maximumFractionDigits:2})+' €');
             setTxt('stat-production-income', productionTotals.income.toLocaleString('de-DE', {minimumFractionDigits:2,maximumFractionDigits:2})+' €');
             setTxt('stat-accreditation-income',getCheckedAccreditationIncome().toLocaleString('de-DE',{minimumFractionDigits:2,maximumFractionDigits:2})+' €');
             setTxt('stat-all-expense-total', allExpenses.toLocaleString('de-DE', {minimumFractionDigits:2,maximumFractionDigits:2})+' €');
@@ -9444,6 +9635,324 @@ function loadFromLocalStorage() {
             // Die Wrapper-Funktion greift daher automatisch auch dort.
         })();
     
+
+        // =============================================================
+        // GETRÄNKEBESTAND
+        // =============================================================
+        function inventoryIsAdmin(){
+            return !!(currentUserProfile&&currentUserProfile.role==='admin');
+        }
+        function inventoryLiters(v){
+            return Number(v||0).toLocaleString('de-DE',{minimumFractionDigits:0,maximumFractionDigits:3})+' l';
+        }
+        function inventoryMoney(v){
+            return Number(v||0).toLocaleString('de-DE',{style:'currency',currency:'EUR'});
+        }
+        function inventoryDate(v){
+            if(!v)return '—';
+            try{return new Date(String(v).length===10?v+'T12:00:00':v).toLocaleDateString('de-DE');}catch(e){return String(v);}
+        }
+        function inventoryNowDate(){
+            var d=new Date(),m=String(d.getMonth()+1).padStart(2,'0'),day=String(d.getDate()).padStart(2,'0');
+            return d.getFullYear()+'-'+m+'-'+day;
+        }
+        function inventoryEscape(v){return escapeHtmlAuth(String(v==null?'':v));}
+        function inventoryMovementDate(dateValue){
+            var d=dateValue?new Date(dateValue):new Date();
+            if(isNaN(d.getTime()))d=new Date();
+            return d.toISOString();
+        }
+        function inventorySetAdminVisibility(){
+            document.querySelectorAll('#inventory-page .inventory-admin-only').forEach(function(el){
+                el.style.display=inventoryIsAdmin()?'':'none';
+            });
+        }
+        function inventoryItemOptions(selected){
+            return (inventoryState.items||[]).filter(function(x){return x.is_active!==false;}).map(function(x){
+                return '<option value="'+inventoryEscape(x.id)+'" '+(x.id===selected?'selected':'')+'>'+inventoryEscape(x.name)+'</option>';
+            }).join('');
+        }
+        function inventoryFillSelects(){
+            ['inventory-carryover-item','inventory-correction-item','inventory-purchase-item'].forEach(function(id){
+                var el=document.getElementById(id);if(el)el.innerHTML=inventoryItemOptions(el.value);
+            });
+            ['inventory-carryover-date','inventory-correction-date','inventory-purchase-date'].forEach(function(id){
+                var el=document.getElementById(id);if(el&&!el.value)el.value=inventoryNowDate();
+            });
+        }
+        async function loadInventoryFinancialData(){
+            if(!_supabase||!currentEventId)return;
+            var r=await _supabase.from('beverage_inventory_purchases').select('*').eq('event_id',currentEventId).order('purchase_date',{ascending:false});
+            if(r.error){console.warn('Getränkeeinkäufe:',r.error.message);return;}
+            inventoryPurchases=r.data||[];
+            inventoryPurchaseTotal=inventoryPurchases.reduce(function(sum,x){return sum+Number(x.total_cost||0);},0);
+        }
+        async function loadInventoryPage(){
+            if(!_supabase||!currentEventId)return;
+            inventorySetAdminVisibility();
+            var label=document.getElementById('inventory-event-label');
+            if(label)label.textContent=((currentEvent&&(currentEvent.short_name||currentEvent.name))||'Veranstaltung')+' · Sollbestand in Echtzeit';
+            var stockBox=document.getElementById('inventory-stock-list');
+            if(stockBox)stockBox.innerHTML='<div class="inventory-loading">Bestand wird geladen …</div>';
+            try{
+                var results=await Promise.all([
+                    _supabase.from('beverage_inventory_items').select('*').eq('event_id',currentEventId).order('sort_order').order('name'),
+                    _supabase.rpc('cmoa_inventory_stock',{target_event:currentEventId}),
+                    _supabase.from('beverage_inventory_movements').select('*').eq('event_id',currentEventId).order('occurred_at',{ascending:false}).limit(250),
+                    _supabase.from('beverage_inventory_purchases').select('*').eq('event_id',currentEventId).order('purchase_date',{ascending:false}),
+                    _supabase.from('beverage_inventory_purchase_items').select('*').eq('event_id',currentEventId).order('created_at',{ascending:false})
+                ]);
+                var failed=results.find(function(r){return r.error;});
+                if(failed)throw failed.error;
+                inventoryState={
+                    items:results[0].data||[],
+                    stock:results[1].data||[],
+                    movements:results[2].data||[],
+                    purchases:results[3].data||[],
+                    purchaseItems:results[4].data||[]
+                };
+                inventoryPurchases=inventoryState.purchases.slice();
+                inventoryPurchaseTotal=inventoryPurchases.reduce(function(sum,x){return sum+Number(x.total_cost||0);},0);
+                inventoryFillSelects();
+                renderInventorySummary();
+                renderInventoryStock();
+                renderInventoryPurchases();
+                renderInventoryMovements();
+                renderInventoryPurchaseDraft();
+                inventorySetAdminVisibility();
+            }catch(e){
+                if(stockBox)stockBox.innerHTML='<div class="card" style="color:#dc2626">Getränkebestand konnte nicht geladen werden: '+inventoryEscape(e.message||e)+'</div>';
+            }
+        }
+        function renderInventorySummary(){
+            var box=document.getElementById('inventory-summary');if(!box)return;
+            var rows=inventoryState.stock||[],total=rows.reduce(function(s,x){return s+Number(x.current_liters||0);},0),low=0;
+            rows.forEach(function(x){
+                var base=Number(x.carryover_liters||0)+Number(x.purchase_liters||0)+Math.max(0,Number(x.correction_liters||0));
+                var current=Number(x.current_liters||0),pct=base>0?(current/base*100):100;
+                if(current<0||(base>0&&pct<=Number(x.low_stock_percent||20))||(Number(x.low_stock_liters||0)>0&&current<=Number(x.low_stock_liters)))low++;
+            });
+            box.innerHTML=
+                '<div class="inventory-summary-card"><span>Aktueller Bestand</span><strong>'+inventoryLiters(total)+'</strong></div>'+
+                '<div class="inventory-summary-card"><span>Lagerartikel</span><strong>'+rows.length+'</strong></div>'+
+                '<div class="inventory-summary-card"><span>Niedriger Bestand</span><strong>'+(low?('⚠ '+low):'0')+'</strong></div>'+
+                '<div class="inventory-summary-card"><span>Getränkeeinkäufe</span><strong>'+inventoryMoney(inventoryPurchaseTotal)+'</strong></div>';
+        }
+        function renderInventoryStock(){
+            var box=document.getElementById('inventory-stock-list');if(!box)return;
+            var rows=inventoryState.stock||[];
+            if(!rows.length){
+                box.innerHTML='<div class="inventory-empty">Noch keine Lagerartikel vorhanden.'+(inventoryIsAdmin()?'<br><button type="button" class="btn-subtle" style="margin-top:10px" onclick="syncInventoryCashLinks()">🔗 Kassenartikel jetzt abgleichen</button>':'')+'</div>';
+                return;
+            }
+            box.innerHTML=rows.map(function(x){
+                var current=Number(x.current_liters||0),carry=Number(x.carryover_liters||0),purchase=Number(x.purchase_liters||0),paid=Number(x.paid_liters||0),token=Number(x.token_liters||0),free=Number(x.free_liters||0),correction=Number(x.correction_liters||0);
+                var base=carry+purchase+Math.max(0,correction),pct=base>0?Math.max(0,current/base*100):100;
+                var lowByPct=base>0&&pct<=Number(x.low_stock_percent||20),lowByLiters=Number(x.low_stock_liters||0)>0&&current<=Number(x.low_stock_liters);
+                var cls=current<0?'negative':((lowByPct||lowByLiters)?(pct<=10||current<=0?'critical':'low'):'');
+                var width=Math.max(0,Math.min(100,pct));
+                var warn=current<0?'⚠ Startbestand/Einkäufe noch nicht vollständig erfasst':(cls==='critical'?'⚠ Bestand kritisch niedrig':(cls==='low'?'⚠ Bestand niedrig':''));
+                return '<div class="inventory-stock-card '+cls+'">'+
+                    '<div class="inventory-stock-top"><div class="inventory-stock-name">'+inventoryEscape(x.item_name)+'</div><div class="inventory-stock-value">'+inventoryLiters(current)+'</div></div>'+
+                    '<div class="inventory-stock-bar"><span style="width:'+width.toFixed(1)+'%"></span></div>'+
+                    '<div class="inventory-stock-breakdown">Übernommen: '+inventoryLiters(carry)+' · Einkauf: +'+inventoryLiters(purchase)+'<br>'+
+                    'Verkauft: −'+inventoryLiters(paid)+' · Marken: −'+inventoryLiters(token)+' · FREE: −'+inventoryLiters(free)+'<br>'+
+                    'Korrekturen: '+(correction>=0?'+':'')+inventoryLiters(correction)+'</div>'+
+                    (warn?'<div class="inventory-stock-warning">'+warn+'</div>':'')+
+                    '</div>';
+            }).join('');
+        }
+        function inventoryMovementLabel(m){
+            if(m.movement_type==='carryover')return 'Übernommen';
+            if(m.movement_type==='purchase')return 'Einkauf';
+            if(m.movement_type==='correction')return 'Korrektur';
+            if(m.movement_type==='sale'){
+                if(m.source_mode==='token')return 'Marke';
+                if(m.source_mode==='free')return 'FREE';
+                return 'Verkauf';
+            }
+            return m.movement_type||'Bewegung';
+        }
+        function renderInventoryMovements(){
+            var box=document.getElementById('inventory-movement-list');if(!box)return;
+            var map={};(inventoryState.items||[]).forEach(function(i){map[i.id]=i.name;});
+            var rows=inventoryState.movements||[];
+            if(!rows.length){box.innerHTML='<div class="inventory-empty">Noch keine Bestandsbewegungen vorhanden.</div>';return;}
+            box.innerHTML=rows.map(function(m){
+                var q=Number(m.quantity_liters||0),manual=m.movement_type==='carryover'||m.movement_type==='correction';
+                return '<div class="inventory-history-row">'+
+                    '<span>'+inventoryEscape(inventoryDate(m.occurred_at))+'</span>'+
+                    '<span><strong>'+inventoryEscape(map[m.inventory_item_id]||'Getränk')+'</strong><br><span class="inventory-type-badge">'+inventoryEscape(inventoryMovementLabel(m))+'</span></span>'+
+                    '<span class="'+(q>=0?'inventory-movement-positive':'inventory-movement-negative')+'">'+(q>=0?'+':'')+inventoryLiters(q)+'</span>'+
+                    '<span>'+inventoryEscape(m.note||'')+'</span>'+
+                    (inventoryIsAdmin()&&manual?'<button type="button" class="btn-danger btn-sm" onclick="deleteInventoryManualMovement(\''+inventoryEscape(m.id)+'\')">🗑</button>':'<span></span>')+
+                    '</div>';
+            }).join('');
+        }
+        function renderInventoryPurchases(){
+            var box=document.getElementById('inventory-purchase-list');if(!box)return;
+            var purchases=inventoryState.purchases||[],itemMap={};(inventoryState.items||[]).forEach(function(i){itemMap[i.id]=i.name;});
+            var linesByPurchase={};(inventoryState.purchaseItems||[]).forEach(function(pi){
+                if(!linesByPurchase[pi.purchase_id])linesByPurchase[pi.purchase_id]=[];
+                linesByPurchase[pi.purchase_id].push(pi);
+            });
+            if(!purchases.length){box.innerHTML='<div class="inventory-empty">Noch keine Getränkeeinkäufe erfasst.</div>';return;}
+            box.innerHTML=purchases.map(function(p){
+                var lines=(linesByPurchase[p.id]||[]).map(function(x){
+                    return inventoryEscape(itemMap[x.inventory_item_id]||'Getränk')+' · '+inventoryLiters(x.total_liters);
+                }).join('<br>');
+                return '<div class="inventory-purchase-row">'+
+                    '<span>'+inventoryEscape(inventoryDate(p.purchase_date))+'</span>'+
+                    '<span><strong>'+inventoryEscape(p.supplier||'Lieferant')+'</strong>'+(p.receipt_number?'<br><small>'+inventoryEscape(p.receipt_number)+'</small>':'')+'</span>'+
+                    '<span class="inventory-cost-total">'+inventoryMoney(p.total_cost)+'</span>'+
+                    '<span>'+lines+(p.note?'<br><small>'+inventoryEscape(p.note)+'</small>':'')+'</span>'+
+                    (inventoryIsAdmin()?'<button type="button" class="btn-danger btn-sm" onclick="deleteInventoryPurchase(\''+inventoryEscape(p.id)+'\')">🗑</button>':'<span></span>')+
+                    '</div>';
+            }).join('');
+        }
+        function addInventoryPurchaseDraftLine(){
+            var itemEl=document.getElementById('inventory-purchase-item'),count=Number((document.getElementById('inventory-package-count')||{}).value),units=Number((document.getElementById('inventory-units-per-package')||{}).value),liters=Number((document.getElementById('inventory-liters-per-unit')||{}).value),cost=Number((document.getElementById('inventory-line-cost')||{}).value||0),label=(document.getElementById('inventory-package-label')||{}).value||'Einheit';
+            if(!itemEl||!itemEl.value)return alert('Bitte einen Lagerartikel auswählen.');
+            if(!(count>0)||!(units>0)||!(liters>0)||!Number.isFinite(cost)||cost<0)return alert('Bitte Gebinde, Einheiten, Liter und Kosten korrekt eingeben.');
+            var item=inventoryState.items.find(function(x){return x.id===itemEl.value;});
+            inventoryPurchaseDraft.push({
+                id:'draft_'+Date.now()+'_'+Math.random().toString(36).slice(2),
+                inventory_item_id:itemEl.value,
+                item_name:item?item.name:'Getränk',
+                package_count:count,
+                package_label:label,
+                units_per_package:units,
+                liters_per_unit:liters,
+                line_cost:cost,
+                total_liters:count*units*liters
+            });
+            document.getElementById('inventory-line-cost').value='';
+            document.getElementById('inventory-liters-per-unit').value='';
+            renderInventoryPurchaseDraft();
+        }
+        function removeInventoryPurchaseDraftLine(id){
+            inventoryPurchaseDraft=inventoryPurchaseDraft.filter(function(x){return x.id!==id;});
+            renderInventoryPurchaseDraft();
+        }
+        function renderInventoryPurchaseDraft(){
+            var box=document.getElementById('inventory-purchase-draft');if(!box)return;
+            if(!inventoryPurchaseDraft.length){box.innerHTML='<div class="inventory-empty" style="padding:8px">Noch keine Einkaufsposition hinzugefügt.</div>';return;}
+            var total=inventoryPurchaseDraft.reduce(function(s,x){return s+Number(x.line_cost||0);},0);
+            box.innerHTML=inventoryPurchaseDraft.map(function(x){
+                return '<div class="inventory-draft-row"><span><strong>'+inventoryEscape(x.item_name)+'</strong></span><span>'+inventoryEscape(x.package_count)+' × '+inventoryEscape(x.package_label)+' × '+inventoryEscape(x.units_per_package)+'</span><span>'+inventoryLiters(x.total_liters)+' · '+inventoryMoney(x.line_cost)+'</span><button type="button" class="btn-danger btn-sm" onclick="removeInventoryPurchaseDraftLine(\''+inventoryEscape(x.id)+'\')">🗑</button></div>';
+            }).join('')+'<div style="text-align:right;font-size:.78rem;font-weight:900;margin-top:8px">Einkauf gesamt: '+inventoryMoney(total)+'</div>';
+        }
+        async function saveInventoryManualMovement(kind){
+            if(!inventoryIsAdmin())return alert('Nur Administratoren dürfen Bestände verändern.');
+            var prefix=kind==='carryover'?'inventory-carryover':'inventory-correction';
+            var item=(document.getElementById(prefix+'-item')||{}).value,liters=Number((document.getElementById(prefix+'-liters')||{}).value),date=(document.getElementById(prefix+'-date')||{}).value,note=((document.getElementById(prefix+'-note')||{}).value||'').trim();
+            if(!item||!Number.isFinite(liters)||liters===0)return alert('Bitte Getränk und gültige Literzahl eingeben.');
+            if(kind==='carryover'&&liters<0)return alert('Übernommener Bestand muss positiv sein.');
+            var r=await _supabase.from('beverage_inventory_movements').insert({
+                event_id:currentEventId,
+                inventory_item_id:item,
+                movement_type:kind,
+                quantity_liters:liters,
+                source_type:'manual',
+                source_mode:kind,
+                note:note,
+                occurred_at:inventoryMovementDate((date||inventoryNowDate())+'T12:00:00'),
+                created_by:currentAuthUser.id
+            });
+            if(r.error){alert('Bestand konnte nicht gespeichert werden: '+r.error.message);return;}
+            document.getElementById(prefix+'-liters').value='';
+            document.getElementById(prefix+'-note').value='';
+            await loadInventoryPage();
+            logCmoaActivity(kind==='carryover'?'Übernommener Getränkebestand erfasst':'Getränkebestand korrigiert',inventoryLiters(liters)+' · '+note,'cash_report');
+        }
+        async function deleteInventoryManualMovement(id){
+            if(!inventoryIsAdmin())return;
+            if(!confirm('Diese manuelle Bestandsbewegung wirklich löschen?'))return;
+            var r=await _supabase.from('beverage_inventory_movements').delete().eq('id',id).in('movement_type',['carryover','correction']);
+            if(r.error){alert('Bewegung konnte nicht gelöscht werden: '+r.error.message);return;}
+            await loadInventoryPage();
+        }
+        async function saveInventoryPurchase(){
+            if(!inventoryIsAdmin())return alert('Nur Administratoren dürfen Einkäufe erfassen.');
+            var supplier=(document.getElementById('inventory-purchase-supplier').value||'').trim(),date=document.getElementById('inventory-purchase-date').value||inventoryNowDate(),receipt=(document.getElementById('inventory-purchase-receipt').value||'').trim(),status=document.getElementById('inventory-purchase-status').value||'open',basis=document.getElementById('inventory-purchase-basis').value||'gross',note=(document.getElementById('inventory-purchase-note').value||'').trim();
+            if(!supplier)return alert('Bitte den Lieferanten eingeben.');
+            if(!inventoryPurchaseDraft.length)return alert('Bitte mindestens eine Einkaufsposition hinzufügen.');
+            var total=inventoryPurchaseDraft.reduce(function(s,x){return s+Number(x.line_cost||0);},0);
+            var pr=await _supabase.from('beverage_inventory_purchases').insert({
+                event_id:currentEventId,
+                supplier:supplier,
+                purchase_date:date,
+                receipt_number:receipt||null,
+                total_cost:total,
+                cost_basis:basis,
+                payment_status:status,
+                paid_date:status==='paid'?date:null,
+                note:note||null,
+                created_by:currentAuthUser.id
+            }).select().single();
+            if(pr.error){alert('Einkauf konnte nicht gespeichert werden: '+pr.error.message);return;}
+            var purchaseId=pr.data.id;
+            var lines=inventoryPurchaseDraft.map(function(x){
+                return {
+                    event_id:currentEventId,
+                    purchase_id:purchaseId,
+                    inventory_item_id:x.inventory_item_id,
+                    package_count:x.package_count,
+                    package_label:x.package_label,
+                    units_per_package:x.units_per_package,
+                    liters_per_unit:x.liters_per_unit,
+                    line_cost:x.line_cost
+                };
+            });
+            var ir=await _supabase.from('beverage_inventory_purchase_items').insert(lines);
+            if(ir.error){
+                await _supabase.from('beverage_inventory_purchases').delete().eq('id',purchaseId);
+                alert('Einkaufspositionen konnten nicht gespeichert werden: '+ir.error.message);return;
+            }
+            inventoryPurchaseDraft=[];
+            ['inventory-purchase-supplier','inventory-purchase-receipt','inventory-purchase-note'].forEach(function(id){document.getElementById(id).value='';});
+            await loadInventoryFinancialData();
+            await loadInventoryPage();
+            renderOverview();
+            logCmoaActivity('Getränkeeinkauf erfasst',supplier+' · '+inventoryMoney(total),'cash_report');
+        }
+        async function deleteInventoryPurchase(id){
+            if(!inventoryIsAdmin())return;
+            var p=(inventoryState.purchases||[]).find(function(x){return x.id===id;});
+            if(!p||!confirm('Getränkeeinkauf von „'+(p.supplier||'Lieferant')+'“ über '+inventoryMoney(p.total_cost)+' wirklich löschen?'))return;
+            var r=await _supabase.from('beverage_inventory_purchases').delete().eq('id',id);
+            if(r.error){alert('Einkauf konnte nicht gelöscht werden: '+r.error.message);return;}
+            await loadInventoryFinancialData();
+            await loadInventoryPage();
+            renderOverview();
+            logCmoaActivity('Getränkeeinkauf gelöscht',(p.supplier||'Lieferant')+' · '+inventoryMoney(p.total_cost),'cash_report');
+        }
+        async function syncInventoryCashLinks(){
+            if(!inventoryIsAdmin())return alert('Nur Administratoren dürfen Kassenartikel abgleichen.');
+            var btn=document.getElementById('inventory-sync-btn');if(btn){btn.disabled=true;btn.textContent='⏳ Abgleich …';}
+            try{
+                var r=await _supabase.rpc('cmoa_inventory_sync_cash_drinks',{target_event:currentEventId});
+                if(r.error)throw r.error;
+                await loadInventoryPage();
+                alert('✅ Kassenartikel und Literangaben wurden mit dem Getränkebestand abgeglichen.');
+            }catch(e){alert('Abgleich fehlgeschlagen: '+(e.message||e));}
+            finally{if(btn){btn.disabled=false;btn.textContent='🔗 Kassenartikel abgleichen';}}
+        }
+        function startInventoryRealtime(){
+            try{
+                if(inventoryChannel){try{_supabase.removeChannel(inventoryChannel);}catch(ignore){}inventoryChannel=null;}
+                if(!_supabase||!currentEventId)return;
+                inventoryChannel=_supabase.channel('cmoa-inventory-'+currentEventId)
+                    .on('postgres_changes',{event:'*',schema:'public',table:'beverage_inventory_movements',filter:'event_id=eq.'+currentEventId},async function(){
+                        try{
+                            var active=document.getElementById('inventory-page');
+                            if(active&&active.classList.contains('active'))await loadInventoryPage();
+                        }catch(e){console.warn('Bestand Realtime:',e);}
+                    })
+                    .subscribe();
+            }catch(e){console.warn('Getränkebestand Realtime konnte nicht gestartet werden:',e);}
+        }
+
         // =============================================================
         // CMOA AUTH + ROLLEN / RECHTE (Supabase)
         // =============================================================
@@ -9462,7 +9971,7 @@ function loadFromLocalStorage() {
           'overview-page':'overview','bands-page':'bands','band-view-page':'bands','band-detail-page':'bands',
           'hotel-page':'hotel','shuttle-page':'shuttle','ro-page':'running_order','payment-terms-page':'payments',
           'fees-page':'fees','misc-page':'todos','catering-page':'catering','akkreditierung-page':'accreditation',
-          'band-notes-page':'documents','global-documents-page':'documents','export-page':'export','admin-page':'admin','events-admin-page':'admin','production-costs-page':'fees','access-permits-page':'access_permits','event-needs-page':'todos'
+          'band-notes-page':'documents','global-documents-page':'documents','export-page':'export','admin-page':'admin','events-admin-page':'admin','production-costs-page':'fees','access-permits-page':'access_permits','event-needs-page':'todos','inventory-page':'cash_report'
         };
         var ROLE_PRESETS = {
           admin:{label:'Administrator', rights:'all'},
@@ -9814,7 +10323,7 @@ function loadFromLocalStorage() {
         async function switchCmoaEvent(id){
           if(!id||id===currentEventId)return; var ev=availableEvents.find(function(e){return e.id===id;});if(!ev)return;
           currentEventId=id;currentEvent=ev;eventBandsEnabled=ev._bandsEnabled!==false;localStorage.setItem('cmoa_current_event_id',id);renderEventSelector();
-          try{await loadPhase2CloudData();startPhase2Realtime();closeInternalChat();await initInternalChat();updateMainProgress();renderBandsList();if(typeof renderCateringPage==='function')renderCateringPage();if(typeof renderAkk==='function')renderAkk();showPage('main-page');}catch(e){alert('Veranstaltung konnte nicht geladen werden: '+e.message);}
+          try{await loadPhase2CloudData();startPhase2Realtime();startInventoryRealtime();closeInternalChat();await initInternalChat();updateMainProgress();renderBandsList();if(typeof renderCateringPage==='function')renderCateringPage();if(typeof renderAkk==='function')renderAkk();showPage('main-page');}catch(e){alert('Veranstaltung konnte nicht geladen werden: '+e.message);}
         }
         async function loadEventsAdminPage(){
           if(!currentUserProfile||currentUserProfile.role!=='admin')return;
