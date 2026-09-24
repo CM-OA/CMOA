@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"><meta http-equiv="Pragma" content="no-cache"><meta http-equiv="Expires" content="0"><title>CMOA Kasse · Version 27</title>
+<html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"><meta http-equiv="Pragma" content="no-cache"><meta http-equiv="Expires" content="0"><title>CMOA Kasse · Version 28</title>
 <meta name="theme-color" content="#111827">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -120,7 +120,7 @@
   <div id="cashInvitePasswordError" style="color:#ef4444;text-align:center;margin-top:10px"></div>
 </div></div>
 <div id="tillGate" class="tillGate hidden"><div class="tillGateInner"><h2>🏪 Kasse auswählen</h2><p class="muted" style="text-align:center">Bitte an der Verkaufsstelle einchecken, an der du jetzt arbeitest.</p><div id="tillGateGrid" class="tillGateGrid"></div></div></div>
-<header><h1>🍺 Schnellkasse <small style="font-size:11px;color:var(--muted);white-space:nowrap">Version 27</small></h1><div class="headInfo"><div class="headTill" id="headTill">Keine Kasse</div><button class="switchTill" onclick="showTillCheckin()">Kasse wechseln</button><div class="cash" id="cashTop">0,00 €</div></div></header>
+<header><h1>🍺 Schnellkasse <small style="font-size:11px;color:var(--muted);white-space:nowrap">Version 28</small></h1><div class="headInfo"><div class="headTill" id="headTill">Keine Kasse</div><button class="switchTill" onclick="showTillCheckin()">Kasse wechseln</button><div class="cash" id="cashTop">0,00 €</div></div></header>
 <main>
 <section id="sale" class="section active"><div id="noTill" class="card hidden"><b>Bitte zuerst eine Kasse auswählen.</b></div><div class="saleTopActions"><button class="btn emptyQuick" onclick="showEmptyingDialog()">💶 ZL / KL</button><button class="btn tokenQuick" onclick="startTokenMode()">🎟️ Marke</button><button class="btn depositQuick" onclick="startStandaloneDeposit()">↩ Pfand</button><button class="btn freeQuick" onclick="startFreeMode()">⭐ FREE</button></div><div id="modeBanner" class="modeBanner"></div><div id="drinkGrid" class="grid"></div></section>
 <section id="history" class="section"><div class="card"><h2>Kassen-Historie</h2><div class="row"><label>Kasse<select id="historyTill" onchange="renderHistory()"></select></label></div><div class="historyTabs"><button id="historyAllBtn" class="btn active" onclick="setHistoryView('all')">Alle Buchungen</button><button id="historyEmptyBtn" class="btn" onclick="setHistoryView('emptyings')">ZL / KL</button></div><div id="historyList" class="list"></div></div></section>
@@ -209,7 +209,15 @@ function drinkTillLabel(d){if(!Array.isArray(d.tillIds))return 'Alle Kassen';let
 function setTheme(t){db.theme=t;document.body.classList.toggle('dark',t==='dark');save()}
 function tillSales(id){return db.sales.filter(x=>x.tillId===id)}function tillEvents(id){return db.cashEvents.filter(x=>x.tillId===id)}function cashNow(id=db.activeTillId){let openings=tillEvents(id).filter(x=>x.type==='opening').reduce((s,x)=>s+x.amount,0),closings=tillEvents(id).filter(x=>x.type==='closing');let lastClose=closings.length?Math.max(...closings.map(x=>new Date(x.time).getTime())):0;let baseEvents=tillEvents(id).filter(x=>new Date(x.time).getTime()>lastClose);let opening=baseEvents.filter(x=>x.type==='opening').reduce((s,x)=>s+x.amount,0);let sales=tillSales(id).filter(x=>!x.voided&&new Date(x.time).getTime()>lastClose).reduce((s,x)=>s+x.total,0);let empties=baseEvents.filter(x=>x.type==='emptying').reduce((s,x)=>s+x.amount,0);return opening+sales-empties}
 function drinkAvailableAtTill(d,tillId){return !Array.isArray(d.tillIds)||d.tillIds.includes(tillId)}
-function alphaByName(a,b){return String(a&&a.name||'').localeCompare(String(b&&b.name||''),'de',{sensitivity:'base',numeric:true})}
+function alphaByName(a,b){
+  let an=String(a&&a.name||''),bn=String(b&&b.name||'');
+  let abase=an.replace(/\s+Kopie(?:\s+\d+)?$/i,''),bbase=bn.replace(/\s+Kopie(?:\s+\d+)?$/i,'');
+  let baseCmp=abase.localeCompare(bbase,'de',{sensitivity:'base',numeric:true});
+  if(baseCmp!==0)return baseCmp;
+  if(an===abase&&bn!==bbase)return -1;
+  if(bn===bbase&&an!==abase)return 1;
+  return an.localeCompare(bn,'de',{sensitivity:'base',numeric:true});
+}
 function sortedByName(items){return [...(items||[])].sort(alphaByName)}
 function settingsArticlesAlphabetical(){
   let result=[];
@@ -328,6 +336,7 @@ function articleSettingsHtml(d){
    <div class="article-actions">
      ${isSpecialParentDrink(d)&&submenuCount?`<button class="btn" onclick="toggleArticleGroup('${d.id}')">${expanded?'Untermenü schließen':'Untermenü öffnen'}</button>`:''}
      ${isSpecialParentDrink(d)?`<button class="btn" onclick="editSpecialChoices('${d.id}')">Untermenü bearbeiten</button>`:''}
+     <button class="btn" onclick="duplicateDrink('${d.id}')">Duplizieren</button>
      <button class="btn" onclick="editDrink('${d.id}')">Bearbeiten</button>
      <button class="btn danger" onclick="deleteDrink('${d.id}')">Löschen</button>
    </div>
@@ -421,6 +430,56 @@ let articleSavedTimer=null;function showArticleSaved(message='✓ Gespeichert'){
 function saveDrink(){let n=$('dName').value.trim(),p=Number($('dPrice').value),category=$('dCategory').value==='food'?'food':'drink',priceMode=$('dPriceMode').value==='gross'?'gross':'net',vatRate=Number($('dVatRate').value),dep=category==='food'?null:($('dDeposit').value||null),c=$('dColor').value,part1=$('dPart1').value.trim(),volume1=Number($('dVolume1').value||0),part2=$('dPart2').value.trim(),volume2=Number($('dVolume2').value||0),noSymbol=!!$('dNoSymbol').checked;if(!n||p<0||!Number.isFinite(p))return alert('Name und gültigen Preis eingeben.');let editing=db.drinks.find(x=>x.id===editDrinkId)||null,parentScope=editing?editing.parentId:null,duplicate=db.drinks.find(x=>x.id!==editDrinkId&&(x.parentId||null)===(parentScope||null)&&String(x.name||'').trim().toLocaleLowerCase('de-DE')===n.toLocaleLowerCase('de-DE'));if(duplicate)return alert('Ein Artikel mit diesem Namen ist in diesem Bereich bereits vorhanden.');if(!Number.isFinite(vatRate)||vatRate<0||vatRate>100)return alert('Bitte einen gültigen Umsatzsteuersatz eingeben.');if(!Number.isFinite(volume1)||volume1<0||!Number.isFinite(volume2)||volume2<0)return alert('Bitte gültige Mengen in Litern eingeben.');if(category==='drink'&&volume1>0&&!part1)part1=n;if(category==='food'){part1='';part2='';volume1=0;volume2=0}if(volume2>0&&!part2)return alert('Bitte für Menge 2 auch die zweite Komponente benennen.');if(editDrinkId){let d=db.drinks.find(x=>x.id===editDrinkId);if(!d)return alert('Artikel wurde nicht gefunden.');Object.assign(d,{name:n,price:p,depositId:dep,color:c,category,part1,volume1,part2,volume2,vatRate,priceMode,noSymbol})}else db.drinks.push({id:uid(),name:n,price:p,depositId:dep,color:c,category,part1,volume1,part2,volume2,vatRate,priceMode,noSymbol,parentId:null,tillIds:db.activeTillId?[db.activeTillId]:[]});articleMutationVersion++;cancelDrinkEdit(true);save();showArticleSaved('✓ Gespeichert')}
 function editDrink(id){let d=db.drinks.find(x=>x.id===id);if(!d)return;editDrinkId=id;$('dName').value=d.name;$('dCategory').value=d.category==='food'?'food':'drink';$('dPrice').value=d.price;$('dPriceMode').value=d.priceMode==='gross'?'gross':'net';$('dVatRate').value=Number.isFinite(Number(d.vatRate))?Number(d.vatRate):(d.category==='food'?7:19);let wantedDeposit=d.depositId||'';$('dDeposit').value=wantedDeposit;if($('dDeposit').value!==wantedDeposit&&wantedDeposit&&[...$('dDeposit').options].some(o=>o.value===wantedDeposit))$('dDeposit').value=wantedDeposit;$('dColor').value=d.color;$('dPart1').value=d.part1||'';$('dVolume1').value=Number(d.volume1)||'';$('dPart2').value=d.part2||'';$('dVolume2').value=Number(d.volume2)||'';$('dNoSymbol').checked=!!d.noSymbol;$('drinkSaveBtn').textContent='Änderungen speichern';$('drinkCancelBtn').classList.remove('hidden');let ctx=$('drinkEditContext'),parent=d.parentId?db.drinks.find(x=>x.id===d.parentId):null;if(ctx){ctx.style.display='block';ctx.textContent=parent?'Unterartikel von „'+parent.name+'“ – Preis, Menge, Steuer, Pfand und Kassen können separat eingestellt werden.':'Artikel wird bearbeitet.'}$('dName').scrollIntoView({behavior:'smooth',block:'center'})}
 function cancelDrinkEdit(clear=true){editDrinkId=null;$('drinkSaveBtn').textContent='+ Artikel anlegen';$('drinkCancelBtn').classList.add('hidden');let ctx=$('drinkEditContext');if(ctx){ctx.style.display='none';ctx.textContent=''}if(clear){$('dName').value='';$('dCategory').value='drink';$('dPrice').value='';$('dPriceMode').value='net';$('dVatRate').value='19';$('dDeposit').value='';$('dColor').value='#2563eb';$('dPart1').value='';$('dVolume1').value='';$('dPart2').value='';$('dVolume2').value='';$('dNoSymbol').checked=false}}
+
+function uniqueDuplicateName(source){
+  let scopeParent=source.parentId||null,base=String(source.name||'Artikel').trim()+' Kopie',name=base,n=2;
+  let exists=value=>db.drinks.some(x=>(x.parentId||null)===(scopeParent||null)&&String(x.name||'').trim().toLocaleLowerCase('de-DE')===String(value).toLocaleLowerCase('de-DE'));
+  while(exists(name)){name=base+' '+n;n++}
+  return name;
+}
+function cloneDrinkRecord(source,newName,newParentId){
+  return {
+    ...source,
+    id:uid(),
+    name:newName,
+    parentId:newParentId===undefined?(source.parentId||null):newParentId,
+    tillIds:Array.isArray(source.tillIds)?[...source.tillIds]:source.tillIds,
+    specialChoices:Array.isArray(source.specialChoices)?[...source.specialChoices]:source.specialChoices
+  };
+}
+function duplicateDrink(id){
+  let source=db.drinks.find(x=>x.id===id);if(!source)return;
+  let copyName=uniqueDuplicateName(source);
+  let clone=cloneDrinkRecord(source,copyName);
+  let insertIndex=db.drinks.findIndex(x=>x.id===source.id);
+
+  if(source.parentId){
+    db.drinks.splice(insertIndex+1,0,clone);
+  }else{
+    let children=childArticlesFor(source);
+    let sourceGroupEnd=insertIndex;
+    children.forEach(child=>{let idx=db.drinks.findIndex(x=>x.id===child.id);if(idx>sourceGroupEnd)sourceGroupEnd=idx});
+    if(children.length){
+      clone.subMenuInitialized=true;
+      let childCopies=children.map(child=>{
+        let childName=String(child.name||'Artikel').trim()+' Kopie';
+        let siblingNames=new Set(db.drinks.filter(x=>x.parentId===clone.id).map(x=>String(x.name||'').trim().toLocaleLowerCase('de-DE')));
+        let finalName=childName,n=2;
+        while(siblingNames.has(finalName.toLocaleLowerCase('de-DE'))){finalName=childName+' '+n;n++}
+        siblingNames.add(finalName.toLocaleLowerCase('de-DE'));
+        return cloneDrinkRecord(child,finalName,clone.id);
+      });
+      db.drinks.splice(sourceGroupEnd+1,0,clone,...childCopies);
+    }else{
+      db.drinks.splice(insertIndex+1,0,clone);
+    }
+  }
+
+  articleMutationVersion++;
+  save();
+  showArticleSaved('✓ Artikel dupliziert: '+copyName);
+}
+
 function queueDrinkArchive(id){
   if(isUuid(id)&&!pendingDrinkDeleteIds.includes(id))pendingDrinkDeleteIds.push(id);
 }
@@ -586,5 +645,5 @@ async function cloudDelete(table,id,throwOnError=false){
 }
 
 document.querySelectorAll('.nav button').forEach(b=>b.onclick=()=>requestCashSection(b.dataset.sec,b));renderAll();initCloud();
-if('serviceWorker' in navigator){window.addEventListener('load',async()=>{try{let regs=await navigator.serviceWorker.getRegistrations();await Promise.all(regs.filter(r=>r.scope===new URL('./',location.href).href).map(r=>r.unregister()));let reg=await navigator.serviceWorker.register('./service-worker-kasse.js?v=27',{updateViaCache:'none'});await reg.update()}catch(e){console.warn('Service Worker:',e)}})}
+if('serviceWorker' in navigator){window.addEventListener('load',async()=>{try{let regs=await navigator.serviceWorker.getRegistrations();await Promise.all(regs.filter(r=>r.scope===new URL('./',location.href).href).map(r=>r.unregister()));let reg=await navigator.serviceWorker.register('./service-worker-kasse.js?v=28',{updateViaCache:'none'});await reg.update()}catch(e){console.warn('Service Worker:',e)}})}
 </script></body></html>
