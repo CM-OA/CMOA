@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"><meta http-equiv="Pragma" content="no-cache"><meta http-equiv="Expires" content="0"><title>CMOA Kasse · Version 25</title>
+<html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"><meta http-equiv="Pragma" content="no-cache"><meta http-equiv="Expires" content="0"><title>CMOA Kasse · Version 26</title>
 <meta name="theme-color" content="#111827">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -40,6 +40,67 @@
   .article-tills{padding-left:0!important}
 }
 </style>
+
+<style id="article-action-menu-fix">
+.article-setting{
+  grid-template-columns:minmax(0,1fr)!important;
+  align-items:start!important;
+}
+.article-setting-main,
+.article-detail-wide,
+.article-tills,
+.article-actions{
+  grid-column:1!important;
+}
+.article-setting-main{grid-row:auto!important}
+.article-detail-wide{margin-top:0!important}
+.article-tills{
+  padding-left:0!important;
+  margin-top:2px!important;
+}
+.article-actions{
+  grid-row:auto!important;
+  display:flex!important;
+  flex-wrap:wrap!important;
+  gap:6px!important;
+  justify-content:flex-end!important;
+  align-items:center!important;
+  width:100%!important;
+  min-width:0!important;
+  border-top:1px solid var(--line);
+  padding-top:8px!important;
+  margin-top:4px!important;
+}
+.article-actions .btn,
+.article-actions .danger{
+  width:auto!important;
+  min-width:0!important;
+  height:auto!important;
+  min-height:32px!important;
+  padding:7px 10px!important;
+  border-radius:9px!important;
+  font-size:12px!important;
+  line-height:1.15!important;
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  white-space:nowrap!important;
+}
+.article-setting.subarticle .article-actions{
+  justify-content:flex-end!important;
+}
+@media(max-width:600px){
+  .article-actions{
+    justify-content:flex-start!important;
+  }
+  .article-actions .btn,
+  .article-actions .danger{
+    flex:0 1 auto!important;
+    white-space:normal!important;
+    text-align:center!important;
+  }
+}
+</style>
 </head><body>
 <div id="cloudLogin" class="modal show" style="z-index:100"><div class="dialog">
   <h2>🔐 Kassen-Anmeldung</h2>
@@ -59,7 +120,7 @@
   <div id="cashInvitePasswordError" style="color:#ef4444;text-align:center;margin-top:10px"></div>
 </div></div>
 <div id="tillGate" class="tillGate hidden"><div class="tillGateInner"><h2>🏪 Kasse auswählen</h2><p class="muted" style="text-align:center">Bitte an der Verkaufsstelle einchecken, an der du jetzt arbeitest.</p><div id="tillGateGrid" class="tillGateGrid"></div></div></div>
-<header><h1>🍺 Schnellkasse <small style="font-size:11px;color:var(--muted);white-space:nowrap">Version 25</small></h1><div class="headInfo"><div class="headTill" id="headTill">Keine Kasse</div><button class="switchTill" onclick="showTillCheckin()">Kasse wechseln</button><div class="cash" id="cashTop">0,00 €</div></div></header>
+<header><h1>🍺 Schnellkasse <small style="font-size:11px;color:var(--muted);white-space:nowrap">Version 26</small></h1><div class="headInfo"><div class="headTill" id="headTill">Keine Kasse</div><button class="switchTill" onclick="showTillCheckin()">Kasse wechseln</button><div class="cash" id="cashTop">0,00 €</div></div></header>
 <main>
 <section id="sale" class="section active"><div id="noTill" class="card hidden"><b>Bitte zuerst eine Kasse auswählen.</b></div><div class="saleTopActions"><button class="btn emptyQuick" onclick="showEmptyingDialog()">💶 ZL / KL</button><button class="btn tokenQuick" onclick="startTokenMode()">🎟️ Marke</button><button class="btn depositQuick" onclick="startStandaloneDeposit()">↩ Pfand</button><button class="btn freeQuick" onclick="startFreeMode()">⭐ FREE</button></div><div id="modeBanner" class="modeBanner"></div><div id="drinkGrid" class="grid"></div></section>
 <section id="history" class="section"><div class="card"><h2>Kassen-Historie</h2><div class="row"><label>Kasse<select id="historyTill" onchange="renderHistory()"></select></label></div><div class="historyTabs"><button id="historyAllBtn" class="btn active" onclick="setHistoryView('all')">Alle Buchungen</button><button id="historyEmptyBtn" class="btn" onclick="setHistoryView('emptyings')">ZL / KL</button></div><div id="historyList" class="list"></div></div></section>
@@ -233,14 +294,14 @@ function articleSettingsHtml(d){
      <div class="article-setting-title"><b>${d.parentId?'↳ ':''}${esc(d.name)}</b>${d.parentId?`<span class="subarticle-label">UNTERARTIKEL · ${esc(parent?parent.name:'')}</span>`:`<span class="${food?'freeBadge':'eventBadge'} article-kind">${food?'SPEISE':'GETRÄNK'}</span>`}</div>
      <div class="article-meta"><span class="article-chip">${euro(d.price)} ${priceMode}</span><span class="article-chip">${vat.toLocaleString('de-DE')} % USt.</span>${d.parentId?'<span class="article-chip">eigener Preis & Menge</span>':`<span class="article-chip">${food?'Kein Pfand':p?'Pfand '+euro(p.value):'Kein Pfand'}</span>`}</div>
    </div>
+   <div class="article-detail article-detail-wide">${food?'Speise':'Menge: '+volumeText}${submenuCount?'<br>Untermenü: '+submenuCount+' Artikel':''}</div>
+   ${articleTillButtons(d)}
    <div class="article-actions">
      ${isSpecialParentDrink(d)&&submenuCount?`<button class="btn" onclick="toggleArticleGroup('${d.id}')">${expanded?'Untermenü schließen':'Untermenü öffnen'}</button>`:''}
      ${isSpecialParentDrink(d)?`<button class="btn" onclick="editSpecialChoices('${d.id}')">Untermenü bearbeiten</button>`:''}
      <button class="btn" onclick="editDrink('${d.id}')">Bearbeiten</button>
      <button class="btn danger" onclick="deleteDrink('${d.id}')">Löschen</button>
    </div>
-   <div class="article-detail article-detail-wide">${food?'Speise':'Menge: '+volumeText}${submenuCount?'<br>Untermenü: '+submenuCount+' Artikel':''}</div>
-   ${articleTillButtons(d)}
  </div>`
 }
 const renderSettingsBeforeArticleLayout=renderSettings;renderSettings=function(){renderSettingsBeforeArticleLayout();let list=$('drinkSettings');if(list){list.className='list article-settings-list';list.innerHTML=settingsArticlesAlphabetical().map(articleSettingsHtml).join('')||'<div class="muted">Noch keine Artikel angelegt.</div>'}renderProtectionStatus()}
@@ -473,5 +534,5 @@ async function syncCloudData(){
 async function cloudDelete(table,id,throwOnError=false){if(cloudReady&&isUuid(id)){let {error}=await cashSb.from(table).delete().eq('id',id);if(error){setCloudStatus('Löschen fehlgeschlagen: '+error.message,true);if(throwOnError)throw error}}}
 
 document.querySelectorAll('.nav button').forEach(b=>b.onclick=()=>requestCashSection(b.dataset.sec,b));renderAll();initCloud();
-if('serviceWorker' in navigator){window.addEventListener('load',async()=>{try{let regs=await navigator.serviceWorker.getRegistrations();await Promise.all(regs.filter(r=>r.scope===new URL('./',location.href).href).map(r=>r.unregister()));let reg=await navigator.serviceWorker.register('./service-worker-kasse.js?v=25',{updateViaCache:'none'});await reg.update()}catch(e){console.warn('Service Worker:',e)}})}
+if('serviceWorker' in navigator){window.addEventListener('load',async()=>{try{let regs=await navigator.serviceWorker.getRegistrations();await Promise.all(regs.filter(r=>r.scope===new URL('./',location.href).href).map(r=>r.unregister()));let reg=await navigator.serviceWorker.register('./service-worker-kasse.js?v=26',{updateViaCache:'none'});await reg.update()}catch(e){console.warn('Service Worker:',e)}})}
 </script></body></html>
