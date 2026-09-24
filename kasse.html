@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"><meta http-equiv="Pragma" content="no-cache"><meta http-equiv="Expires" content="0"><title>CMOA Kasse · Version 26</title>
+<html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"><meta http-equiv="Pragma" content="no-cache"><meta http-equiv="Expires" content="0"><title>CMOA Kasse · Version 27</title>
 <meta name="theme-color" content="#111827">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -120,7 +120,7 @@
   <div id="cashInvitePasswordError" style="color:#ef4444;text-align:center;margin-top:10px"></div>
 </div></div>
 <div id="tillGate" class="tillGate hidden"><div class="tillGateInner"><h2>🏪 Kasse auswählen</h2><p class="muted" style="text-align:center">Bitte an der Verkaufsstelle einchecken, an der du jetzt arbeitest.</p><div id="tillGateGrid" class="tillGateGrid"></div></div></div>
-<header><h1>🍺 Schnellkasse <small style="font-size:11px;color:var(--muted);white-space:nowrap">Version 26</small></h1><div class="headInfo"><div class="headTill" id="headTill">Keine Kasse</div><button class="switchTill" onclick="showTillCheckin()">Kasse wechseln</button><div class="cash" id="cashTop">0,00 €</div></div></header>
+<header><h1>🍺 Schnellkasse <small style="font-size:11px;color:var(--muted);white-space:nowrap">Version 27</small></h1><div class="headInfo"><div class="headTill" id="headTill">Keine Kasse</div><button class="switchTill" onclick="showTillCheckin()">Kasse wechseln</button><div class="cash" id="cashTop">0,00 €</div></div></header>
 <main>
 <section id="sale" class="section active"><div id="noTill" class="card hidden"><b>Bitte zuerst eine Kasse auswählen.</b></div><div class="saleTopActions"><button class="btn emptyQuick" onclick="showEmptyingDialog()">💶 ZL / KL</button><button class="btn tokenQuick" onclick="startTokenMode()">🎟️ Marke</button><button class="btn depositQuick" onclick="startStandaloneDeposit()">↩ Pfand</button><button class="btn freeQuick" onclick="startFreeMode()">⭐ FREE</button></div><div id="modeBanner" class="modeBanner"></div><div id="drinkGrid" class="grid"></div></section>
 <section id="history" class="section"><div class="card"><h2>Kassen-Historie</h2><div class="row"><label>Kasse<select id="historyTill" onchange="renderHistory()"></select></label></div><div class="historyTabs"><button id="historyAllBtn" class="btn active" onclick="setHistoryView('all')">Alle Buchungen</button><button id="historyEmptyBtn" class="btn" onclick="setHistoryView('emptyings')">ZL / KL</button></div><div id="historyList" class="list"></div></div></section>
@@ -163,7 +163,20 @@ function isSpecialParentDrink(d){if(!d||d.parentId)return false;let key=String(d
 function rebuildDrinkOrder(topOrder=null,overrideParentId=null,overrideChildren=null){let tops=topOrder||db.drinks.filter(x=>!x.parentId),used=new Set(),out=[];tops.forEach(t=>{out.push(t);used.add(t.id);let kids=overrideParentId===t.id&&overrideChildren?overrideChildren:db.drinks.filter(x=>x.parentId===t.id);kids.forEach(k=>{out.push(k);used.add(k.id)})});db.drinks.forEach(x=>{if(!used.has(x.id))out.push(x)});db.drinks=out}
 function ensureSpecialSubArticles(){let changed=false,tops=db.drinks.filter(x=>!x.parentId);tops.forEach(parent=>{let legacy=Array.isArray(parent.specialChoices)?parent.specialChoices:null;if(!legacy)return;legacy.forEach(name=>{let clean=String(name||'').trim();if(!clean)return;let exists=db.drinks.some(x=>x.parentId===parent.id&&String(x.name||'').trim().toLocaleLowerCase('de-DE')===clean.toLocaleLowerCase('de-DE'));if(!exists){db.drinks.push({id:uid(),name:clean,price:Number(parent.price)||0,depositId:parent.depositId||null,color:parent.color||'#64748b',category:'drink',part1:clean,volume1:0,part2:'',volume2:0,vatRate:Number.isFinite(Number(parent.vatRate))?Number(parent.vatRate):19,priceMode:parent.priceMode==='gross'?'gross':'net',tillIds:Array.isArray(parent.tillIds)?[...parent.tillIds]:null,parentId:parent.id,noSymbol:true});changed=true}});parent.subMenuInitialized=true;parent.specialChoices=null;changed=true});if(changed)rebuildDrinkOrder();return changed}
 function repairLegacySpecialGroups(){let changed=false;let normalBoundaryNames=new Set(defaultDrinks.map(x=>String(x.name||'').trim().toLocaleLowerCase('de-DE')).filter(x=>!specialParentNames.has(x)));for(let parentName of ['schnaps','mixgetränke']){let top=db.drinks.filter(x=>!x.parentId),parentIndex=top.findIndex(x=>String(x.name||'').trim().toLocaleLowerCase('de-DE')===parentName);if(parentIndex<0)continue;let parent=top[parentIndex],boundary=top.length;for(let i=parentIndex+1;i<top.length;i++){let key=String(top[i].name||'').trim().toLocaleLowerCase('de-DE');if(parentName==='schnaps'&&key==='mixgetränke'){boundary=i;break}if(parentName==='mixgetränke'&&normalBoundaryNames.has(key)){boundary=i;break}}let candidates=top.slice(parentIndex+1,boundary).filter(x=>x.category!=='food'&&!specialParentNames.has(String(x.name||'').trim().toLocaleLowerCase('de-DE')));if(!candidates.length)continue;let existingChildren=childArticlesFor(parent);existingChildren.forEach(oldChild=>{if(!candidates.some(c=>c.id===oldChild.id)){if(/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(oldChild.id||''))&&!pendingDrinkDeleteIds.includes(oldChild.id))pendingDrinkDeleteIds.push(oldChild.id);db.drinks=db.drinks.filter(x=>x.id!==oldChild.id)}});candidates.forEach(c=>{c.parentId=parent.id;c.noSymbol=true});parent.subMenuInitialized=true;parent.specialChoices=null;changed=true}if(changed)rebuildDrinkOrder();return changed}
-function ensureDefaultDrinks(){let added=false,depositId=db.deposits&&db.deposits[0]?db.deposits[0].id:null;defaultDrinks.forEach(x=>{if(!db.drinks.some(d=>String(d.name||'').trim().toLocaleLowerCase('de-DE')===x.name.toLocaleLowerCase('de-DE'))){db.drinks.push({id:uid(),name:x.name,price:x.price,color:x.color,depositId});added=true}});return added}
+function ensureDefaultDrinks(){
+  if(!Array.isArray(db.drinks))db.drinks=[];
+  if(db.defaultCatalogInitialized||db.drinks.length){
+    db.defaultCatalogInitialized=true;
+    return false;
+  }
+  let added=false,depositId=db.deposits&&db.deposits[0]?db.deposits[0].id:null;
+  defaultDrinks.forEach(x=>{
+    db.drinks.push({id:uid(),name:x.name,price:x.price,color:x.color,depositId});
+    added=true;
+  });
+  db.defaultCatalogInitialized=true;
+  return added;
+}
 function applyDrinkPalette(force=false){if(!force&&db.tilePaletteVersion===1)return false;let changed=false;defaultDrinks.forEach(style=>{let d=db.drinks.find(x=>String(x.name||'').trim().toLocaleLowerCase('de-DE')===style.name.toLocaleLowerCase('de-DE'));if(d&&d.color!==style.color){d.color=style.color;changed=true}});db.tilePaletteVersion=1;return changed}
 ensureDefaultDrinks();applyDrinkPalette();ensureSpecialSubArticles();repairLegacySpecialGroups();persist();
 function persist(){localStorage.setItem(K,JSON.stringify(db))}function save(){persist();renderAll();scheduleCloudSync()}function activeTill(){return db.tills.find(t=>t.id===db.activeTillId)}function depFor(d){return d&&d.category==='food'?undefined:db.deposits.find(p=>p.id===d.depositId)}
@@ -171,7 +184,23 @@ function showTillCheckin(){tillCheckedIn=false;renderTillCheckin()}
 function renderTillCheckin(){let gate=$('tillGate');if(!gate)return;$('tillGateGrid').innerHTML=db.tills.map(t=>`<button class="tillChoice" onclick="checkInTill('${t.id}')"><span>${String(t.name||'').toLocaleLowerCase('de-DE').includes('backstage')?'🎤':String(t.name||'').toLocaleLowerCase('de-DE').includes('bier')?'🍺':'🍹'}</span>${esc(t.name)}<small style="display:block;font-size:12px;color:var(--muted);margin-top:8px">Hier einchecken</small></button>`).join('')||'<div class="card"><b>Noch keine Kasse angelegt.</b><div class="muted">Lege die erste Kasse in den Einstellungen an.</div></div>';gate.classList.toggle('hidden',tillCheckedIn)}
 function checkInTill(id){if(!db.tills.some(t=>t.id===id))return;db.activeTillId=id;tillCheckedIn=true;flow={};document.body.classList.remove('tokenMode','freeMode');persist();renderAll();scheduleCloudSync()}
 function isCmoa2027Event(){let e=cloudEvents.find(x=>x.id===cloudEventId),name=String(e&&(e.short_name||e.name)||'').toLocaleLowerCase('de-DE');return name.includes('cmoa')&&name.includes('2027')}
-function ensureBackstageSetup(){if(!isCmoa2027Event())return false;let changed=false,backstage=db.tills.find(t=>String(t.name||'').trim().toLocaleLowerCase('de-DE')==='backstage');if(!backstage){backstage={id:uid(),name:'Backstage'};db.tills.push(backstage);changed=true}defaultFoods.forEach(([name,color])=>{let item=db.drinks.find(d=>String(d.name||'').trim().toLocaleLowerCase('de-DE')===name.toLocaleLowerCase('de-DE'));if(!item){db.drinks.push({id:uid(),name,price:0,color,depositId:null,category:'food',tillIds:[backstage.id]});changed=true}else{if(item.category!=='food'){item.category='food';changed=true}if(item.depositId){item.depositId=null;changed=true}if(!Array.isArray(item.tillIds)||!item.tillIds.includes(backstage.id)){item.tillIds=[...new Set([...(Array.isArray(item.tillIds)?item.tillIds:[]),backstage.id])];changed=true}}});return changed}
+function ensureBackstageSetup(){
+  if(!isCmoa2027Event())return false;
+  let backstage=db.tills.find(t=>String(t.name||'').trim().toLocaleLowerCase('de-DE')==='backstage');
+  if(backstage){
+    db.backstageDefaultsInitialized=true;
+    return false;
+  }
+  backstage={id:uid(),name:'Backstage'};
+  db.tills.push(backstage);
+  defaultFoods.forEach(([name,color])=>{
+    if(!db.drinks.some(d=>String(d.name||'').trim().toLocaleLowerCase('de-DE')===name.toLocaleLowerCase('de-DE'))){
+      db.drinks.push({id:uid(),name,price:0,color,depositId:null,category:'food',tillIds:[backstage.id]});
+    }
+  });
+  db.backstageDefaultsInitialized=true;
+  return true;
+}
 function textColor(hex){let h=hex.replace('#',''),r=parseInt(h.slice(0,2),16),g=parseInt(h.slice(2,4),16),b=parseInt(h.slice(4,6),16);return(r*299+g*587+b*114)/1000>160?'#111827':'#fff'}
 function decodeMetaText(v){try{return decodeURIComponent(v||'')}catch(e){return String(v||'')}}
 function decodeDrinkColor(raw){let parts=String(raw||'#2563eb').split('|'),color=/^#[0-9a-f]{6}$/i.test(parts[0])?parts[0]:'#2563eb',tillPart=parts.find(x=>x.startsWith('tills:')),categoryPart=parts.find(x=>x.startsWith('category:')),part1=parts.find(x=>x.startsWith('part1:')),part2=parts.find(x=>x.startsWith('part2:')),vol1=parts.find(x=>x.startsWith('vol1:')),vol2=parts.find(x=>x.startsWith('vol2:')),vatPart=parts.find(x=>x.startsWith('vat:')),modePart=parts.find(x=>x.startsWith('priceMode:')),choicesPart=parts.find(x=>x.startsWith('choices:')),parentPart=parts.find(x=>x.startsWith('parent:')),lockPart=parts.find(x=>x.startsWith('lockhash:')),noSymbol=parts.includes('nosymbol:1'),subMenuInitialized=parts.includes('submenu:1'),category=categoryPart&&categoryPart.slice(9)==='food'?'food':'drink',specialChoices=null;if(choicesPart){try{let parsed=JSON.parse(decodeMetaText(choicesPart.slice(8)));if(Array.isArray(parsed))specialChoices=parsed.map(x=>String(x)).filter(Boolean)}catch(e){specialChoices=null}}return {color,tillIds:tillPart?tillPart.slice(6).split(',').filter(Boolean):null,category,part1:decodeMetaText(part1?part1.slice(6):''),part2:decodeMetaText(part2?part2.slice(6):''),volume1:Number(vol1?vol1.slice(5):0)||0,volume2:Number(vol2?vol2.slice(5):0)||0,vatRate:vatPart?Number(vatPart.slice(4)):(category==='food'?7:19),priceMode:modePart&&modePart.slice(10)==='gross'?'gross':'net',specialChoices,parentId:parentPart?parentPart.slice(7):null,noSymbol,subMenuInitialized,lockHash:lockPart?lockPart.slice(9):''}}
@@ -389,10 +418,25 @@ function addDeposit(){let n=$('depName').value.trim()||'Pfand',v=Number($('depVa
 function editDeposit(id){let p=db.deposits.find(x=>x.id===id),n=prompt('Bezeichnung:',p.name);if(n===null)return;let v=prompt('Pfand pro Stück in €:',String(p.value).replace('.',','));if(v===null)return;v=Number(v.replace(',','.'));if(!Number.isFinite(v)||v<0)return alert('Ungültiger Betrag.');p.name=n.trim()||'Pfand';p.value=v;save()}async function deleteDeposit(id){if(!confirm('Pfand löschen? Zugewiesene Getränke haben danach kein Pfand.'))return;db.drinks.forEach(d=>{if(d.depositId===id)d.depositId=null});await cloudDelete('cash_deposit_types',id);db.deposits=db.deposits.filter(p=>p.id!==id);save()}
 function applyCategoryVatDefault(){$('dVatRate').value=$('dCategory').value==='food'?'7':'19'}
 let articleSavedTimer=null;function showArticleSaved(message='✓ Gespeichert'){let el=$('drinkSaveStatus');if(!el)return;el.textContent=message;clearTimeout(articleSavedTimer);articleSavedTimer=setTimeout(()=>{if(el)el.textContent=''},2600)}
-function saveDrink(){let n=$('dName').value.trim(),p=Number($('dPrice').value),category=$('dCategory').value==='food'?'food':'drink',priceMode=$('dPriceMode').value==='gross'?'gross':'net',vatRate=Number($('dVatRate').value),dep=category==='food'?null:($('dDeposit').value||null),c=$('dColor').value,part1=$('dPart1').value.trim(),volume1=Number($('dVolume1').value||0),part2=$('dPart2').value.trim(),volume2=Number($('dVolume2').value||0),noSymbol=!!$('dNoSymbol').checked;if(!n||p<0||!Number.isFinite(p))return alert('Name und gültigen Preis eingeben.');if(!Number.isFinite(vatRate)||vatRate<0||vatRate>100)return alert('Bitte einen gültigen Umsatzsteuersatz eingeben.');if(!Number.isFinite(volume1)||volume1<0||!Number.isFinite(volume2)||volume2<0)return alert('Bitte gültige Mengen in Litern eingeben.');if(category==='drink'&&volume1>0&&!part1)part1=n;if(category==='food'){part1='';part2='';volume1=0;volume2=0}if(volume2>0&&!part2)return alert('Bitte für Menge 2 auch die zweite Komponente benennen.');if(editDrinkId){let d=db.drinks.find(x=>x.id===editDrinkId);if(!d)return alert('Artikel wurde nicht gefunden.');Object.assign(d,{name:n,price:p,depositId:dep,color:c,category,part1,volume1,part2,volume2,vatRate,priceMode,noSymbol})}else db.drinks.push({id:uid(),name:n,price:p,depositId:dep,color:c,category,part1,volume1,part2,volume2,vatRate,priceMode,noSymbol,parentId:null,tillIds:db.activeTillId?[db.activeTillId]:[]});articleMutationVersion++;cancelDrinkEdit(true);save();showArticleSaved('✓ Gespeichert')}
+function saveDrink(){let n=$('dName').value.trim(),p=Number($('dPrice').value),category=$('dCategory').value==='food'?'food':'drink',priceMode=$('dPriceMode').value==='gross'?'gross':'net',vatRate=Number($('dVatRate').value),dep=category==='food'?null:($('dDeposit').value||null),c=$('dColor').value,part1=$('dPart1').value.trim(),volume1=Number($('dVolume1').value||0),part2=$('dPart2').value.trim(),volume2=Number($('dVolume2').value||0),noSymbol=!!$('dNoSymbol').checked;if(!n||p<0||!Number.isFinite(p))return alert('Name und gültigen Preis eingeben.');let editing=db.drinks.find(x=>x.id===editDrinkId)||null,parentScope=editing?editing.parentId:null,duplicate=db.drinks.find(x=>x.id!==editDrinkId&&(x.parentId||null)===(parentScope||null)&&String(x.name||'').trim().toLocaleLowerCase('de-DE')===n.toLocaleLowerCase('de-DE'));if(duplicate)return alert('Ein Artikel mit diesem Namen ist in diesem Bereich bereits vorhanden.');if(!Number.isFinite(vatRate)||vatRate<0||vatRate>100)return alert('Bitte einen gültigen Umsatzsteuersatz eingeben.');if(!Number.isFinite(volume1)||volume1<0||!Number.isFinite(volume2)||volume2<0)return alert('Bitte gültige Mengen in Litern eingeben.');if(category==='drink'&&volume1>0&&!part1)part1=n;if(category==='food'){part1='';part2='';volume1=0;volume2=0}if(volume2>0&&!part2)return alert('Bitte für Menge 2 auch die zweite Komponente benennen.');if(editDrinkId){let d=db.drinks.find(x=>x.id===editDrinkId);if(!d)return alert('Artikel wurde nicht gefunden.');Object.assign(d,{name:n,price:p,depositId:dep,color:c,category,part1,volume1,part2,volume2,vatRate,priceMode,noSymbol})}else db.drinks.push({id:uid(),name:n,price:p,depositId:dep,color:c,category,part1,volume1,part2,volume2,vatRate,priceMode,noSymbol,parentId:null,tillIds:db.activeTillId?[db.activeTillId]:[]});articleMutationVersion++;cancelDrinkEdit(true);save();showArticleSaved('✓ Gespeichert')}
 function editDrink(id){let d=db.drinks.find(x=>x.id===id);if(!d)return;editDrinkId=id;$('dName').value=d.name;$('dCategory').value=d.category==='food'?'food':'drink';$('dPrice').value=d.price;$('dPriceMode').value=d.priceMode==='gross'?'gross':'net';$('dVatRate').value=Number.isFinite(Number(d.vatRate))?Number(d.vatRate):(d.category==='food'?7:19);let wantedDeposit=d.depositId||'';$('dDeposit').value=wantedDeposit;if($('dDeposit').value!==wantedDeposit&&wantedDeposit&&[...$('dDeposit').options].some(o=>o.value===wantedDeposit))$('dDeposit').value=wantedDeposit;$('dColor').value=d.color;$('dPart1').value=d.part1||'';$('dVolume1').value=Number(d.volume1)||'';$('dPart2').value=d.part2||'';$('dVolume2').value=Number(d.volume2)||'';$('dNoSymbol').checked=!!d.noSymbol;$('drinkSaveBtn').textContent='Änderungen speichern';$('drinkCancelBtn').classList.remove('hidden');let ctx=$('drinkEditContext'),parent=d.parentId?db.drinks.find(x=>x.id===d.parentId):null;if(ctx){ctx.style.display='block';ctx.textContent=parent?'Unterartikel von „'+parent.name+'“ – Preis, Menge, Steuer, Pfand und Kassen können separat eingestellt werden.':'Artikel wird bearbeitet.'}$('dName').scrollIntoView({behavior:'smooth',block:'center'})}
 function cancelDrinkEdit(clear=true){editDrinkId=null;$('drinkSaveBtn').textContent='+ Artikel anlegen';$('drinkCancelBtn').classList.add('hidden');let ctx=$('drinkEditContext');if(ctx){ctx.style.display='none';ctx.textContent=''}if(clear){$('dName').value='';$('dCategory').value='drink';$('dPrice').value='';$('dPriceMode').value='net';$('dVatRate').value='19';$('dDeposit').value='';$('dColor').value='#2563eb';$('dPart1').value='';$('dVolume1').value='';$('dPart2').value='';$('dVolume2').value='';$('dNoSymbol').checked=false}}
-async function deleteDrink(id){let d=db.drinks.find(x=>x.id===id);if(!d)return;let children=childArticlesFor(id),extra=children.length?` Dabei werden auch ${children.length} Unterartikel gelöscht.`:'';if(!confirm(`Artikel „${d.name}“ löschen?${extra}`))return;try{for(let c of children)await cloudDelete('cash_drinks',c.id,true);await cloudDelete('cash_drinks',id,true);let ids=new Set([id,...children.map(x=>x.id)]);db.drinks=db.drinks.filter(x=>!ids.has(x.id));save();showArticleSaved('✓ Artikel gelöscht')}catch(e){alert('Artikel konnte nicht gelöscht werden: '+e.message)}}
+function queueDrinkArchive(id){
+  if(isUuid(id)&&!pendingDrinkDeleteIds.includes(id))pendingDrinkDeleteIds.push(id);
+}
+async function deleteDrink(id){
+  let d=db.drinks.find(x=>x.id===id);if(!d)return;
+  let children=childArticlesFor(id),extra=children.length?` Dabei werden auch ${children.length} Unterartikel aus der aktiven Artikelliste entfernt.`:'';
+  if(!confirm(`Artikel „${d.name}“ wirklich löschen?${extra}`))return;
+  let ids=[id,...children.map(x=>x.id)];
+  ids.forEach(queueDrinkArchive);
+  let idSet=new Set(ids);
+  db.drinks=db.drinks.filter(x=>!idSet.has(x.id));
+  expandedArticleGroups.delete(id);
+  articleMutationVersion++;
+  save();
+  showArticleSaved('✓ Artikel gelöscht');
+}
 function assignDrinkTills(id){let d=db.drinks.find(x=>x.id===id);if(!d)return;let all=!Array.isArray(d.tillIds);$('dialog').innerHTML=`<h2>${esc(d.name)} – Kassen</h2><div class="muted" style="text-align:center;margin-bottom:12px">In welchen Verkaufsstellen soll dieses Getränk erscheinen?</div><div class="list">${db.tills.map(t=>`<label class="item" style="color:var(--text);font-size:16px"><input class="drinkTillCheck" type="checkbox" value="${t.id}" style="width:auto;margin:0" ${all||d.tillIds.includes(t.id)?'checked':''}><span>${esc(t.name)}</span></label>`).join('')}</div><button class="btn primary big" style="width:100%;margin-top:14px" onclick="saveDrinkTillAssignment('${id}')">Zuordnung speichern</button><button class="btn" style="width:100%;margin-top:9px" onclick="setDrinkAllTills('${id}')">In allen Kassen anbieten</button><button class="btn back" onclick="closeModal()">Abbrechen</button>`;$('modal').classList.add('show')}
 function saveDrinkTillAssignment(id){let d=db.drinks.find(x=>x.id===id),ids=[...document.querySelectorAll('.drinkTillCheck:checked')].map(x=>x.value);if(!d)return closeModal();if(!ids.length)return alert('Bitte mindestens eine Kasse auswählen.');d.tillIds=ids;closeModal();save()}
 function setDrinkAllTills(id){let d=db.drinks.find(x=>x.id===id);if(!d)return;d.tillIds=null;closeModal();save()}
@@ -491,14 +535,15 @@ async function loadCloudData(silent=false){
     await syncCloudData();
     return;
   }
-  let [rr,pr,dr,sr,ir,mr]=results.map(r=>r.data||[]);
-  if(!rr.length&&!pr.length&&!dr.length&&!sr.length&&!mr.length){
+  let [rr,pr,drAll,sr,ir,mr]=results.map(r=>r.data||[]);
+  let dr=drAll.filter(x=>x.active!==false);
+  if(!rr.length&&!pr.length&&!drAll.length&&!sr.length&&!mr.length){
     db.sales=[];db.cashEvents=[];ensureBackstageSetup();ensureSpecialSubArticles();repairLegacySpecialGroups();normalizeCloudIds();cloudReady=true;await syncCloudData();renderAll();setCloudStatus('Neue Kasse wurde für diese Veranstaltung angelegt.');return;
   }
   let itemBySale={};ir.forEach(i=>itemBySale[i.sale_id]=i);
   db.tills=rr.map(x=>({id:x.id,name:x.name}));
   db.deposits=pr.map(x=>({id:x.id,name:x.name,value:Number(x.amount)}));
-  db.lockHash='';db.drinks=dr.map(x=>{let style=decodeDrinkColor(x.color);if(style.lockHash&&!db.lockHash)db.lockHash=style.lockHash;return {id:x.id,name:x.name,price:Number(x.price),depositId:x.deposit_type_id||null,color:style.color,tillIds:style.tillIds,category:style.category,part1:style.part1,volume1:style.volume1,part2:style.part2,volume2:style.volume2,vatRate:style.vatRate,priceMode:style.priceMode,specialChoices:style.specialChoices,parentId:style.parentId,noSymbol:style.noSymbol,subMenuInitialized:style.subMenuInitialized}});
+  db.lockHash='';db.drinks=dr.map(x=>{let style=decodeDrinkColor(x.color);if(style.lockHash&&!db.lockHash)db.lockHash=style.lockHash;return {id:x.id,name:x.name,price:Number(x.price),depositId:x.deposit_type_id||null,color:style.color,tillIds:style.tillIds,category:style.category,part1:style.part1,volume1:style.volume1,part2:style.part2,volume2:style.volume2,vatRate:style.vatRate,priceMode:style.priceMode,specialChoices:style.specialChoices,parentId:style.parentId,noSymbol:style.noSymbol,subMenuInitialized:style.subMenuInitialized}});if(!db.lockHash){for(let row of drAll){let style=decodeDrinkColor(row.color);if(style.lockHash){db.lockHash=style.lockHash;break}}}
   let defaultDrinksAdded=ensureDefaultDrinks();
   let backstageAdded=ensureBackstageSetup();
   let submenuMigrated=ensureSpecialSubArticles();
@@ -517,7 +562,7 @@ function scheduleCloudSync(){if(!cloudReady||!cloudEventId)return;clearTimeout(c
 async function syncCloudData(){
   if(!cloudReady||cloudSyncing||!cloudEventId||!cloudUser)return;cloudSyncing=true;normalizeCloudIds();persist();setCloudStatus('Speichert …');
   try{
-    if(pendingDrinkDeleteIds.length){let ids=[...new Set(pendingDrinkDeleteIds.filter(isUuid))];if(ids.length){let del=await cashSb.from('cash_drinks').delete().eq('event_id',cloudEventId).in('id',ids);if(del.error)throw del.error}pendingDrinkDeleteIds=[]}
+    if(pendingDrinkDeleteIds.length){let ids=[...new Set(pendingDrinkDeleteIds.filter(isUuid))];if(ids.length){let del=await cashSb.from('cash_drinks').update({active:false}).eq('event_id',cloudEventId).in('id',ids);if(del.error)throw del.error}pendingDrinkDeleteIds=[]}
     let registers=db.tills.map(x=>({id:x.id,event_id:cloudEventId,name:x.name,active:true,created_by:cloudUser.id}));
     let deposits=db.deposits.map(x=>({id:x.id,event_id:cloudEventId,name:x.name,amount:x.value,active:true,created_by:cloudUser.id}));
     let drinks=db.drinks.map((x,i)=>({id:x.id,event_id:cloudEventId,name:x.name,price:x.price,deposit_type_id:x.depositId||null,color:encodeDrinkColor(x),active:true,sort_order:i,created_by:cloudUser.id}));
@@ -531,8 +576,15 @@ async function syncCloudData(){
   }catch(e){setCloudStatus('Speicherfehler: '+e.message,true)}
   finally{cloudSyncing=false;renderAll()}
 }
-async function cloudDelete(table,id,throwOnError=false){if(cloudReady&&isUuid(id)){let {error}=await cashSb.from(table).delete().eq('id',id);if(error){setCloudStatus('Löschen fehlgeschlagen: '+error.message,true);if(throwOnError)throw error}}}
+async function cloudDelete(table,id,throwOnError=false){
+  if(cloudReady&&isUuid(id)){
+    let result=table==='cash_drinks'
+      ?await cashSb.from(table).update({active:false}).eq('id',id)
+      :await cashSb.from(table).delete().eq('id',id);
+    if(result.error){setCloudStatus('Löschen fehlgeschlagen: '+result.error.message,true);if(throwOnError)throw result.error}
+  }
+}
 
 document.querySelectorAll('.nav button').forEach(b=>b.onclick=()=>requestCashSection(b.dataset.sec,b));renderAll();initCloud();
-if('serviceWorker' in navigator){window.addEventListener('load',async()=>{try{let regs=await navigator.serviceWorker.getRegistrations();await Promise.all(regs.filter(r=>r.scope===new URL('./',location.href).href).map(r=>r.unregister()));let reg=await navigator.serviceWorker.register('./service-worker-kasse.js?v=26',{updateViaCache:'none'});await reg.update()}catch(e){console.warn('Service Worker:',e)}})}
+if('serviceWorker' in navigator){window.addEventListener('load',async()=>{try{let regs=await navigator.serviceWorker.getRegistrations();await Promise.all(regs.filter(r=>r.scope===new URL('./',location.href).href).map(r=>r.unregister()));let reg=await navigator.serviceWorker.register('./service-worker-kasse.js?v=27',{updateViaCache:'none'});await reg.update()}catch(e){console.warn('Service Worker:',e)}})}
 </script></body></html>
