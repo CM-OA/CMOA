@@ -1744,7 +1744,13 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
             .festival-cockpit-grid { grid-template-columns:1fr; }
         }
 </style>
-    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#f8fafc">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="CMOA">
+    <link rel="manifest" href="./manifest-cmoa.json">
+    <link rel="icon" type="image/png" sizes="192x192" href="./cmoa-icon-192.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="./cmoa-apple-touch-icon.png">
 </head>
 
 <body data-design="steel">
@@ -2008,7 +2014,7 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
                 <div class="form-group"><label>Mit Kosten verbunden?</label><select id="production-task-has-cost" onchange="document.getElementById('production-task-cost-fields').style.display=this.value==='yes'?'contents':'none'"><option value="no">Nein</option><option value="yes">Ja</option></select></div>
                 <div id="production-task-cost-fields" style="display:none"><div class="form-group"><label>Betrag (€)</label><input id="production-task-amount" type="number" min="0" step="0.01"></div><div class="form-group"><label>Empfänger</label><input id="production-task-party" placeholder="Empfänger"></div></div>
                 <div class="form-group"><label>Notiz</label><input id="production-task-note"></div></div><button class="btn-primary" onclick="saveProductionTask()">💾 Aufgabe speichern</button> <button class="btn-subtle" onclick="resetProductionTaskForm()">Abbrechen</button></div>
-              <div class="card"><div class="production-task-heading"><h3>Aufgaben</h3><button class="btn-subtle" type="button" onclick="toggleProductionTaskOverview()">📋 Übersicht</button></div><div id="production-task-overview" class="production-task-overview" style="display:none"></div><div class="production-form-grid"><div class="form-group"><label>Status</label><select id="production-task-filter" onchange="renderProductionTasks()"><option value="open">Offene & in Bearbeitung</option><option value="all">Alle</option><option value="done">Erledigte</option></select></div><div class="form-group"><label>Benutzer</label><select id="production-task-user-filter" onchange="renderProductionTasks()"><option value="">Alle Benutzer</option></select></div><div class="form-group"><label>Sortieren</label><select id="production-task-sort" onchange="renderProductionTasks()"><option value="due">Fälligkeit</option><option value="user">Benutzer</option><option value="status">Status</option></select></div></div><div id="production-task-list"></div></div>
+              <div class="card"><div class="production-task-heading"><h3>Aufgaben</h3><button class="btn-subtle" type="button" onclick="toggleProductionTaskOverview()">📋 Übersicht</button></div><div id="production-task-overview" class="production-task-overview" style="display:none"></div><div class="production-form-grid"><div class="form-group"><label>Status</label><select id="production-task-filter" onchange="renderProductionTasks()"><option value="all" selected>Alle</option><option value="open">Offene & in Bearbeitung</option><option value="done">Erledigte</option></select></div><div class="form-group"><label>Benutzer</label><select id="production-task-user-filter" onchange="renderProductionTasks()"><option value="">Alle Benutzer</option></select></div><div class="form-group"><label>Sortieren</label><select id="production-task-sort" onchange="renderProductionTasks()"><option value="due">Fälligkeit</option><option value="user">Benutzer</option><option value="status">Status</option></select></div></div><div id="production-task-list"></div></div>
             </div>
             <div id="production-finances-tab" style="display:none"><div class="card">
                 <div id="production-summary" class="production-summary"></div>
@@ -9355,14 +9361,29 @@ function loadFromLocalStorage() {
           var perms=effectivePermissions(u), roleOpts=''; Object.keys(ROLE_PRESETS).forEach(function(k){roleOpts+='<option value="'+k+'" '+(u.role===k?'selected':'')+'>'+ROLE_PRESETS[k].label+'</option>';});
           var rows=''; CMOA_MODULES.forEach(function(m){var v=perms[m[0]]||'none';rows+='<div class="admin-perm-row"><strong>'+m[1]+'</strong><select data-perm-user="'+u.id+'" data-perm-module="'+m[0]+'"><option value="none" '+(v==='none'?'selected':'')+'>Unsichtbar</option><option value="read" '+(v==='read'?'selected':'')+'>Nur lesen</option><option value="write" '+(v==='write'?'selected':'')+'>Bearbeiten</option><option value="delete" '+(v==='delete'?'selected':'')+'>Bearbeiten + Löschen</option></select></div>';});
           var deleteBtn=currentAuthUser&&u.id===currentAuthUser.id?'':'<button class="btn-danger" style="width:100%;margin-top:7px" onclick="deleteAdminUser(\''+u.id+'\')">🗑 Benutzer vollständig entfernen</button>';
-          return '<div class="admin-user-card"><div class="admin-user-email">'+escapeHtmlAuth(profileDisplayName(u))+'</div><div class="admin-user-meta">'+escapeHtmlAuth(u.email||'')+' · Benutzer-ID: '+escapeHtmlAuth(u.id)+'</div><label>Anzeigename</label><input id="display-name-'+u.id+'" value="'+escapeHtmlAuth(u.permissions&&u.permissions._displayName||'')+'" placeholder="Vor- und Nachname"><label>Rolle</label><select id="role-'+u.id+'">'+roleOpts+'</select><div style="margin-top:10px">'+rows+'</div><button class="btn-primary" style="width:100%;margin-top:10px" onclick="saveAdminUserRights(\''+u.id+'\')">💾 Rechte speichern</button>'+deleteBtn+'</div>';
+          var cashChecked=(u.role==='admin'||(u.permissions&&u.permissions._cashAccess===true))?'checked':'';
+          var cashDisabled=u.role==='admin'?'disabled title="Administratoren haben immer Kassenzugang"':'';
+          return '<div class="admin-user-card"><div class="admin-user-email">'+escapeHtmlAuth(profileDisplayName(u))+'</div><div class="admin-user-meta">'+escapeHtmlAuth(u.email||'')+' · Benutzer-ID: '+escapeHtmlAuth(u.id)+'</div><label>Anzeigename</label><input id="display-name-'+u.id+'" value="'+escapeHtmlAuth(u.permissions&&u.permissions._displayName||'')+'" placeholder="Vor- und Nachname"><label>Rolle</label><select id="role-'+u.id+'">'+roleOpts+'</select><div style="margin-top:10px">'+rows+'</div><label style="display:flex;align-items:center;gap:8px;margin-top:12px;text-transform:none;"><input type="checkbox" id="cash-access-'+u.id+'" '+cashChecked+' '+cashDisabled+' style="width:18px;height:18px;"> <span>🧾 Zugang zur Kassen-App</span></label><button class="btn-primary" style="width:100%;margin-top:10px" onclick="saveAdminUserRights(\''+u.id+'\')">💾 Rechte speichern</button><button class="btn-subtle" style="width:100%;margin-top:7px" onclick="prepareCashInvite(\''+u.id+'\')">✉️ Kassen-Link separat senden</button>'+deleteBtn+'</div>';
         }
         async function saveAdminUserRights(uid){
           if(!hasModuleRight('admin','write')){alert('Keine Schreibberechtigung für Benutzerverwaltung.');return;}
           var role=document.getElementById('role-'+uid).value, custom={_displayName:document.getElementById('display-name-'+uid).value.trim()};
           document.querySelectorAll('[data-perm-user="'+uid+'"]').forEach(function(el){custom[el.getAttribute('data-perm-module')]=el.value;});
+          var cashBox=document.getElementById('cash-access-'+uid);custom._cashAccess=(role==='admin')||!!(cashBox&&cashBox.checked);
           var r=await _supabase.from('profiles').update({role:role,permissions:custom}).eq('id',uid); if(r.error){alert('Fehler: '+r.error.message);return;} alert('✅ Rechte gespeichert.');
           if(adminUsersCache[uid])adminUsersCache[uid].permissions=custom; if(currentAuthUser&&uid===currentAuthUser.id){currentUserProfile.role=role;currentUserProfile.permissions=custom;applyCurrentUserRights();}
+        }
+        function prepareCashInvite(uid){
+          var u=adminUsersCache[uid]||{},email=String(u.email||'').trim();
+          if(!email){alert('Für diesen Benutzer ist keine E-Mail-Adresse hinterlegt.');return;}
+          var allowed=u.role==='admin'||(u.permissions&&u.permissions._cashAccess===true);
+          var box=document.getElementById('cash-access-'+uid);
+          if(box&&!box.disabled)allowed=box.checked;
+          if(!allowed){alert('Bitte zuerst „Zugang zur Kassen-App“ aktivieren und die Rechte speichern.');return;}
+          var cashUrl=new URL('kasse.html',location.href).href;
+          var subject='CMOA · Zugang zur Kassen-App';
+          var body='Hallo,\n\ndu hast Zugang zur CMOA Kassen-App erhalten.\n\nKassen-App: '+cashUrl+'\n\nBitte mit deinem bestehenden CMOA-Benutzerkonto anmelden.\n';
+          location.href='mailto:'+encodeURIComponent(email)+'?subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(body);
         }
         async function deleteAdminUser(uid){
           if(!currentUserProfile||currentUserProfile.role!=='admin'){alert('Nur Administratoren dürfen Benutzer entfernen.');return;}
