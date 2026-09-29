@@ -3608,6 +3608,7 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
     <script>
         var bands = [];
         var manualTodos = [];
+        var autoTodoDone = {};
         var eventNeeds = [];
         var hotelCostsList = [];
         var shuttleTripLog = {};
@@ -3672,7 +3673,7 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
         }
         function payloadForDataModule(module){
             if(module==='accreditation') return {akkDb:Array.isArray(akkDb)?akkDb:[],accessPermits:Array.isArray(accessPermits)?accessPermits:[]};
-            if(module==='todos') return {manualTodos:Array.isArray(manualTodos)?manualTodos:[],eventNeeds:Array.isArray(eventNeeds)?eventNeeds:[]};
+            if(module==='todos') return {manualTodos:Array.isArray(manualTodos)?manualTodos:[],eventNeeds:Array.isArray(eventNeeds)?eventNeeds:[],autoTodoDone:autoTodoDone||{}};
             if(module==='bands') return {bands:(bands||[]).map(function(b){return bandSlice(b,module);}),bandsEnabled:eventBandsEnabled!==false};
             if(module==='hotel') return {bands:(bands||[]).map(function(b){return bandSlice(b,module);}),hotelCostsList:Array.isArray(hotelCostsList)?hotelCostsList:[]};
             if(module==='shuttle') return {bands:(bands||[]).map(function(b){return bandSlice(b,module);}),shuttleTripLog:shuttleTripLog||{},shuttleVehicles:Array.isArray(shuttleVehicles)?shuttleVehicles:[]};
@@ -3693,7 +3694,7 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
             if(module==='event_settings'){eventBandsEnabled=data.bandsEnabled!==false;return;}
             if(module==='bands'&&data.bandsEnabled!==undefined)eventBandsEnabled=data.bandsEnabled!==false;
             if(module==='accreditation'){akkDb=Array.isArray(data.akkDb)?data.akkDb:[];accessPermits=Array.isArray(data.accessPermits)?data.accessPermits:[];return;}
-            if(module==='todos'){manualTodos=Array.isArray(data.manualTodos)?data.manualTodos:[];eventNeeds=Array.isArray(data.eventNeeds)?data.eventNeeds:[];return;}
+            if(module==='todos'){manualTodos=Array.isArray(data.manualTodos)?data.manualTodos:[];eventNeeds=Array.isArray(data.eventNeeds)?data.eventNeeds:[];autoTodoDone=data.autoTodoDone && typeof data.autoTodoDone==='object' && !Array.isArray(data.autoTodoDone)?data.autoTodoDone:{};return;}
             if(module==='hotel' && Array.isArray(data.hotelCostsList)) hotelCostsList=data.hotelCostsList;
             if(module==='fees'){productionEntries=Array.isArray(data.productionEntries)?data.productionEntries:[];productionTasks=Array.isArray(data.productionTasks)?data.productionTasks:[];productionCategories=Array.isArray(data.productionCategories)?data.productionCategories.slice():['Aufbau','Orga','Catering','Bühne','Behörden','Logistik','Erledigungen'];productionTasks.concat(productionEntries).forEach(function(x){if(x.category&&!productionCategories.includes(x.category))productionCategories.push(x.category);});}
             if(module==='shuttle') {
@@ -3779,7 +3780,7 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
         }
         async function migrateLegacyStateIfNeeded(){ return false; }
         async function loadPhase2CloudData(){
-            bands=[];manualTodos=[];eventNeeds=[];hotelCostsList=[];shuttleTripLog={};shuttleVehicles=[];productionEntries=[];productionTasks=[];productionCategories=['Aufbau','Orga','Catering','Bühne','Behörden','Logistik','Erledigungen'];akkDb=[];accessPermits=[];inventoryPurchases=[];inventoryPurchaseTotal=0;
+            bands=[];manualTodos=[];autoTodoDone={};eventNeeds=[];hotelCostsList=[];shuttleTripLog={};shuttleVehicles=[];productionEntries=[];productionTasks=[];productionCategories=['Aufbau','Orga','Catering','Bühne','Behörden','Logistik','Erledigungen'];akkDb=[];accessPermits=[];inventoryPurchases=[];inventoryPurchaseTotal=0;
             eventBandsEnabled=currentEvent&&currentEvent._bandsEnabled===false?false:true;
             await migrateLegacyStateIfNeeded();
             if(!currentEventId) return;
@@ -3897,6 +3898,7 @@ function loadFromLocalStorage() {
             bands = bSaved ? JSON.parse(bSaved) : [];
             normalizeAllBandNames();
             manualTodos = tSaved ? JSON.parse(tSaved) : [];
+            autoTodoDone = {};
             hotelCostsList = hCostsSaved ? JSON.parse(hCostsSaved) : [];
             akkDb = akkSaved ? JSON.parse(akkSaved) : [];
         }
@@ -3920,7 +3922,7 @@ function loadFromLocalStorage() {
         }
 
         function exportBackup() {
-            var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({ bands: bands, manualTodos: manualTodos, eventNeeds:eventNeeds, hotelCostsList: hotelCostsList, shuttleTripLog: shuttleTripLog, shuttleVehicles: shuttleVehicles, productionEntries: productionEntries, akkDb: akkDb }));
+            var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({ bands: bands, manualTodos: manualTodos, autoTodoDone:autoTodoDone, eventNeeds:eventNeeds, hotelCostsList: hotelCostsList, shuttleTripLog: shuttleTripLog, shuttleVehicles: shuttleVehicles, productionEntries: productionEntries, akkDb: akkDb }));
             var downloadAnchor = document.createElement('a');
             downloadAnchor.setAttribute("href", dataStr);
             downloadAnchor.setAttribute("download", "CMOA_2027_Backup.json");
@@ -3939,7 +3941,7 @@ function loadFromLocalStorage() {
                 try {
                     var imported = JSON.parse(e.target.result);
                     if (Array.isArray(imported)) { bands = imported; normalizeAllBandNames(); }
-                    else if (imported.bands) { bands = imported.bands || []; normalizeAllBandNames(); manualTodos = imported.manualTodos || []; eventNeeds=imported.eventNeeds||[]; hotelCostsList = imported.hotelCostsList || []; shuttleTripLog = imported.shuttleTripLog || {}; shuttleVehicles = imported.shuttleVehicles || []; productionEntries = imported.productionEntries || []; akkDb = imported.akkDb || imported.akkreditierung || []; }
+                    else if (imported.bands) { bands = imported.bands || []; normalizeAllBandNames(); manualTodos = imported.manualTodos || []; autoTodoDone=imported.autoTodoDone || {}; eventNeeds=imported.eventNeeds||[]; hotelCostsList = imported.hotelCostsList || []; shuttleTripLog = imported.shuttleTripLog || {}; shuttleVehicles = imported.shuttleVehicles || []; productionEntries = imported.productionEntries || []; akkDb = imported.akkDb || imported.akkreditierung || []; }
                     saveToStorage();
                     alert("✅ Backup erfolgreich geladen!");
                     showPage('main-page');
@@ -7427,7 +7429,7 @@ function loadFromLocalStorage() {
         }
 
         function exportSelectedJSON(selectedBands) {
-            var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({ bands: selectedBands, manualTodos: manualTodos, eventNeeds:eventNeeds, hotelCostsList: hotelCostsList, shuttleTripLog: shuttleTripLog, shuttleVehicles: shuttleVehicles, productionEntries: productionEntries, akkDb: akkDb }));
+            var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({ bands: selectedBands, manualTodos: manualTodos, autoTodoDone:autoTodoDone, eventNeeds:eventNeeds, hotelCostsList: hotelCostsList, shuttleTripLog: shuttleTripLog, shuttleVehicles: shuttleVehicles, productionEntries: productionEntries, akkDb: akkDb }));
             var downloadAnchor = document.createElement('a');
             downloadAnchor.setAttribute("href", dataStr);
             downloadAnchor.setAttribute("download", "CMOA_2027_Export.json");
@@ -9184,6 +9186,7 @@ function loadFromLocalStorage() {
 
                 for (var c = 0; c < checks.length; c++) {
                     var chk = checks[c];
+                    if (chk.k === 'contractSigned' && (b.contractDocStatus === 'nicht_vorhanden' || b.contractDocStatus === 'nicht_noetig')) continue;
                     var isDone = typeof b[chk.k] === 'boolean' ? b[chk.k] : (b[chk.k] !== undefined && b[chk.k] !== null && b[chk.k] !== '' && b[chk.k] !== 0);
 
                     if (chk.k === 'gage') {
@@ -9197,10 +9200,35 @@ function loadFromLocalStorage() {
                         isDone = !!(b.hotelName && b.hotelFrom);
                     }
 
-                    var div = document.createElement('div'); div.className = 'todo-item ' + (isDone ? 'done' : '');
-                    div.innerHTML = '<div><span style="text-transform: uppercase;">' + b.name + '</span>: ' + chk.l + '<span class="todo-badge badge-auto">Auto</span></div>';
-                    (isDone ? compC : openC).appendChild(div);
+                    var key = String(b.id) + ':' + chk.k;
+                    var checked = isDone || !!autoTodoDone[key];
+                    var div = document.createElement('div'); div.className = 'todo-item ' + (checked ? 'done' : '');
+                    var label = document.createElement('div');
+                    var name = document.createElement('span'); name.style.textTransform = 'uppercase'; name.textContent = b.name;
+                    label.appendChild(name); label.appendChild(document.createTextNode(': ' + chk.l));
+                    var badge = document.createElement('span'); badge.className = 'todo-badge badge-auto'; badge.textContent = 'Auto'; label.appendChild(badge);
+                    div.appendChild(label);
+                    if (!isDone && hasDataModuleWrite('todos')) {
+                        var button = document.createElement('button'); button.className = 'btn-sm btn-edit';
+                        button.textContent = checked ? '↩' : '✓'; button.title = checked ? 'Manuelle Erledigung zurücknehmen' : 'Manuell als erledigt markieren';
+                        (function(bandId, field){ button.onclick = function(){ toggleAutoTodo(bandId, field); }; })(b.id, chk.k);
+                        div.appendChild(button);
+                    }
+                    (checked ? compC : openC).appendChild(div);
                 }
+            }
+        }
+
+        async function toggleAutoTodo(bandId, field) {
+            if (!hasDataModuleWrite('todos')) return;
+            var key = String(bandId) + ':' + field;
+            var wasDone = !!autoTodoDone[key];
+            if (wasDone) delete autoTodoDone[key]; else autoTodoDone[key] = true;
+            renderTodos();
+            try { await writeDataModule('todos'); }
+            catch (e) {
+                if (wasDone) autoTodoDone[key] = true; else delete autoTodoDone[key];
+                renderTodos(); alert('Speichern fehlgeschlagen: ' + e.message);
             }
         }
 
