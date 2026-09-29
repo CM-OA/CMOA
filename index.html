@@ -5976,7 +5976,7 @@ function loadFromLocalStorage() {
             return arr.filter(function(x){return x&&x.url;});
         }
         function storeBandDocumentRecords(b,type,docs){
-            if(type==='deal'){b.dealDocuments=docs;b.dealDone=docs.length>0||!!b.dealDone;}
+            if(type==='deal'){b.dealDocuments=docs;b.dealDone=docs.length>0;}
             else if(type==='contract'){b.contractDocuments=docs;b.contractDocUrl=docs[0]?docs[0].url:'';b.contractDocStatus=docs.length?'vorhanden':'offen';b.contractReceived=docs.length>0;}
             else if(type==='rider'){b.riderDocuments=docs;b.riderDocUrl=docs[0]?docs[0].url:'';b.riderDocStatus=docs.length?'vorhanden':'offen';b.riderReceived=docs.length>0;}
             else {b.invoiceDocuments=docs;}
@@ -6003,6 +6003,7 @@ function loadFromLocalStorage() {
                     uploaded.push({id:'doc_'+Date.now()+'_'+i,name:file.name,url:'storage://'+BAND_DOCUMENT_BUCKET+'/'+path,uploadedAt:new Date().toISOString()});
                 }
                 docs=docs.concat(uploaded);storeBandDocumentRecords(b,type,docs);await writeDataModule('documents');
+                if(type==='deal')await writeDataModule('bands');
                 if(type==='deal'){var done=document.getElementById('band-deal-done');if(done)done.checked=true;}
                 if(type==='contract'||type==='rider'){var status=document.getElementById('band-'+type+'-doc-status');if(status)status.value='vorhanden';var url=document.getElementById('band-'+type+'-doc-url');if(url)url.value=type==='contract'?(b.contractDocUrl||''):(b.riderDocUrl||'');var received=document.getElementById('band-'+type+'-received');if(received)received.checked=true;}
                 updateBandDocumentUploadUi(type);renderBandsList();logCmoaActivity('Dokumente hochgeladen',files.length+' '+label+' · '+b.name,'documents');
@@ -6010,7 +6011,9 @@ function loadFromLocalStorage() {
             finally{if(fileInput)fileInput.value='';}
         }
         async function openBandDocumentRecord(url){
-            try{var openUrl=await resolveDocumentOpenUrl(url);if(!openUrl)throw new Error('Kein gültiger Dateipfad.');window.open(openUrl,'_blank','noopener');}catch(err){alert('Dokument konnte nicht geöffnet werden: '+(err.message||err));}
+            var popup=window.open('about:blank','_blank');
+            try{var openUrl=await resolveDocumentOpenUrl(url);if(!openUrl)throw new Error('Kein gültiger Dateipfad.');if(popup){popup.opener=null;popup.location.replace(openUrl);}else window.location.href=openUrl;}
+            catch(err){if(popup)popup.close();alert('Dokument konnte nicht geöffnet werden: '+(err.message||err));}
         }
         var currentDealTextDoc=null;
         function showDealTextViewer(doc){
@@ -6020,8 +6023,9 @@ function loadFromLocalStorage() {
         function closeDealTextViewer(){var overlay=document.getElementById('deal-text-overlay');if(overlay)overlay.classList.remove('show');currentDealTextDoc=null;}
         async function copyDealText(){if(!currentDealTextDoc)return;try{await navigator.clipboard.writeText(String(currentDealTextDoc.content||''));alert('Deal-Text wurde kopiert.');}catch(e){alert('Text konnte nicht kopiert werden.');}}
         function downloadDealText(){if(!currentDealTextDoc)return;var blob=new Blob([String(currentDealTextDoc.content||'')],{type:'text/plain;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=currentDealTextDoc.name||'Deal.txt';document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(url);},1000);}
-        function openBandDocumentItem(bandId,type,index){
-            var b=getBandById(bandId),doc=getBandDocumentRecords(b,type)[index];if(!doc)return;
+        function bandDocumentIdentity(doc){return String(doc.id||doc.url||'');}
+        function openBandDocumentItem(bandId,type,docId){
+            var b=getBandById(bandId),doc=getBandDocumentRecords(b,type).find(function(item){return bandDocumentIdentity(item)===docId;});if(!doc)return;
             if(doc.content!==undefined){showDealTextViewer(doc);return;}
             openBandDocumentRecord(doc.url);
         }
@@ -6029,13 +6033,13 @@ function loadFromLocalStorage() {
             var b=getBandById(bandId);if(!b)return;var docs=getBandDocumentRecords(b,type), overlay=document.getElementById('band-document-overlay'), list=document.getElementById('band-document-manager-list'), title=document.getElementById('band-document-manager-title');
             var labels={deal:'Deal-Dateien',contract:'Verträge',rider:'Rider',invoice:'Rechnungen'};title.textContent=(labels[type]||'Dokumente')+' · '+b.name;
             var mayDelete=!!editable&&hasModuleRight('documents','write');
-            list.innerHTML=docs.length?docs.map(function(d,i){return '<div class="document-manager-item"><div class="document-manager-item-info"><div class="document-manager-item-name">'+akkEscape(d.name||documentFileName(d.url)||labels[type])+'</div><div class="document-manager-item-date">'+(d.uploadedAt?('Hochgeladen: '+new Date(d.uploadedAt).toLocaleString('de-DE')):'Hinterlegtes Dokument')+'</div></div><div class="document-manager-actions"><button type="button" class="btn-primary" onclick="openBandDocumentItem(\''+bandId+'\',\''+type+'\','+i+')">👁️ Öffnen</button>'+(mayDelete?'<button type="button" class="btn-danger" onclick="deleteBandDocumentItem(\''+bandId+'\',\''+type+'\','+i+')">🗑️</button>':'')+'</div></div>';}).join(''):'<div class="akk-empty">Keine Dokumente hinterlegt.</div>';
+            list.innerHTML=docs.length?docs.map(function(d){var id=JSON.stringify(bandDocumentIdentity(d));return '<div class="document-manager-item"><div class="document-manager-item-info"><div class="document-manager-item-name">'+akkEscape(d.name||documentFileName(d.url)||labels[type])+'</div><div class="document-manager-item-date">'+(d.uploadedAt?('Hochgeladen: '+new Date(d.uploadedAt).toLocaleString('de-DE')):'Hinterlegtes Dokument')+'</div></div><div class="document-manager-actions"><button type="button" class="btn-primary" onclick="openBandDocumentItem('+JSON.stringify(bandId)+','+JSON.stringify(type)+','+id.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;')+')">👁️ Öffnen</button>'+(mayDelete?'<button type="button" class="btn-danger" onclick="deleteBandDocumentItem('+JSON.stringify(bandId)+','+JSON.stringify(type)+','+id.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;')+')">🗑️</button>':'')+'</div></div>';}).join(''):'<div class="akk-empty">Keine Dokumente hinterlegt.</div>';
             overlay.classList.add('show');
         }
         function closeBandDocumentManager(){var o=document.getElementById('band-document-overlay');if(o)o.classList.remove('show');}
-        async function deleteBandDocumentItem(bandId,type,index){
-            var b=getBandById(bandId),docs=getBandDocumentRecords(b,type),doc=docs[index];if(!b||!doc||!confirm('„'+(doc.name||'Dokument')+'“ wirklich löschen?'))return;
-            try{var path=getStoredDocumentPath(doc.url);if(path){var rm=await _supabase.storage.from(BAND_DOCUMENT_BUCKET).remove([path]);if(rm.error)throw rm.error;}docs.splice(index,1);storeBandDocumentRecords(b,type,docs);if(type==='contract'&&!docs.length)b.contractSigned=false;await writeDataModule('documents');updateBandDocumentUploadUi(type);renderBandsList();showBandDocumentManager(bandId,type,true);}
+        async function deleteBandDocumentItem(bandId,type,docId){
+            var b=getBandById(bandId),docs=getBandDocumentRecords(b,type),index=docs.findIndex(function(item){return bandDocumentIdentity(item)===docId;}),doc=docs[index];if(!b||!doc||!confirm('„'+(doc.name||'Dokument')+'“ wirklich löschen?'))return;
+            try{docs.splice(index,1);storeBandDocumentRecords(b,type,docs);if(type==='contract'&&!docs.length)b.contractSigned=false;await writeDataModule('documents');if(type==='deal')await writeDataModule('bands');var path=getStoredDocumentPath(doc.url);if(path){var rm=await _supabase.storage.from(BAND_DOCUMENT_BUCKET).remove([path]);if(rm.error)console.warn('Alte Dokumentdatei konnte nicht entfernt werden:',rm.error);}if(type==='deal'){var done=document.getElementById('band-deal-done');if(done&&currentBandId===bandId)done.checked=b.dealDone;}if((type==='contract'||type==='rider')&&currentBandId===bandId){var url=document.getElementById('band-'+type+'-doc-url');if(url)url.value=type==='contract'?b.contractDocUrl:b.riderDocUrl;var status=document.getElementById('band-'+type+'-doc-status');if(status)status.value=b[type+'DocStatus'];var received=document.getElementById('band-'+type+'-received');if(received)received.checked=!!b[type+'Received'];}updateBandDocumentUploadUi(type);renderBandsList();showBandDocumentManager(bandId,type,true);}
             catch(err){alert('Dokument konnte nicht gelöscht werden: '+(err.message||err));}
         }
         async function deleteBandDocument(type){
