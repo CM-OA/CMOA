@@ -6033,7 +6033,15 @@ function loadFromLocalStorage() {
             var b=getBandById(bandId);if(!b)return;var docs=getBandDocumentRecords(b,type), overlay=document.getElementById('band-document-overlay'), list=document.getElementById('band-document-manager-list'), title=document.getElementById('band-document-manager-title');
             var labels={deal:'Deal-Dateien',contract:'Verträge',rider:'Rider',invoice:'Rechnungen'};title.textContent=(labels[type]||'Dokumente')+' · '+b.name;
             var mayDelete=!!editable&&hasModuleRight('documents','write');
-            list.innerHTML=docs.length?docs.map(function(d){var id=JSON.stringify(bandDocumentIdentity(d));return '<div class="document-manager-item"><div class="document-manager-item-info"><div class="document-manager-item-name">'+akkEscape(d.name||documentFileName(d.url)||labels[type])+'</div><div class="document-manager-item-date">'+(d.uploadedAt?('Hochgeladen: '+new Date(d.uploadedAt).toLocaleString('de-DE')):'Hinterlegtes Dokument')+'</div></div><div class="document-manager-actions"><button type="button" class="btn-primary" onclick="openBandDocumentItem('+JSON.stringify(bandId)+','+JSON.stringify(type)+','+id.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;')+')">👁️ Öffnen</button>'+(mayDelete?'<button type="button" class="btn-danger" onclick="deleteBandDocumentItem('+JSON.stringify(bandId)+','+JSON.stringify(type)+','+id.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;')+')">🗑️</button>':'')+'</div></div>';}).join(''):'<div class="akk-empty">Keine Dokumente hinterlegt.</div>';
+            list.innerHTML=docs.length?docs.map(function(d,i){return '<div class="document-manager-item"><div class="document-manager-item-info"><div class="document-manager-item-name">'+akkEscape(d.name||documentFileName(d.url)||labels[type])+'</div><div class="document-manager-item-date">'+(d.uploadedAt?('Hochgeladen: '+new Date(d.uploadedAt).toLocaleString('de-DE')):'Hinterlegtes Dokument')+'</div></div><div class="document-manager-actions"><button type="button" class="btn-primary" data-doc-action="open" data-doc-index="'+i+'">👁️ Öffnen</button>'+(mayDelete?'<button type="button" class="btn-danger" data-doc-action="delete" data-doc-index="'+i+'">🗑️</button>':'')+'</div></div>';}).join(''):'<div class="akk-empty">Keine Dokumente hinterlegt.</div>';
+            list.querySelectorAll('[data-doc-action]').forEach(function(button){
+                button.addEventListener('click',function(){
+                    var doc=docs[Number(button.dataset.docIndex)];if(!doc)return;
+                    var id=bandDocumentIdentity(doc);
+                    if(button.dataset.docAction==='open')openBandDocumentItem(bandId,type,id);
+                    else deleteBandDocumentItem(bandId,type,id);
+                });
+            });
             overlay.classList.add('show');
         }
         function closeBandDocumentManager(){var o=document.getElementById('band-document-overlay');if(o)o.classList.remove('show');}
