@@ -3657,6 +3657,7 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
         var phase2Channel = null;
         var moduleHistorySnapshots = {};
         var OFFLINE_QUEUE_KEY = 'cmoa_offline_queue_v1';
+        var cmoaWritesInProgress=0,cmoaLoggingOut=false;
         var offlineSyncInProgress = false;
         var CMOA_DATA_MODULES = ['bands','fees','payments','hotel','shuttle','running_order','catering','documents','todos','accreditation','access_permits'];
         var CMOA_FIELD_GROUPS = {
@@ -3709,21 +3710,21 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
             if(Array.isArray(data.bands)) data.bands.forEach(mergeBandPart);
         }
         function getOfflineQueue(){
-            try{var q=JSON.parse(localStorage.getItem(OFFLINE_QUEUE_KEY)||'[]');if(!Array.isArray(q))return [];var out=[];q.forEach(function(item){if(item.module==='accreditation'&&item.data&&Object.prototype.hasOwnProperty.call(item.data,'accessPermits')){var a=Object.assign({},item,{data:Object.assign({},item.data)});delete a.data.accessPermits;out.push(a);out.push(Object.assign({},item,{id:item.id+'-permits',module:'access_permits',data:{accessPermits:item.data.accessPermits}}));}else out.push(item);});return out;}catch(e){return [];}
+            try{var q=JSON.parse(localStorage.getItem(OFFLINE_QUEUE_KEY)||'[]');if(!Array.isArray(q))throw new Error("Ungültige Warteschlange");var out=[];q.forEach(function(item){if(item.module==='accreditation'&&item.data&&Object.prototype.hasOwnProperty.call(item.data,'accessPermits')){var a=Object.assign({},item,{data:Object.assign({},item.data)});delete a.data.accessPermits;out.push(a);out.push(Object.assign({},item,{id:item.id+'-permits',module:'access_permits',data:{accessPermits:item.data.accessPermits}}));}else out.push(item);});return out;}catch(e){throw new Error("Die lokale Warteschlange konnte nicht gelesen werden. Bitte gespeicherte Daten nicht löschen und die Prüfung anhalten.");}
         }
         function setOfflineQueue(queue){
-            try{localStorage.setItem(OFFLINE_QUEUE_KEY,JSON.stringify((queue||[]).slice(-60)));}catch(e){console.error('Offline-Warteschlange konnte nicht gespeichert werden:',e);}
+            try{if((queue||[]).length)localStorage.setItem(OFFLINE_QUEUE_KEY,JSON.stringify(queue));else localStorage.removeItem(OFFLINE_QUEUE_KEY);}catch(e){throw new Error('Änderungen konnten nicht auf diesem Gerät gespeichert werden. Bitte die Seite geöffnet lassen und erneut speichern.');}
             updateConnectionIndicator();
         }
         function queueOfflineModule(module,data){
-            if(!currentEventId)return;
-            var q=getOfflineQueue(),userId=currentAuthUser?currentAuthUser.id:null,key=String(currentEventId)+'|'+String(module);
-            q=q.filter(function(item){return String(item.eventId)+'|'+String(item.module)!==key;});
+            if(!currentEventId||!currentAuthUser)throw new Error('Zum Vormerken von Änderungen ist eine Anmeldung erforderlich.');
+            var q=getOfflineQueue(),userId=currentAuthUser.id,key=userId+'|'+String(currentEventId)+'|'+String(module);
+            q=q.filter(function(item){return String(item.userId)+'|'+String(item.eventId)+'|'+String(item.module)!==key;});
             q.push({id:String(Date.now())+'-'+Math.random().toString(36).slice(2),eventId:currentEventId,module:module,data:historyClone(data),userId:userId,createdAt:new Date().toISOString()});
             setOfflineQueue(q);
         }
-        function removeOfflineModule(eventId,module){
-            setOfflineQueue(getOfflineQueue().filter(function(item){return !(String(item.eventId)===String(eventId)&&item.module===module);}));
+        function removeOfflineModule(eventId,module,eligibleIds){
+            setOfflineQueue(getOfflineQueue().filter(function(item){return !(String(item.eventId)===String(eventId)&&item.module===module&&currentAuthUser&&item.userId===currentAuthUser.id&&(!eligibleIds||eligibleIds.includes(item.id)));}));
         }
         function isConnectionError(error){
             var msg=String(error&&error.message||error||'').toLowerCase();
@@ -3748,13 +3749,13 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
             offlineSyncInProgress=true;updateConnectionIndicator('syncing');
             for(var i=0;i<pending.length;i++){
                 var item=pending[i];
-                if(item.userId&&item.userId!==currentAuthUser.id)continue;
+                if(!item.userId||item.userId!==currentAuthUser.id)continue;
                 if(!hasDataModuleWrite(item.module))continue;
                 try{
                     var row={module:item.module,event_id:item.eventId,data:item.data,updated_at:new Date().toISOString(),updated_by:currentAuthUser.id};
                     var r=await _supabase.from('cmoa_module_state').upsert(row,{onConflict:'module,event_id'});
                     if(r.error)throw new Error(r.error.message);
-                    queue=queue.filter(function(q){return q.id!==item.id;});setOfflineQueue(queue);
+                    queue=getOfflineQueue().filter(function(q){return q.id!==item.id;});setOfflineQueue(queue);
                     if(String(item.eventId)===String(currentEventId))moduleHistorySnapshots[item.module]=historyClone(item.data);
                 }catch(e){console.error('Offline-Synchronisierung fehlgeschlagen:',e);if(!isConnectionError(e))break;}
             }
@@ -3767,15 +3768,21 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
             document.addEventListener('visibilitychange',function(){if(!document.hidden&&navigator.onLine)syncOfflineQueue();});
         }
         async function writeDataModule(module){
+            if(cmoaLoggingOut)throw new Error('Abmeldung läuft. Bitte kurz warten.');
+            cmoaWritesInProgress++;
+            try{return await writeDataModuleInternal(module);}finally{cmoaWritesInProgress--;}
+        }
+        async function writeDataModuleInternal(module){
             if(!hasDataModuleWrite(module)) return;
             if(!currentEventId) return;
+            var queuedIds=getOfflineQueue().map(function(item){return item.id;});
             var row={module:module,event_id:currentEventId,data:payloadForDataModule(module),updated_at:new Date().toISOString(),updated_by:currentAuthUser?currentAuthUser.id:null};
             if(!navigator.onLine||!_supabase){queueOfflineModule(module,row.data);moduleHistorySnapshots[module]=historyClone(row.data);return {queued:true};}
             try{
                 var r=await _supabase.from('cmoa_module_state').upsert(row,{onConflict:'module,event_id'});
                 if(r.error) throw new Error(module+': '+r.error.message);
             }catch(e){if(isConnectionError(e)){queueOfflineModule(module,row.data);moduleHistorySnapshots[module]=historyClone(row.data);return {queued:true};}throw e;}
-            removeOfflineModule(currentEventId,module);
+            removeOfflineModule(row.event_id,module,queuedIds);
             var previous=moduleHistorySnapshots[module],current=historyClone(row.data);if(previous){var diff=moduleHistoryDiff(previous,current);if(diff.count)await logCmoaChange('Änderung gespeichert',module,'module',module,'Bereich: '+module,diff.before,diff.after,false);}moduleHistorySnapshots[module]=current;
         }
         function hasDataModuleWrite(module){
@@ -5271,14 +5278,14 @@ function loadFromLocalStorage() {
                     var htmlO = '';
                     fO.forEach(function(r) {
                         htmlO += '<div class="akk-record ' + (r.chk ? 'checked' : '') + '">' +
-                            '<div class="akk-rec-top"><span>' + r.name + '</span><span class="akk-rec-status ' + (r.chk ? 'da' : 'offen') + '">' + (r.chk ? 'EINGECHECKT' : 'OFFEN') + '</span></div>' +
-                            '<div class="akk-rec-sub"><span class="akk-rec-id-tag">' + r.id + '</span> • Org: <b>' + r.org + '</b><br>Berechtigung: <b>' + r.perm + '</b> | Tag: <b>' + r.day + '</b> | Betrag: <b>' + r.amt.toFixed(2).replace('.',',') + ' €</b>' +
-                            (r.email ? '<br>📧 <b>' + r.email + '</b> · ' + (r.emailSent ? '<span style="color:var(--accent-green);font-weight:700;">✅ versendet' + (r.emailSentAt ? ' am ' + new Date(r.emailSentAt).toLocaleString('de-DE') : '') + '</span>' : '<span style="color:var(--accent-yellow);font-weight:700;">⏳ noch nicht versendet</span>') : '<br><span style="color:var(--text-muted);">📧 Keine E-Mail-Adresse hinterlegt</span>') + '</div>' +
+                            '<div class="akk-rec-top"><span>' + escapeHtmlAuth(r.name) + '</span><span class="akk-rec-status ' + (r.chk ? 'da' : 'offen') + '">' + (r.chk ? 'EINGECHECKT' : 'OFFEN') + '</span></div>' +
+                            '<div class="akk-rec-sub"><span class="akk-rec-id-tag">' + escapeHtmlAuth(r.id) + '</span> • Org: <b>' + escapeHtmlAuth(r.org) + '</b><br>Berechtigung: <b>' + escapeHtmlAuth(r.perm) + '</b> | Tag: <b>' + escapeHtmlAuth(r.day) + '</b> | Betrag: <b>' + r.amt.toFixed(2).replace('.',',') + ' €</b>' +
+                            (r.email ? '<br>📧 <b>' + escapeHtmlAuth(r.email) + '</b> · ' + (r.emailSent ? '<span style="color:var(--accent-green);font-weight:700;">✅ versendet' + (r.emailSentAt ? ' am ' + new Date(r.emailSentAt).toLocaleString('de-DE') : '') + '</span>' : '<span style="color:var(--accent-yellow);font-weight:700;">⏳ noch nicht versendet</span>') : '<br><span style="color:var(--text-muted);">📧 Keine E-Mail-Adresse hinterlegt</span>') + '</div>' +
                             '<div class="akk-rec-actions">' +
-                            '<button type="button" class="akk-action-btn" data-akk-act="pdf" data-akk-id="'+r.id+'">📄 PDF</button>' +
-                            (r.email ? '<button type="button" class="akk-action-btn icon-only" title="E-Mail vorbereiten" aria-label="E-Mail vorbereiten" data-akk-act="mail" data-akk-id="'+r.id+'">✉️</button>' : '') +
-                            '<button type="button" class="akk-action-btn check" data-akk-act="chk" data-akk-id="'+r.id+'">' + (r.chk ? 'Stornieren' : 'Einchecken') + '</button>' +
-                            '<button type="button" class="akk-action-btn del icon-only" title="Löschen" aria-label="Löschen" data-akk-act="del" data-akk-id="'+r.id+'">🗑️</button>' +
+                            '<button type="button" class="akk-action-btn" data-akk-act="pdf" data-akk-id="'+escapeHtmlAuth(r.id)+'">📄 PDF</button>' +
+                            (r.email ? '<button type="button" class="akk-action-btn icon-only" title="E-Mail vorbereiten" aria-label="E-Mail vorbereiten" data-akk-act="mail" data-akk-id="'+escapeHtmlAuth(r.id)+'">✉️</button>' : '') +
+                            '<button type="button" class="akk-action-btn check" data-akk-act="chk" data-akk-id="'+escapeHtmlAuth(r.id)+'">' + (r.chk ? 'Stornieren' : 'Einchecken') + '</button>' +
+                            '<button type="button" class="akk-action-btn del icon-only" title="Löschen" aria-label="Löschen" data-akk-act="del" data-akk-id="'+escapeHtmlAuth(r.id)+'">🗑️</button>' +
                             '</div></div>';
                     });
                     listO.innerHTML = htmlO;
@@ -5298,10 +5305,10 @@ function loadFromLocalStorage() {
                     var htmlC = '';
                     fC.forEach(function(r) {
                         htmlC += '<div class="akk-record ' + (r.chk ? 'checked' : '') + '">' +
-                            '<div class="akk-rec-top"><span>' + r.name + '</span><span class="akk-rec-status ' + (r.chk ? 'da' : 'offen') + '">' + (r.chk ? 'EINGECHECKT' : 'OFFEN') + '</span></div>' +
-                            '<div class="akk-rec-sub"><span class="akk-rec-id-tag">' + r.id + '</span> • ' + r.org + ' • <b>' + r.perm + ' (' + r.day + ')</b></div>' +
+                            '<div class="akk-rec-top"><span>' + escapeHtmlAuth(r.name) + '</span><span class="akk-rec-status ' + (r.chk ? 'da' : 'offen') + '">' + (r.chk ? 'EINGECHECKT' : 'OFFEN') + '</span></div>' +
+                            '<div class="akk-rec-sub"><span class="akk-rec-id-tag">' + escapeHtmlAuth(r.id) + '</span> • ' + escapeHtmlAuth(r.org) + ' • <b>' + escapeHtmlAuth(r.perm) + ' (' + escapeHtmlAuth(r.day) + ')</b></div>' +
                             '<div class="akk-rec-actions">' +
-                            '<button type="button" class="akk-action-btn check" data-akk-act="chk" data-akk-id="'+r.id+'">' + (r.chk ? 'Rückgängig' : 'JETZT EINCHECKEN') + '</button>' +
+                            '<button type="button" class="akk-action-btn check" data-akk-act="chk" data-akk-id="'+escapeHtmlAuth(r.id)+'">' + (r.chk ? 'Rückgängig' : 'JETZT EINCHECKEN') + '</button>' +
                             '</div></div>';
                     });
                     listC.innerHTML = htmlC;
@@ -5660,7 +5667,7 @@ function loadFromLocalStorage() {
 
                     item.innerHTML = 
                         '<div style="text-align:left; border-bottom:1px dashed var(--border); padding-bottom:6px;">' +
-                            '<strong style="font-size: 1.15rem; color:var(--text-main); text-transform: uppercase; font-weight: normal;">' + b.name + '</strong> ' + tagHtml +
+                            '<strong style="font-size: 1.15rem; color:var(--text-main); text-transform: uppercase; font-weight: normal;">' + escapeHtmlAuth(b.name) + '</strong> ' + tagHtml +
                         '</div>' +
                         '<div style="display:flex; justify-content:space-between; align-items:center;">' +
                             '<div style="font-size: 0.82rem; color: var(--text-muted);">' + 
@@ -6693,7 +6700,7 @@ function loadFromLocalStorage() {
                 var div = document.createElement('div');
                 div.className = 'checkbox-group';
                 div.innerHTML = '<input type="checkbox" id="cat-exp-cb-' + b.id + '" class="cat-exp-cb" value="' + b.id + '" checked>' +
-                                '<label for="cat-exp-cb-' + b.id + '">' + b.name + '</label>';
+                                '<label for="cat-exp-cb-' + b.id + '">' + escapeHtmlAuth(b.name) + '</label>';
                 multiContainer.appendChild(div);
             }
         }
@@ -6949,7 +6956,7 @@ function loadFromLocalStorage() {
                     card.innerHTML = 
                         '<button type="button" onclick="togglePaymentBand(\'' + b.id + '\')" style="width:100%; border:0; background:transparent; color:var(--text-main); cursor:pointer; padding:0; text-align:left;">' +
                             '<div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding-bottom:8px; margin-bottom:10px; gap:12px;">' +
-                                '<h4 style="margin:0; font-size:1.1rem; color:var(--text-main); text-transform:uppercase; text-align:left;">' + b.name + '</h4>' +
+                                '<h4 style="margin:0; font-size:1.1rem; color:var(--text-main); text-transform:uppercase; text-align:left;">' + escapeHtmlAuth(b.name) + '</h4>' +
                                 '<span class="cost-val" style="font-size:1rem; white-space:nowrap;">Gesamtbrutto: ' + totalBrutto.toFixed(2) + ' € <span class="pt-toggle-arrow">▼</span></span>' +
                             '</div>' +
                         '</button>' +
@@ -7123,7 +7130,7 @@ function loadFromLocalStorage() {
                 var div = document.createElement('div');
                 div.className = 'checkbox-group';
                 div.innerHTML = '<input type="checkbox" id="pt-exp-cb-' + b.id + '" class="pt-exp-cb" value="' + b.id + '" checked>' +
-                                '<label for="pt-exp-cb-' + b.id + '">' + b.name + '</label>';
+                                '<label for="pt-exp-cb-' + b.id + '">' + escapeHtmlAuth(b.name) + '</label>';
                 multiContainer.appendChild(div);
             }
         }
@@ -7387,7 +7394,7 @@ function loadFromLocalStorage() {
                 var div = document.createElement('div');
                 div.className = 'checkbox-group';
                 div.innerHTML = '<input type="checkbox" id="exp-band-' + b.id + '" class="exp-band-cb" value="' + b.id + '" checked>' +
-                                '<label for="exp-band-' + b.id + '">' + b.name + '</label>';
+                                '<label for="exp-band-' + b.id + '">' + escapeHtmlAuth(b.name) + '</label>';
                 container.appendChild(div);
             }
         }
@@ -7680,7 +7687,7 @@ function loadFromLocalStorage() {
                     var statusDot = hasNotes ? '<span style="color:var(--accent-green);">🟢</span>' : '<span style="color:var(--text-muted);">⚪</span>';
                     var statusText = hasNotes ? b.notesList.length + ' Notiz(en) vorhanden' : 'Keine Notizen';
 
-                    card.innerHTML = '<div><strong>' + statusDot + ' ' + b.name + '</strong><div style="font-size:0.8rem; color:var(--text-muted); margin-top:4px;">' + statusText + '</div></div>' +
+                    card.innerHTML = '<div><strong>' + statusDot + ' ' + escapeHtmlAuth(b.name) + '</strong><div style="font-size:0.8rem; color:var(--text-muted); margin-top:4px;">' + statusText + '</div></div>' +
                         '<button class="btn-primary" style="padding:6px 12px; font-size:0.85rem;">' + (hasNotes ? '✏️ Notizen verwalten' : '➕ Notiz anlegen') + '</button>';
                     container.appendChild(card);
 
@@ -7886,7 +7893,7 @@ function loadFromLocalStorage() {
 
                     '<div class="view-section"><h4>🏨 Logistik & Shuttle</h4>' +
                     '<div class="view-row"><span class="view-label">Shuttle / Hotel:</span> <span class="view-value">' + shuttleStr + ' / ' + hotelStr + '</span></div>' +
-                    ((b.shuttleNeeded === 'ja' || b.shuttleNeeded === true) ? '<div class="view-row"><span class="view-label">Fahrzeug / Fahrer:</span> <span class="view-value">' + (b.shuttleVehicle || '-') + ' / ' + (b.shuttleDriver || '-') + '</span></div>' : '') +
+                    ((b.shuttleNeeded === 'ja' || b.shuttleNeeded === true) ? '<div class="view-row"><span class="view-label">Fahrzeug / Fahrer:</span> <span class="view-value">' + escapeHtmlAuth(b.shuttleVehicle || '-') + ' / ' + escapeHtmlAuth(b.shuttleDriver || '-') + '</span></div>' : '') +
                     '</div>' +
 
                     cateringHtml +
@@ -7951,7 +7958,7 @@ function loadFromLocalStorage() {
                     if (shuttleList) {
                         var div = document.createElement('div');
                         div.style.cssText = 'font-size:0.82rem; padding:6px 0; border-bottom:1px dashed var(--border);';
-                        div.innerHTML = '• <strong style="text-transform: uppercase;">' + b.name + '</strong> (' + p + ' Personen)<br>&nbsp;&nbsp;<span style="color:var(--accent-green);">Hin:</span> ' + formatDateDE(b.shuttleDate) + ' ' + (b.shuttleTime || '') + ' Uhr (' + (b.shuttleAirport || '-') + ')<br>&nbsp;&nbsp;<span style="color:var(--accent-yellow);">Rück:</span> ' + formatDateDE(b.shuttleRetDate) + ' ' + (b.shuttleRetTime || '') + ' Uhr (' + (b.shuttleRetAirport || '-') + ')';
+                        div.innerHTML = '• <strong style="text-transform: uppercase;">' + escapeHtmlAuth(b.name) + '</strong> (' + p + ' Personen)<br>&nbsp;&nbsp;<span style="color:var(--accent-green);">Hin:</span> ' + formatDateDE(b.shuttleDate) + ' ' + escapeHtmlAuth(b.shuttleTime || '') + ' Uhr (' + escapeHtmlAuth(b.shuttleAirport || '-') + ')<br>&nbsp;&nbsp;<span style="color:var(--accent-yellow);">Rück:</span> ' + formatDateDE(b.shuttleRetDate) + ' ' + escapeHtmlAuth(b.shuttleRetTime || '') + ' Uhr (' + escapeHtmlAuth(b.shuttleRetAirport || '-') + ')';
                         shuttleList.appendChild(div);
                     }
                 }
@@ -8305,9 +8312,9 @@ function loadFromLocalStorage() {
                 if (b.shuttleNeeded === 'ja' || b.shuttleNeeded === true) {
                     var pax = (parseInt(b.paxCount) || 0) + (parseInt(b.vipGuests) || 0);
                     var div = document.createElement('div'); div.className = 'card';
-                    div.innerHTML = '<div style="font-weight:bold; color:var(--accent-blue); text-transform: uppercase;">' + b.name + ' (' + pax + ' Personen)</div>' +
-                        '<div style="font-size:0.8rem; color:var(--text-muted); margin-top:2px;">Fahrzeug: <strong>' + (b.shuttleVehicle || '-') + '</strong> | Fahrer: <strong>' + (b.shuttleDriver || '-') + '</strong></div>' +
-                        '<div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; font-size:0.85rem; margin-top:6px;"><div style="background:var(--input-bg); padding:8px; border-radius:4px;"><strong style="color:var(--accent-green);">Anreise:</strong><br>Datum: ' + formatDateDE(b.shuttleDate) + '<br>Ort: ' + (b.shuttleAirport || '-') + '<br>Zeit: ' + (b.shuttleTime || '-') + ' Uhr</div><div style="background:var(--input-bg); padding:8px; border-radius:4px;"><strong style="color:var(--accent-yellow);">Abreise:</strong><br>Datum: ' + formatDateDE(b.shuttleRetDate) + '<br>Ort: ' + (b.shuttleRetAirport || '-') + '<br>Zeit: ' + (b.shuttleRetTime || '-') + ' Uhr</div></div>';
+                    div.innerHTML = '<div style="font-weight:bold; color:var(--accent-blue); text-transform: uppercase;">' + escapeHtmlAuth(b.name) + ' (' + pax + ' Personen)</div>' +
+                        '<div style="font-size:0.8rem; color:var(--text-muted); margin-top:2px;">Fahrzeug: <strong>' + escapeHtmlAuth(b.shuttleVehicle || '-') + '</strong> | Fahrer: <strong>' + escapeHtmlAuth(b.shuttleDriver || '-') + '</strong></div>' +
+                        '<div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; font-size:0.85rem; margin-top:6px;"><div style="background:var(--input-bg); padding:8px; border-radius:4px;"><strong style="color:var(--accent-green);">Anreise:</strong><br>Datum: ' + formatDateDE(b.shuttleDate) + '<br>Ort: ' + escapeHtmlAuth(b.shuttleAirport || '-') + '<br>Zeit: ' + escapeHtmlAuth(b.shuttleTime || '-') + ' Uhr</div><div style="background:var(--input-bg); padding:8px; border-radius:4px;"><strong style="color:var(--accent-yellow);">Abreise:</strong><br>Datum: ' + formatDateDE(b.shuttleRetDate) + '<br>Ort: ' + escapeHtmlAuth(b.shuttleRetAirport || '-') + '<br>Zeit: ' + escapeHtmlAuth(b.shuttleRetTime || '-') + ' Uhr</div></div>';
                     c.appendChild(div);
                 }
             }
@@ -10180,7 +10187,21 @@ function loadFromLocalStorage() {
           var r=await _supabase.auth.signInWithPassword({email:email,password:pw});
           if(r.error){showAuthError('Login fehlgeschlagen: '+r.error.message);return;} location.reload();
         }
-        async function cmoaLogout(){if(_supabase)await _supabase.auth.signOut();location.reload();}
+        async function cmoaLogout(){
+          if(cmoaLoggingOut)return;
+          if(cmoaWritesInProgress||offlineSyncInProgress){alert('Änderungen werden gerade gespeichert. Bitte kurz warten und erneut abmelden.');return;}
+          cmoaLoggingOut=true;
+          try{
+            if(getOfflineQueue().length){
+              if(!navigator.onLine){alert('Es gibt noch nicht übertragene Änderungen. Bitte zuerst die Internetverbindung herstellen.');return;}
+              await syncOfflineQueue();
+              if(getOfflineQueue().length){alert('Es liegen noch ausstehende Änderungen auf diesem Gerät. Bitte mit dem ursprünglichen Konto und den erforderlichen Rechten synchronisieren. Die Daten bleiben erhalten.');return;}
+            }
+            if(_supabase){var result=await _supabase.auth.signOut();if(result.error)throw result.error;}
+            [OFFLINE_QUEUE_KEY,'cmoa_bands_v4','cmoa_manual_todos_v1','cmoa_hotel_costs_v1','cmoa_akkreditierung_v1','cmoa_current_event_id'].forEach(function(key){localStorage.removeItem(key);});
+            location.reload();
+          }catch(e){alert('Abmeldung fehlgeschlagen: '+e.message);}finally{cmoaLoggingOut=false;}
+        }
         function applyCurrentUserRights(){
           var label=document.getElementById('auth-user-label'); if(label)label.textContent=profileDisplayName(currentUserProfile)+' · '+((ROLE_PRESETS[currentUserProfile.role]||{}).label||currentUserProfile.role);
           document.querySelectorAll('[data-module]').forEach(function(el){var m=el.getAttribute('data-module');el.classList.toggle('permission-hidden',!hasModuleRight(m,'read'));});
