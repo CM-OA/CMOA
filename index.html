@@ -8,12 +8,14 @@
   <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <script>
   let _supabase = null;
+  // Capture the callback before client initialization or other navigation.
+  const cmoaAuthCallbackUrl = new URL(location.href);
   
   function initSupabaseClient() {
       if (window.supabase && !_supabase) {
           const SUPABASE_URL = 'https://yxsjfktrxjtljbcxovio.supabase.co';
           const SUPABASE_ANON_KEY = 'sb_publishable_G4sZ1dFc8LMALE5ULB_HSg_qltBZhVM';
-          _supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+          _supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {auth:{detectSessionInUrl:false,flowType:"implicit"}});
       }
   }
 
@@ -2099,13 +2101,14 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
         <input type="password" id="auth-password" placeholder="Passwort" autocomplete="current-password">
         <div id="auth-error" class="auth-error"></div>
         <button type="button" class="btn-primary" style="width:100%" onclick="cmoaLogin()">ANMELDEN</button>
+        <button id="auth-reset-btn" type="button" class="btn-subtle" style="width:100%;margin-top:12px" onclick="cmoaResetPassword()">Passwort vergessen?</button>
       </div>
     </div>
 
     <div id="invite-password-gate" style="display:none;">
       <div class="auth-card">
         <h2>🔑 Passwort festlegen</h2>
-        <p>Deine Einladung wurde bestätigt. Lege jetzt dein persönliches Passwort für die CMOA-App fest.</p>
+        <p>Lege jetzt dein persönliches Passwort für die CMOA-App fest.</p>
         <div id="invite-user-email" style="font-weight:800;margin-bottom:12px;"></div>
         <input type="password" id="invite-new-password" placeholder="Neues Passwort (mindestens 8 Zeichen)" autocomplete="new-password">
         <input type="password" id="invite-new-password-repeat" placeholder="Passwort wiederholen" autocomplete="new-password">
@@ -10074,6 +10077,63 @@ function loadFromLocalStorage() {
           return CMOA_MODULES.filter(function(m){return !excluded[m[0]];}).every(function(m){return rightRank(p[m[0]])>=rightRank('write');});
         }
         function showAuthError(msg){var e=document.getElementById('auth-error');if(e)e.textContent=msg||'';}
+        var cmoaPasswordSessionUser=null;
+        function cmoaCleanAuthUrl(){
+          var u=new URL(location.href);
+          ['code','token_hash','type','invite','reset','error','error_code','error_description'].forEach(function(k){u.searchParams.delete(k);});
+          if(/(?:access_token|refresh_token|error|type)=/.test(u.hash))u.hash='';
+          history.replaceState(history.state,'',u.pathname+u.search+u.hash);
+        }
+        async function cmoaResolveAuthCallback(){
+          var q=cmoaAuthCallbackUrl.searchParams,h=new URLSearchParams(cmoaAuthCallbackUrl.hash.slice(1));
+          var type=h.get('type')||q.get('type');
+          var wantsPassword=type==='invite'||type==='recovery'||q.get('invite')==='1'||q.get('reset')==='1';
+          var callbackError=h.get('error')||q.get('error');
+          var access=h.get('access_token'),refresh=h.get('refresh_token'),code=q.get('code'),hash=q.get('token_hash');
+          var isCallback=!!(callbackError||access||refresh||code||hash||wantsPassword);
+          try{
+            if(callbackError)throw new Error('Link ungültig');
+            var result;
+            if(access||refresh){
+              if(!access||!refresh)throw new Error('Unvollständiger Link');
+              result=await _supabase.auth.setSession({access_token:access,refresh_token:refresh});
+            }else if(hash){
+              if(!['invite','recovery','signup','email','magiclink','email_change'].includes(type))throw new Error('Ungültiger Linktyp');
+              result=await _supabase.auth.verifyOtp({token_hash:hash,type:type});
+            }else if(code){result=await _supabase.auth.exchangeCodeForSession(code);}
+            if(result&&result.error)throw result.error;
+            var r=await _supabase.auth.getSession();if(r.error)throw r.error;
+            var session=r.data&&r.data.session;
+            // A bare invitation marker is not proof of authentication.
+            if(isCallback&&!session)throw new Error('Keine bestätigte Anmeldung');
+            if(wantsPassword&&session){
+              cmoaPasswordSessionUser=session.user.id;
+              try{sessionStorage.setItem('cmoa-password-user',session.user.id);}catch(ignore){}
+            }
+            if(isCallback)cmoaCleanAuthUrl();
+            return session;
+          }catch(e){
+            if(isCallback)cmoaCleanAuthUrl();
+            throw new Error('Der Einladungs- oder Passwort-Link ist ungültig, abgelaufen oder konnte nicht bestätigt werden. Öffne eine neue Einladung oder fordere über „Passwort vergessen?“ einen neuen Link an.');
+          }
+        }
+        function cmoaPasswordPending(user){
+          var pending=cmoaPasswordSessionUser;
+          try{pending=pending||sessionStorage.getItem('cmoa-password-user');}catch(ignore){}
+          return !!(user&&pending===user.id);
+        }
+        async function cmoaResetPassword(){
+          var email=(document.getElementById('auth-email').value||'').trim(),btn=document.getElementById('auth-reset-btn');
+          if(!email||! /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){showAuthError('Bitte zuerst deine E-Mail-Adresse eingeben.');return;}
+          btn.disabled=true;showAuthError('');
+          try{
+            var u=new URL(location.origin+location.pathname);u.searchParams.set('reset','1');
+            var r=await _supabase.auth.resetPasswordForEmail(email,{redirectTo:u.href});
+            if(r.error)throw r.error;
+            showAuthError('Falls dein Konto freigeschaltet ist, erhältst du eine E-Mail. Öffne den Link darin, um dein Passwort festzulegen.');
+          }catch(e){showAuthError('Die E-Mail konnte nicht angefordert werden. Bitte versuche es erneut.');}
+          finally{btn.disabled=false;}
+        }
         function invitedUserNeedsPassword(user){return !!(user&&user.user_metadata&&user.user_metadata.invited_by&&!user.user_metadata.password_set);}
         function showInvitePasswordGate(user){
           var login=document.getElementById('auth-gate'),gate=document.getElementById('invite-password-gate'),email=document.getElementById('invite-user-email');
@@ -10083,21 +10143,21 @@ function loadFromLocalStorage() {
           var p1=document.getElementById('invite-new-password').value||'',p2=document.getElementById('invite-new-password-repeat').value||'',err=document.getElementById('invite-password-error'),btn=document.getElementById('invite-password-btn');
           err.textContent='';if(p1.length<8){err.textContent='Das Passwort muss mindestens 8 Zeichen enthalten.';return;}if(p1!==p2){err.textContent='Die beiden Passwörter stimmen nicht überein.';return;}
           btn.disabled=true;btn.textContent='WIRD GESPEICHERT …';
-          try{var r=await _supabase.auth.updateUser({password:p1,data:{password_set:true}});if(r.error)throw r.error;document.getElementById('invite-password-gate').style.display='none';location.replace(location.origin+location.pathname);}catch(e){err.textContent='Passwort konnte nicht gespeichert werden: '+(e.message||e);btn.disabled=false;btn.textContent='PASSWORT SPEICHERN';}
+          try{var r=await _supabase.auth.updateUser({password:p1,data:{password_set:true}});if(r.error)throw r.error;cmoaPasswordSessionUser=null;try{sessionStorage.removeItem('cmoa-password-user');}catch(ignore){}document.getElementById('invite-password-gate').style.display='none';location.replace(location.origin+location.pathname);}catch(e){err.textContent='Passwort konnte nicht gespeichert werden: '+(e.message||e);btn.disabled=false;btn.textContent='PASSWORT SPEICHERN';}
         }
         async function initCmoaAuth(){
           try{
-            var r=await _supabase.auth.getSession(); var session=r.data&&r.data.session;
+            var session=await cmoaResolveAuthCallback();
             if(!session){document.getElementById('auth-gate').style.display='flex';return false;}
             currentAuthUser=session.user;
-            if(invitedUserNeedsPassword(currentAuthUser)){showInvitePasswordGate(currentAuthUser);return false;}
+            if(cmoaPasswordPending(currentAuthUser)||invitedUserNeedsPassword(currentAuthUser)){showInvitePasswordGate(currentAuthUser);return false;}
             var pr=await _supabase.from('profiles').select('*').eq('id',currentAuthUser.id).maybeSingle();
             if(pr.error){showAuthError('Profil konnte nicht geladen werden: '+pr.error.message);return false;}
             currentUserProfile=pr.data||{id:currentAuthUser.id,email:currentAuthUser.email,role:'viewer',permissions:{}};
             document.getElementById('auth-gate').style.display='none';
             if(currentUserProfile.role==='cash_only'){showCashOnlyCmoaGate();return false;}
             applyCurrentUserRights(); return true;
-          }catch(e){showAuthError('Anmeldung konnte nicht geprüft werden.');return false;}
+          }catch(e){document.getElementById('auth-gate').style.display='flex';showAuthError(e.message||'Anmeldung konnte nicht geprüft werden.');return false;}
         }
         function showCashOnlyCmoaGate(){
           var old=document.getElementById('cash-only-cmoa-gate');if(old)old.remove();
@@ -10460,7 +10520,7 @@ function loadFromLocalStorage() {
           try{
             var redirectTo=role==='cash_only'
               ? new URL('kasse.html?invite=1',location.href).href
-              : location.origin+location.pathname;
+              : new URL(location.pathname+'?invite=1',location.origin).href;
             var result=await _supabase.functions.invoke('admin-create-user',{body:{email:email,role:role,eventIds:eventIds,redirectTo:redirectTo}});
             if(result.error){var detail='';try{detail=result.data&&result.data.error?result.data.error:'';}catch(ignore){}throw new Error(detail||result.error.message||'Edge Function nicht erreichbar.');}
             if(result.data&&result.data.error)throw new Error(result.data.error);
