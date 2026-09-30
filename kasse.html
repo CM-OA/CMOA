@@ -162,6 +162,9 @@
 <nav class="nav"><button class="active" data-sec="sale">Kasse</button><button data-sec="history">Historie</button><button data-sec="stats">Statistik</button><button data-sec="settings">Einstellungen</button></nav><div id="modal" class="modal"><div class="dialog" id="dialog"></div></div>
 <script>
 const K='barKasseV2';
+const CASH_PENDING_KEY='cash_pending_sync_v1';
+let cashCacheAllowed=false,cashDirty=false,cashRevision=0,cashLeaving=false;
+let cashRecovery=null;try{cashRecovery=JSON.parse(localStorage.getItem(CASH_PENDING_KEY)||'null')}catch(e){}
 const defaultDrinks=[['Bier',3.5,'#d99b16'],['Radler',3.5,'#f2c94c'],['Alkfreies Bier',3.5,'#bf7b18'],['Wasser',2.5,'#3b82f6'],['Rotwein',4,'#7f1d1d'],['Weißwein',4,'#e7d48a'],['Cola',3,'#5c2b16'],['Fanta',3,'#f97316'],['Sprite',3,'#b7e4c7'],['Schnaps',2.5,'#64748b'],['Mixgetränke',5,'#c026d3']].map((x,i)=>({id:'d'+i,name:x[0],price:x[1],color:x[2],depositId:null}));
 const defaultFoods=[['Nudeln mit Gulasch','#b45309'],['Roster','#dc2626'],['Steak','#7f1d1d'],['Fleischkäse','#db6b55'],['Veganes Chili','#16a34a']];
 let db=JSON.parse(localStorage.getItem(K)||'null')||{theme:'dark',tills:[{id:'t1',name:'Bierwagen'}],activeTillId:'t1',operator:'',deposits:[{id:'p1',name:'Pfand',value:2}],drinks:defaultDrinks.map(d=>({...d,depositId:'p1'})),sales:[],cashEvents:[]};
@@ -191,8 +194,10 @@ function ensureDefaultDrinks(){
   return added;
 }
 function applyDrinkPalette(force=false){if(!force&&db.tilePaletteVersion===1)return false;let changed=false;defaultDrinks.forEach(style=>{let d=db.drinks.find(x=>String(x.name||'').trim().toLocaleLowerCase('de-DE')===style.name.toLocaleLowerCase('de-DE'));if(d&&d.color!==style.color){d.color=style.color;changed=true}});db.tilePaletteVersion=1;return changed}
-ensureDefaultDrinks();applyDrinkPalette();ensureSpecialSubArticles();repairLegacySpecialGroups();persist();
-function persist(){localStorage.setItem(K,JSON.stringify(db))}function save(){persist();renderAll();scheduleCloudSync()}function activeTill(){return db.tills.find(t=>t.id===db.activeTillId)}function depFor(d){return d&&d.category==='food'?undefined:db.deposits.find(p=>p.id===d.depositId)}
+ensureDefaultDrinks();applyDrinkPalette();ensureSpecialSubArticles();repairLegacySpecialGroups();
+function persist(){if(cashCacheAllowed)localStorage.setItem(K,JSON.stringify(db))}
+function markCashDirty(){cashDirty=true;cashRevision++;if(cloudUser&&cloudEventId)localStorage.setItem(CASH_PENDING_KEY,JSON.stringify({userId:cloudUser.id,eventId:cloudEventId}));}
+function save(){markCashDirty();persist();renderAll();scheduleCloudSync()}function activeTill(){return db.tills.find(t=>t.id===db.activeTillId)}function depFor(d){return d&&d.category==='food'?undefined:db.deposits.find(p=>p.id===d.depositId)}
 function showTillCheckin(){tillCheckedIn=false;renderTillCheckin()}
 function renderTillCheckin(){let gate=$('tillGate');if(!gate)return;$('tillGateGrid').innerHTML=db.tills.map(t=>`<button class="tillChoice" onclick="checkInTill('${t.id}')"><span>${String(t.name||'').toLocaleLowerCase('de-DE').includes('backstage')?'🎤':String(t.name||'').toLocaleLowerCase('de-DE').includes('bier')?'🍺':'🍹'}</span>${esc(t.name)}<small style="display:block;font-size:12px;color:var(--muted);margin-top:8px">Hier einchecken</small></button>`).join('')||'<div class="card"><b>Noch keine Kasse angelegt.</b><div class="muted">Lege die erste Kasse in den Einstellungen an.</div></div>';gate.classList.toggle('hidden',tillCheckedIn)}
 function checkInTill(id){if(!db.tills.some(t=>t.id===id))return;db.activeTillId=id;tillCheckedIn=true;flow={};document.body.classList.remove('tokenMode','freeMode');persist();renderAll();scheduleCloudSync()}
@@ -436,7 +441,9 @@ async function confirmProtectionCode(){
 }
 function cancelProtectionGate(){pendingProtectedSection=null;$('modal').classList.remove('show')}
 function openCashSection(section,button){
-  document.querySelectorAll('.nav button').forEach(x=>x.classList.remove('active'));
+  window.addEventListener('online',()=>{if(cashDirty&&cloudUser){cloudReady=true;scheduleCloudSync()}});
+window.addEventListener('beforeunload',e=>{if(cashDirty){e.preventDefault();e.returnValue=''}});
+document.querySelectorAll('.nav button').forEach(x=>x.classList.remove('active'));
   if(button)button.classList.add('active');
   document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
   $(section).classList.add('active');renderAll();
@@ -588,7 +595,26 @@ async function cashLogin(){
   if(error){$('loginError').textContent=error.message;return}
   await afterCashLogin(data.user);
 }
-async function cashLogout(){protectedSectionsUnlocked=false;cloudReady=false;await cashSb.auth.signOut();location.reload()}
+async function flushCashBeforeLeaving(){
+  clearTimeout(cloudTimer);
+  if(cloudSyncing){alert('Die Kasse speichert gerade. Bitte kurz warten und erneut versuchen.');return false}
+  if(cashDirty||pendingDrinkDeleteIds.length){
+    if(!cloudReady||!navigator.onLine){alert('Es gibt noch nicht übertragene Änderungen. Bitte zuerst die Internetverbindung herstellen.');return false}
+    if(!await syncCloudData()){alert('Änderungen konnten noch nicht vollständig gespeichert werden. Die Daten bleiben auf diesem Gerät erhalten.');return false}
+  }
+  return true;
+}
+async function cashLogout(){
+  if(cashLeaving)return;cashLeaving=true;
+  try{
+    if(!await flushCashBeforeLeaving())return;
+    clearInterval(cloudReloadTimer);clearTimeout(cloudTimer);
+    let {error}=await cashSb.auth.signOut();if(error)throw error;
+    cashCacheAllowed=false;cloudReady=false;cloudUser=null;protectedSectionsUnlocked=false;
+    localStorage.removeItem(K);localStorage.removeItem('barKasseV1');localStorage.removeItem(CASH_PENDING_KEY);localStorage.removeItem('cash_event_id');
+    db.operator='';db.sales=[];db.cashEvents=[];flow={};location.reload();
+  }catch(e){alert('Abmeldung fehlgeschlagen: '+e.message)}finally{cashLeaving=false}
+}
 async function initCloud(){
   let {data}=await cashSb.auth.getSession();
   if(data.session&&data.session.user){
@@ -602,6 +628,7 @@ async function afterCashLogin(user){
   if(profileResult.error){await cashSb.auth.signOut();$('cloudLogin').classList.add('show');$('loginError').textContent='Kassenberechtigung konnte nicht geprüft werden: '+profileResult.error.message;return}
   let profile=profileResult.data||{},cashAllowed=profile.role==='admin'||profile.role==='cash_only'||!!(profile.permissions&&profile.permissions._cashAccess===true);
   if(!cashAllowed){await cashSb.auth.signOut();cloudUser=null;$('cloudLogin').classList.add('show');$('loginError').textContent='Für dieses Benutzerkonto ist die Kassen-App nicht freigegeben.';return}
+  cashCacheAllowed=true;
   $('cloudLogin').classList.remove('show');$('cloudUser').textContent=user.email||'Angemeldet';
   let {data,error}=await cashSb.from('events').select('id,name,short_name,start_date').order('start_date',{ascending:false});
   if(error){setCloudStatus('Veranstaltungen konnten nicht geladen werden: '+error.message,true);return}
@@ -609,14 +636,25 @@ async function afterCashLogin(user){
   if(!(data||[]).some(e=>e.id===cloudEventId))cloudEventId=data&&data[0]?data[0].id:'';
   sel.value=cloudEventId;
   if(!cloudEventId){setCloudStatus('Für dieses Konto ist keine Veranstaltung freigegeben.',true);renderAll();return}
+  if(cashRecovery){
+    if(cashRecovery.userId!==user.id||!cloudEvents.some(e=>e.id===cashRecovery.eventId)){
+      cashCacheAllowed=false;cloudReady=false;$('cloudLogin').classList.add('show');$('loginError').textContent='Auf diesem Gerät liegen noch nicht übertragene Änderungen eines anderen Kontos oder einer anderen Veranstaltung. Bitte mit dem ursprünglichen Konto anmelden.';return;
+    }
+    cloudEventId=cashRecovery.eventId;sel.value=cloudEventId;cashDirty=true;cloudReady=true;
+    if(!await syncCloudData()){setCloudStatus('Ausstehende Änderungen bleiben auf diesem Gerät. Bitte Verbindung prüfen.',true);return}
+    cashRecovery=null;
+  }
   await loadCloudData();
-  clearInterval(cloudReloadTimer);cloudReloadTimer=setInterval(()=>{if(cloudReady&&!cloudSyncing&&!editDrinkId)loadCloudData(true)},15000);
+  clearInterval(cloudReloadTimer);cloudReloadTimer=setInterval(()=>{if(cloudReady&&!cloudSyncing&&!cashDirty&&!editDrinkId)loadCloudData(true)},15000);
 }
 async function changeCloudEvent(){
+  if(!await flushCashBeforeLeaving()){$('cloudEvent').value=cloudEventId;return}
   protectedSectionsUnlocked=false;cloudEventId=$('cloudEvent').value;tillCheckedIn=false;localStorage.setItem('cash_event_id',cloudEventId);await loadCloudData();
 }
 async function loadCloudData(silent=false){
   if(!cloudEventId||!cloudUser)return;
+  if(cashDirty)return;
+  let revisionAtStart=cashRevision,eventAtStart=cloudEventId,userAtStart=cloudUser.id;
   let articleVersionAtStart=articleMutationVersion;
   cloudReady=false;if(!silent)setCloudStatus('Cloud-Daten werden geladen …');
   let results=await Promise.all([
@@ -627,8 +665,9 @@ async function loadCloudData(silent=false){
     cashSb.from('cash_sale_items').select('*').eq('event_id',cloudEventId),
     cashSb.from('cash_movements').select('*').eq('event_id',cloudEventId).order('created_at')
   ]);
-  let failed=results.find(r=>r.error);if(failed){cloudReady=true;setCloudStatus('Cloud-Fehler: '+failed.error.message,true);return}
-  if(articleMutationVersion!==articleVersionAtStart){
+  if(!cloudUser||cloudUser.id!==userAtStart||cloudEventId!==eventAtStart)return;
+  let failed=results.find(r=>r.error);if(failed){cloudReady=false;setCloudStatus('Cloud-Fehler: '+failed.error.message,true);return}
+  if(cashRevision!==revisionAtStart||articleMutationVersion!==articleVersionAtStart){
     cloudReady=true;
     await syncCloudData();
     return;
@@ -658,7 +697,7 @@ async function loadCloudData(silent=false){
 }
 function scheduleCloudSync(){if(!cloudReady||!cloudEventId)return;clearTimeout(cloudTimer);cloudTimer=setTimeout(syncCloudData,400)}
 async function syncCloudData(){
-  if(!cloudReady||cloudSyncing||!cloudEventId||!cloudUser)return;cloudSyncing=true;normalizeCloudIds();persist();setCloudStatus('Speichert …');
+  if(!cloudReady||cloudSyncing||!cloudEventId||!cloudUser)return false;let revisionAtStart=cashRevision;cloudSyncing=true;normalizeCloudIds();persist();setCloudStatus('Speichert …');
   try{
     if(pendingDrinkDeleteIds.length){let ids=[...new Set(pendingDrinkDeleteIds.filter(isUuid))];if(ids.length){let del=await cashSb.from('cash_drinks').update({active:false}).eq('event_id',cloudEventId).in('id',ids);if(del.error)throw del.error}pendingDrinkDeleteIds=[]}
     let registers=db.tills.map(x=>({id:x.id,event_id:cloudEventId,name:x.name,active:true,created_by:cloudUser.id}));
@@ -670,8 +709,9 @@ async function syncCloudData(){
     for(let entry of [['cash_registers',registers],['cash_deposit_types',deposits],['cash_drinks',drinks],['cash_sales',sales],['cash_sale_items',items],['cash_movements',movements]]){
       if(entry[1].length){let {error}=await cashSb.from(entry[0]).upsert(entry[1]);if(error)throw error}
     }
-    setCloudStatus('Gespeichert · '+new Date().toLocaleTimeString('de-DE'));
-  }catch(e){setCloudStatus('Speicherfehler: '+e.message,true)}
+    if(cashRevision===revisionAtStart){cashDirty=false;localStorage.removeItem(CASH_PENDING_KEY)}
+    setCloudStatus('Gespeichert · '+new Date().toLocaleTimeString('de-DE'));return !cashDirty;
+  }catch(e){markCashDirty();persist();setCloudStatus('Speicherfehler: '+e.message,true);return false}
   finally{cloudSyncing=false;renderAll()}
 }
 async function cloudDelete(table,id,throwOnError=false){
@@ -683,6 +723,8 @@ async function cloudDelete(table,id,throwOnError=false){
   }
 }
 
+window.addEventListener('online',()=>{if(cashDirty&&cloudUser){cloudReady=true;scheduleCloudSync()}});
+window.addEventListener('beforeunload',e=>{if(cashDirty){e.preventDefault();e.returnValue=''}});
 document.querySelectorAll('.nav button').forEach(b=>b.onclick=()=>requestCashSection(b.dataset.sec,b));renderAll();initCloud();
 if('serviceWorker' in navigator){window.addEventListener('load',async()=>{try{let regs=await navigator.serviceWorker.getRegistrations();await Promise.all(regs.filter(r=>r.scope===new URL('./',location.href).href).map(r=>r.unregister()));let reg=await navigator.serviceWorker.register('./service-worker-kasse.js?v=29',{updateViaCache:'none'});await reg.update()}catch(e){console.warn('Service Worker:',e)}})}
 </script></body></html>
