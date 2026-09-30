@@ -24,7 +24,7 @@
 </script>
 
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>CMOA</title>
     <style>
         :root {
@@ -2030,6 +2030,57 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
             .inventory-draft-row{grid-template-columns:1fr auto}
             .inventory-draft-row > :nth-child(2),.inventory-draft-row > :nth-child(3){grid-column:1}
         }
+
+
+/* Smartphone-Korrekturen: nach den Modulregeln, nur Bildschirmansicht. */
+@media screen and (max-width: 700px) {
+    .container { padding-left:max(10px,env(safe-area-inset-left)); padding-right:max(10px,env(safe-area-inset-right)); }
+    body { padding-bottom:calc(44px + env(safe-area-inset-bottom)); }
+    .form-row { flex-direction:column; }
+    .form-row > .form-group { width:100%; min-width:0; }
+    .page input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]),
+    .page select, .page textarea { min-width:0; max-width:100%; font-size:16px !important; }
+    .page input[type="file"] { width:100%; }
+    .page button { max-width:100%; overflow-wrap:anywhere; white-space:normal; touch-action:manipulation; }
+    .page [style*="display:flex"], .page [style*="display: flex"] { flex-wrap:wrap; gap:8px; }
+    .page [style*="display:flex"] > *, .page [style*="display: flex"] > * { min-width:0; max-width:100%; }
+    .page .list-item, .view-value, .stat-row, .production-note, .activity-row,
+    .inventory-history-row, .inventory-purchase-row, .inventory-draft-row { overflow-wrap:anywhere; }
+    .stat-row { align-items:flex-start; gap:8px; flex-wrap:wrap; }
+    .stat-row strong { min-width:0; }
+    .akk-nav { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); }
+    .akk-nav-btn, .akk-grid-btn { height:auto; min-height:44px; padding:8px 5px; line-height:1.25; }
+    .akk-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+    .akk-grid.days { grid-template-columns:repeat(3,minmax(0,1fr)); }
+    .akk-rec-actions { flex-wrap:wrap; }
+    .akk-action-btn { height:auto; min-height:38px; font-size:12px !important; }
+    .akk-action-btn.icon-only { font-size:16px !important; }
+    .production-task-heading, .final-report-card, .internal-chat-compose-bottom { flex-wrap:wrap; }
+    .final-report-card button { width:100%; }
+    .production-summary, .production-form-grid, .production-view-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+    .production-overview-row { grid-template-columns:12px minmax(0,1fr); }
+    .production-overview-row > :last-child { grid-column:2; }
+    .admin-perm-row { grid-template-columns:minmax(0,1fr); }
+    .admin-perm-row select { width:100%; }
+    .event-user-row { align-items:flex-start; }
+    .event-user-row input { flex:0 0 auto; }
+    .event-user-row span { min-width:0; overflow-wrap:anywhere; }
+    .inventory-stock-grid { grid-template-columns:minmax(0,1fr); }
+    .inventory-history-row > *, .inventory-purchase-row > *, .inventory-draft-row > * { min-width:0; }
+    .live-bar-label { flex-wrap:wrap; }
+    .live-split { flex-wrap:wrap; }
+    .cash-summary-dialog, .akk-check-dialog { min-width:0; max-width:100%; max-height:calc(100dvh - 24px); overflow-y:auto; overscroll-behavior:contain; }
+    .internal-chat-dialog { height:calc(100dvh - 24px); }
+    .internal-chat-messages { min-height:0; }
+    .page .ro-modern-table:not(.shuttle-log-table), .page .shuttle-table { width:100%; overflow-x:auto; overscroll-behavior-x:contain; }
+}
+@media screen and (max-width:430px) {
+    .production-summary, .production-form-grid, .production-view-grid { grid-template-columns:minmax(0,1fr); }
+    #hotel-export-card > div:last-child { grid-template-columns:minmax(0,1fr) !important; }
+    #catering-page [style*="grid-template-columns:1fr 1fr"] { grid-template-columns:minmax(0,1fr) !important; }
+    .inventory-summary-grid { grid-template-columns:minmax(0,1fr); }
+    .akk-home-stats { grid-template-columns:repeat(2,minmax(0,1fr)); }
+}
 
 </style>
     <meta name="theme-color" content="#000000">
