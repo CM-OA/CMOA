@@ -3041,17 +3041,17 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
             <div class="card">
                 <h3>Gage, Booking Fee & Buyout</h3>
                 <div class="pay-mode-box">
-                    <div class="pay-mode-title">Gage / Künstlerhonorar</div>
+                    <div class="pay-mode-title">Vereinbarte Gage (inkl. Booking Fee)</div>
                     <div class="form-row">
-                        <div class="form-group"><label>Gage Netto (€)</label><input type="number" id="band-gage" class="cost-val" oninput="calcGageTax()"></div>
-                        <div class="form-group"><label>Steuer Gage (%)</label><input type="number" id="band-steuer-prozent" placeholder="19" oninput="calcGageTax()"></div>
+                        <div class="form-group"><label>Vereinbarte Gage inkl. Booking Fee Netto (€)</label><input type="number" id="band-gage" class="cost-val" oninput="calcGageTax()"></div>
+                        <div class="form-group"><label>Steuer reine Bandgage (%)</label><input type="number" id="band-steuer-prozent" placeholder="0" oninput="calcGageTax()"></div>
                     </div>
                     <div class="checkbox-group" style="margin:8px 0 0;padding:9px 11px;border:1px solid var(--border);border-radius:10px;background:var(--input-bg);">
                         <input type="checkbox" id="band-no-gage" onchange="toggleBandNoGage()"><label for="band-no-gage" style="font-weight:800;cursor:pointer;">Keine Gage (0,00 €)</label>
                     </div>
                 </div>
                 <div class="pay-mode-box">
-                    <div class="pay-mode-title">Booking Fee / Agentur-Commission</div>
+                    <div class="pay-mode-title">Enthaltene Booking Fee / Agentur-Commission</div><div style="font-size:.78rem;color:var(--text-muted);margin-bottom:9px;">Die Booking Fee ist Bestandteil der oben vereinbarten Gage und wird davon abgezogen. Sie wird nicht zusätzlich auf die vereinbarte Nettogage aufgeschlagen.</div>
                     <div class="form-row">
                         <div class="form-group"><label>Booking Fee Netto (€)</label><input type="number" id="band-booking-fee" class="cost-val" placeholder="0,00" oninput="calcGageTax()"></div>
                         <div class="form-group"><label>Steuer Booking Fee (%)</label><input type="number" id="band-booking-fee-tax" placeholder="19" oninput="calcGageTax()"></div>
@@ -5726,11 +5726,15 @@ function loadFromLocalStorage() {
 
         function getBandFeeBreakdown(b) {
             b=b||{};
-            function part(net,rate){net=Number(net)||0;rate=Number(rate)||0;var tax=net*rate/100;return {net:net,rate:rate,tax:tax,gross:net+tax};}
-            var gage=part(b.noGage?0:b.gage,b.noGage?0:b.taxRate);
-            var booking=part(b.noGage?0:b.bookingFee,b.noGage?0:b.bookingFeeTaxRate);
+            function part(net,rate){net=Math.max(0,Number(net)||0);rate=Number(rate)||0;var tax=net*rate/100;return {net:net,rate:rate,tax:tax,gross:net+tax};}
+            var agreedNet=b.noGage?0:Math.max(0,Number(b.gage)||0);
+            var bookingNet=b.noGage?0:Math.max(0,Number(b.bookingFee)||0);
+            if(bookingNet>agreedNet) bookingNet=agreedNet;
+            var artistNet=Math.max(0,agreedNet-bookingNet);
+            var gage=part(artistNet,b.noGage?0:b.taxRate);
+            var booking=part(bookingNet,b.noGage?0:b.bookingFeeTaxRate);
             var buyout=part(b.buyout,b.buyoutTaxRate);
-            return {gage:gage,booking:booking,buyout:buyout,feeNet:gage.net+booking.net,feeTax:gage.tax+booking.tax,feeGross:gage.gross+booking.gross,totalNet:gage.net+booking.net+buyout.net,totalTax:gage.tax+booking.tax+buyout.tax,totalGross:gage.gross+booking.gross+buyout.gross};
+            return {agreedNet:agreedNet,gage:gage,booking:booking,buyout:buyout,feeNet:agreedNet,feeTax:gage.tax+booking.tax,feeGross:gage.gross+booking.gross,totalNet:agreedNet+buyout.net,totalTax:gage.tax+booking.tax+buyout.tax,totalGross:gage.gross+booking.gross+buyout.gross};
         }
         function getBandFeeBreakdownFromForm(){
             return getBandFeeBreakdown({noGage:document.getElementById('band-no-gage')&&document.getElementById('band-no-gage').checked,gage:document.getElementById('band-gage')&&document.getElementById('band-gage').value,taxRate:document.getElementById('band-steuer-prozent')&&document.getElementById('band-steuer-prozent').value,bookingFee:document.getElementById('band-booking-fee')&&document.getElementById('band-booking-fee').value,bookingFeeTaxRate:document.getElementById('band-booking-fee-tax')&&document.getElementById('band-booking-fee-tax').value,buyout:document.getElementById('band-buyout')&&document.getElementById('band-buyout').value,buyoutTaxRate:document.getElementById('band-buyout-tax')&&document.getElementById('band-buyout-tax').value});
@@ -5763,7 +5767,7 @@ function loadFromLocalStorage() {
 
         function calcGageTax() {
             var f=getBandFeeBreakdownFromForm(),preview=document.getElementById('gage-calc-preview'),noGage=document.getElementById('band-no-gage');
-            if(preview)preview.innerText=(noGage&&noGage.checked?'Keine Gage · ':'')+'Gage brutto: '+f.gage.gross.toFixed(2)+' € | Booking Fee brutto: '+f.booking.gross.toFixed(2)+' € | Buyout brutto: '+f.buyout.gross.toFixed(2)+' € | Bandkosten gesamt: '+f.totalGross.toFixed(2)+' €';
+            if(preview){var warn=(f.booking.net>f.agreedNet?'Booking Fee über Vereinbarung · ':'');preview.innerText=(noGage&&noGage.checked?'Keine Gage · ':'')+warn+'Vereinbart netto: '+f.agreedNet.toFixed(2)+' € = reine Bandgage '+f.gage.net.toFixed(2)+' € + Booking Fee '+f.booking.net.toFixed(2)+' € | Booking Fee brutto: '+f.booking.gross.toFixed(2)+' € | Buyout brutto: '+f.buyout.gross.toFixed(2)+' € | Bandkosten gesamt brutto: '+f.totalGross.toFixed(2)+' €';}
             calcDetailPtSplitVal();
         }
 
@@ -5802,7 +5806,7 @@ function loadFromLocalStorage() {
                         '</div>' +
                         '<div style="display:flex; justify-content:space-between; align-items:center;">' +
                             '<div style="font-size: 0.82rem; color: var(--text-muted);">' + 
-                                (b.gage ? Number(b.gage).toLocaleString('de-DE', {style:'currency', currency:'EUR'}) : '0,00 €') + ' Netto | ' + pCount + ' Mitglieder' +
+                                (b.gage ? Number(b.gage).toLocaleString('de-DE', {style:'currency', currency:'EUR'}) : '0,00 €') + ' vereinbart netto inkl. Booking Fee | ' + pCount + ' Mitglieder' +
                                 docStatusHtml +
                             '</div>' +
                             '<div style="display: flex; gap: 6px;">' +
@@ -5883,7 +5887,7 @@ function loadFromLocalStorage() {
             else if(b.bandNotes) notes=b.bandNotes;
             return [
                 {t:'BAND & KONTAKT', rows:[['Band / Act',pdfBandText(b.name)],['Ansprechpartner',pdfBandText(b.contactName)],['Organisation',pdfBandText(b.contactOrg)],['Telefon',pdfBandText(b.contactPhone)],['E-Mail',pdfBandText(b.contactEmail)],['Mitglieder / VIP',pdfBandText(b.paxCount,'0')+' / '+pdfBandText(b.vipGuests,'0')]]},
-                {t:'DEAL, GAGE & ZAHLUNG', rows:[['Deal',b.dealDone?'Abgeschlossen':'Offen'],['Deal / Vereinbarung',pdfBandText(b.dealText)],['Gage',pdfBandMoney(fin.gage.net)+' netto | '+fin.gage.rate+' % | '+pdfBandMoney(fin.gage.gross)+' brutto'],['Booking Fee',fin.booking.net?pdfBandMoney(fin.booking.net)+' netto | '+fin.booking.rate+' % | '+pdfBandMoney(fin.booking.gross)+' brutto | '+pdfBandText(b.bookingFeeRecipient):'—'],['Booking Fee Zahlung',fin.booking.net?getBuyoutPaymentLabel(b.bookingFeePaymentMethod)+' | fällig '+pdfBandDate(b.bookingFeeDueDate)+' | '+(b.bookingFeePaid?'bezahlt '+pdfBandDate(b.bookingFeePaidDate):'offen'):'—'],['Buyout',fin.buyout.net?pdfBandMoney(fin.buyout.net)+' netto | '+fin.buyout.rate+' % | '+pdfBandMoney(fin.buyout.gross)+' brutto':'—'],['Buyout Zahlung',fin.buyout.net?getBuyoutPaymentLabel(b.buyoutPaymentMethod)+' | an '+pdfBandText(b.buyoutRecipient)+' | fällig '+pdfBandDate(b.buyoutDueDate):'—'],['Bandkosten gesamt',pdfBandMoney(fin.totalGross)],['Zahlungsweise Gage',pdfBandPaymentType(b)],['Anzahlung fällig',pdfBandDate(b.advDueDate||b.advDate)],['Restzahlung fällig',pdfBandDate(b.restDueDate)],['Gesamtzahlung fällig',pdfBandDate(b.fullDueDate)],['Buyout bezahlt',b.buyoutPaid?'Ja · '+pdfBandDate(b.buyoutPaidDate):'Nein'],['Keine Rechnung',b.noInvoice?'Ja':'Nein']]},
+                {t:'DEAL, GAGE & ZAHLUNG', rows:[['Deal',b.dealDone?'Abgeschlossen':'Offen'],['Deal / Vereinbarung',pdfBandText(b.dealText)],['Vereinbart inkl. Booking Fee',pdfBandMoney(fin.agreedNet)+' netto'],['Reine Bandgage',pdfBandMoney(fin.gage.net)+' netto | '+fin.gage.rate+' % | '+pdfBandMoney(fin.gage.gross)+' brutto'],['Booking Fee',fin.booking.net?pdfBandMoney(fin.booking.net)+' netto | '+fin.booking.rate+' % | '+pdfBandMoney(fin.booking.gross)+' brutto | '+pdfBandText(b.bookingFeeRecipient):'—'],['Booking Fee Zahlung',fin.booking.net?getBuyoutPaymentLabel(b.bookingFeePaymentMethod)+' | fällig '+pdfBandDate(b.bookingFeeDueDate)+' | '+(b.bookingFeePaid?'bezahlt '+pdfBandDate(b.bookingFeePaidDate):'offen'):'—'],['Buyout',fin.buyout.net?pdfBandMoney(fin.buyout.net)+' netto | '+fin.buyout.rate+' % | '+pdfBandMoney(fin.buyout.gross)+' brutto':'—'],['Buyout Zahlung',fin.buyout.net?getBuyoutPaymentLabel(b.buyoutPaymentMethod)+' | an '+pdfBandText(b.buyoutRecipient)+' | fällig '+pdfBandDate(b.buyoutDueDate):'—'],['Bandkosten gesamt',pdfBandMoney(fin.totalGross)],['Zahlungsweise Gage',pdfBandPaymentType(b)],['Anzahlung fällig',pdfBandDate(b.advDueDate||b.advDate)],['Restzahlung fällig',pdfBandDate(b.restDueDate)],['Gesamtzahlung fällig',pdfBandDate(b.fullDueDate)],['Buyout bezahlt',b.buyoutPaid?'Ja · '+pdfBandDate(b.buyoutPaidDate):'Nein'],['Keine Rechnung',b.noInvoice?'Ja':'Nein']]},
                 {t:'SHOW & RUNNING ORDER', rows:[['Showday',pdfBandText(b.showday)],['Spielzeit',pdfBandText(b.roStart)+' – '+pdfBandText(b.roEnd)+' Uhr'],['Changeover vorher',pdfBandText(b.roChangeover,'0')+' Min.']]},
                 {t:'HOTEL', rows:[['Status',pdfBandText(b.hotelNeeded)],['Hotel',pdfBandText(b.hotelName)],['Zeitraum',pdfBandDate(b.hotelFrom)+' – '+pdfBandDate(b.hotelTo)],['Personen / Nächte',pdfBandText(b.hotelPersons,'0')+' / '+pdfBandText(b.nightsCount,'0')],['EZ / DZ',pdfBandText(b.hotelEzCount,'0')+' / '+pdfBandText(b.hotelDzCount,'0')]]},
                 {t:'SHUTTLE & FLÜGE', rows:[['Status / Pax',pdfBandText(b.shuttleNeeded)+' / '+pdfBandText(b.shuttlePax,'0')],['Fahrer / Fahrzeug',pdfBandText(b.shuttleDriver)+' / '+pdfBandText(b.shuttleVehicle)],['Anreise',pdfBandDate(b.shuttleDate)+' '+pdfBandText(b.shuttleTime)+' | '+pdfBandText(b.shuttleAirport)+' | Flug '+pdfBandText(b.shuttleFlightNum)],['Rückreise',pdfBandDate(b.shuttleRetDate)+' '+pdfBandText(b.shuttleRetTime)+' | '+pdfBandText(b.shuttleRetAirport)+' | Flug '+pdfBandText(b.shuttleRetFlightNum)]]},
@@ -7092,14 +7096,14 @@ function loadFromLocalStorage() {
                         '</button>' +
                         '<div id="pt-body-' + b.id + '" style="display:none;">' +
                         '<div style="font-size:0.78rem; color:var(--text-muted); margin-bottom:12px;">' +
-                            'Gage: ' + fin.gage.gross.toFixed(2) + ' € brutto · Booking Fee: ' + fin.booking.gross.toFixed(2) + ' € brutto · Buyout: ' + fin.buyout.gross.toFixed(2) + ' € brutto' +
+                            '<strong>Vereinbart netto: ' + fin.agreedNet.toFixed(2) + ' €</strong><br>Aufteilung: reine Bandgage ' + fin.gage.net.toFixed(2) + ' € netto / ' + fin.gage.gross.toFixed(2) + ' € brutto · enthaltene Booking Fee ' + fin.booking.net.toFixed(2) + ' € netto / ' + fin.booking.gross.toFixed(2) + ' € brutto · Buyout zusätzlich ' + fin.buyout.gross.toFixed(2) + ' € brutto' +
                         '</div>' +
-                        (fin.booking.net>0?'<div class="pay-mode-box"><div class="pay-mode-title">Booking Fee · '+fin.booking.gross.toFixed(2)+' € brutto · separat von der Gage</div><div class="form-group"><label>Empfänger / Agentur</label><input type="text" id="pt-booking-recipient-'+b.id+'" value="'+escapeHtmlAuth(b.bookingFeeRecipient||'')+'" placeholder="Agentur / Booking Agent"></div><div class="form-group"><label>Zahlungsweise Booking Fee</label><select id="pt-booking-method-'+b.id+'"><option value="transfer_advance" '+(b.bookingFeePaymentMethod==='transfer_advance'||!b.bookingFeePaymentMethod?'selected':'')+'>Vorab per Überweisung</option><option value="transfer_festival" '+(b.bookingFeePaymentMethod==='transfer_festival'?'selected':'')+'>Per Überweisung zum Festival</option><option value="cash_festival" '+(b.bookingFeePaymentMethod==='cash_festival'?'selected':'')+'>Bar zum Festival</option><option value="other" '+(b.bookingFeePaymentMethod==='other'?'selected':'')+'>Sonstige / individuell</option></select></div><div class="form-row"><div class="form-group"><label>Fällig am</label><input type="date" id="pt-booking-due-'+b.id+'" value="'+formatPaymentDateInput(b.bookingFeeDueDate)+'"></div><div class="form-group"><label>Bezahlt am</label><input type="date" id="pt-booking-paid-date-'+b.id+'" value="'+formatPaymentDateInput(b.bookingFeePaidDate)+'"></div></div><div class="checkbox-group"><input type="checkbox" id="pt-booking-paid-'+b.id+'" '+(b.bookingFeePaid?'checked':'')+'><label for="pt-booking-paid-'+b.id+'">Booking Fee bezahlt</label></div></div>':'') +
+                        (fin.booking.net>0?'<div class="pay-mode-box"><div class="pay-mode-title">Enthaltene Booking Fee · '+fin.booking.net.toFixed(2)+' € netto → '+fin.booking.gross.toFixed(2)+' € brutto · separat zahlbar</div><div class="form-group"><label>Empfänger / Agentur</label><input type="text" id="pt-booking-recipient-'+b.id+'" value="'+escapeHtmlAuth(b.bookingFeeRecipient||'')+'" placeholder="Agentur / Booking Agent"></div><div class="form-group"><label>Zahlungsweise Booking Fee</label><select id="pt-booking-method-'+b.id+'"><option value="transfer_advance" '+(b.bookingFeePaymentMethod==='transfer_advance'||!b.bookingFeePaymentMethod?'selected':'')+'>Vorab per Überweisung</option><option value="transfer_festival" '+(b.bookingFeePaymentMethod==='transfer_festival'?'selected':'')+'>Per Überweisung zum Festival</option><option value="cash_festival" '+(b.bookingFeePaymentMethod==='cash_festival'?'selected':'')+'>Bar zum Festival</option><option value="other" '+(b.bookingFeePaymentMethod==='other'?'selected':'')+'>Sonstige / individuell</option></select></div><div class="form-row"><div class="form-group"><label>Fällig am</label><input type="date" id="pt-booking-due-'+b.id+'" value="'+formatPaymentDateInput(b.bookingFeeDueDate)+'"></div><div class="form-group"><label>Bezahlt am</label><input type="date" id="pt-booking-paid-date-'+b.id+'" value="'+formatPaymentDateInput(b.bookingFeePaidDate)+'"></div></div><div class="checkbox-group"><input type="checkbox" id="pt-booking-paid-'+b.id+'" '+(b.bookingFeePaid?'checked':'')+'><label for="pt-booking-paid-'+b.id+'">Booking Fee bezahlt</label></div></div>':'') +
 
                         (fin.buyout.net>0?'<div class="pay-mode-box"><div class="pay-mode-title">Extra Buyout · '+fin.buyout.gross.toFixed(2)+' € brutto</div><div class="form-group"><label>Empfänger / an wen?</label><input type="text" id="pt-buyout-recipient-'+b.id+'" value="'+escapeHtmlAuth(b.buyoutRecipient||'')+'" placeholder="Empfänger / Firma / Person"></div><div class="form-group"><label>Zahlungsweise Buyout</label><select id="pt-buyout-method-'+b.id+'"><option value="transfer_advance" '+(b.buyoutPaymentMethod==='transfer_advance'||!b.buyoutPaymentMethod?'selected':'')+'>Vorab per Überweisung</option><option value="transfer_festival" '+(b.buyoutPaymentMethod==='transfer_festival'?'selected':'')+'>Per Überweisung zum Festival</option><option value="cash_festival" '+(b.buyoutPaymentMethod==='cash_festival'?'selected':'')+'>Bar zum Festival</option><option value="other" '+(b.buyoutPaymentMethod==='other'?'selected':'')+'>Sonstige / individuell</option></select></div><div class="form-row"><div class="form-group"><label>Fällig am</label><input type="date" id="pt-buyout-due-'+b.id+'" value="'+formatPaymentDateInput(b.buyoutDueDate)+'"></div><div class="form-group"><label>Bezahlt am</label><input type="date" id="pt-buyout-paid-date-'+b.id+'" value="'+formatPaymentDateInput(b.buyoutPaidDate)+'"></div></div><div class="checkbox-group"><input type="checkbox" id="pt-buyout-paid-'+b.id+'" '+(b.buyoutPaid?'checked':'')+'><label for="pt-buyout-paid-'+b.id+'">Buyout bezahlt</label></div></div>':'') +
 
                         '<div class="form-group">' +
-                            '<label>Zahlungsmodus reine Gage:</label>' +
+                            '<label>Zahlungsmodus reine Bandgage ('+fin.gage.net.toFixed(2)+' € netto / '+fin.gage.gross.toFixed(2)+' € brutto):</label>' +
                             '<select id="pt-mode-' + b.id + '" onchange="togglePtUI(\'' + b.id + '\')">' +
                                 '<option value="full" ' + (b.paymentTermsMainMode === 'full' ? 'selected' : '') + '>1. Gesamtzahlung</option>' +
                                 '<option value="split" ' + (b.paymentTermsMainMode === 'split' ? 'selected' : '') + '>2. Anzahlung / Restzahlung</option>' +
@@ -7337,7 +7341,7 @@ function loadFromLocalStorage() {
         }
 
         function exportPaymentTermsToCSV(targetBands) {
-            var headers = ["Bandname","Gage Netto (€)","Gage Steuer (%)","Booking Fee Netto (€)","Booking Fee Steuer (%)","Booking Fee Empfänger","Booking Fee Zahlungsweise","Booking Fee fällig","Booking Fee bezahlt am","Gage Brutto (€)","Buyout Netto (€)","Buyout Steuer (%)","Buyout Brutto (€)","Buyout Empfänger","Buyout Zahlungsweise","Buyout fällig","Buyout bezahlt am","Zahlungsmodus Gage","Zahlungsweise Details","Anzahlung (€ Brutto)","Anzahlung geplant","Anzahlung tatsächlich","Restbetrag (€ Brutto)","Restzahlung geplant","Restzahlung tatsächlich","Gesamtzahlung geplant","Gesamtzahlung tatsächlich","Ohne Rechnung","Status Anzahlung geleistet","Status Rest/Gesamt geleistet","Status Booking Fee bezahlt","Status Buyout bezahlt"];
+            var headers = ["Bandname","Vereinbarte Gage Netto inkl. Booking Fee (€)","Reine Bandgage Netto (€)","Gage Steuer (%)","Booking Fee Netto (€)","Booking Fee Steuer (%)","Booking Fee Empfänger","Booking Fee Zahlungsweise","Booking Fee fällig","Booking Fee bezahlt am","Gage Brutto (€)","Buyout Netto (€)","Buyout Steuer (%)","Buyout Brutto (€)","Buyout Empfänger","Buyout Zahlungsweise","Buyout fällig","Buyout bezahlt am","Zahlungsmodus Gage","Zahlungsweise Details","Anzahlung (€ Brutto)","Anzahlung geplant","Anzahlung tatsächlich","Restbetrag (€ Brutto)","Restzahlung geplant","Restzahlung tatsächlich","Gesamtzahlung geplant","Gesamtzahlung tatsächlich","Ohne Rechnung","Status Anzahlung geleistet","Status Rest/Gesamt geleistet","Status Booking Fee bezahlt","Status Buyout bezahlt"];
             var csvRows = [headers.join(";")];
 
             for (var i = 0; i < targetBands.length; i++) {
@@ -7353,7 +7357,7 @@ function loadFromLocalStorage() {
 
                 var row = [
                     '"' + (b.name || '') + '"',
-                    gageNetto.toFixed(2), taxRate, fin.booking.net.toFixed(2), fin.booking.rate, '"'+(b.bookingFeeRecipient||'')+'"', '"'+getBuyoutPaymentLabel(b.bookingFeePaymentMethod)+'"', '"'+formatDateDE(b.bookingFeeDueDate)+'"', '"'+formatDateDE(b.bookingFeePaidDate)+'"', totalBrutto.toFixed(2),
+                    fin.agreedNet.toFixed(2), gageNetto.toFixed(2), taxRate, fin.booking.net.toFixed(2), fin.booking.rate, '"'+(b.bookingFeeRecipient||'')+'"', '"'+getBuyoutPaymentLabel(b.bookingFeePaymentMethod)+'"', '"'+formatDateDE(b.bookingFeeDueDate)+'"', '"'+formatDateDE(b.bookingFeePaidDate)+'"', totalBrutto.toFixed(2),
                     fin.buyout.net.toFixed(2), fin.buyout.rate, fin.buyout.gross.toFixed(2), '"'+(b.buyoutRecipient||'')+'"', '"'+getBuyoutPaymentLabel(b.buyoutPaymentMethod)+'"', '"'+formatDateDE(b.buyoutDueDate)+'"', '"'+formatDateDE(b.buyoutPaidDate)+'"',
                     isSplit ? '"Anzahlung / Restzahlung"' : '"Gesamtzahlung"',
                     '"' + getPtText(b.paymentTermsType) + '"',
@@ -7457,9 +7461,9 @@ function loadFromLocalStorage() {
 
                 box(M,49,50,22,'Zahlungsmodell',modeLabel,blue);
                 box(M+54,49,65,22,'Zahlungsweise',getPtText(b.paymentTermsType),navy);
-                box(M+123,49,45,22,'Gage netto',money(gageNetto),navy);
+                box(M+123,49,45,22,'Bandgage netto',money(gageNetto),navy);
                 box(M+172,49,39,22,'Steuer gesamt',money(taxVal),navy);
-                box(M+215,49,58,22,'Gage brutto',money(totalBrutto),blue);
+                box(M+215,49,58,22,'Bandgage brutto',money(totalBrutto),blue);
 
                 doc.setTextColor(navy[0],navy[1],navy[2]); doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.text('ZAHLUNGSPLAN',M,81);
                 tableHeader(85);
@@ -7603,7 +7607,7 @@ function loadFromLocalStorage() {
             var targetBands = exportBandsList || bands;
             var headers = ["Bandname"];
             if (expBands) headers.push("Deal Abgelegt", "Ansprechpartner", "Telefon", "E-Mail");
-            if (expFinances) headers.push("Gage Netto (€)","Gage Steuer (%)","Booking Fee Netto (€)","Booking Fee Steuer (%)","Booking Fee Empfänger","Buyout Netto (€)","Buyout Steuer (%)","Buyout Empfänger","Buyout Zahlungsweise","Bandkosten Brutto (€)","Zahlungsweise Gage/Booking","Anzahlung Zahldatum","Rest Zahldatum");
+            if (expFinances) headers.push("Vereinbarte Gage Netto inkl. Booking Fee (€)","Reine Bandgage Netto (€)","Gage Steuer (%)","Booking Fee Netto (€)","Booking Fee Steuer (%)","Booking Fee Empfänger","Buyout Netto (€)","Buyout Steuer (%)","Buyout Empfänger","Buyout Zahlungsweise","Bandkosten Brutto (€)","Zahlungsweise Gage/Booking","Anzahlung Zahldatum","Rest Zahldatum");
             if (expRo) headers.push("Showday", "Start", "Ende", "Changeover (Min)");
             if (expHotel) headers.push("Hotel Benötigt", "Hotel Name", "EZ", "DZ", "Personen");
             if (expShuttle) headers.push("Shuttle Benötigt", "Hin Datum", "Hin Zeit", "Hin Flug", "Rück Datum", "Rück Zeit", "Fahrzeug", "Fahrer");
@@ -7619,7 +7623,7 @@ function loadFromLocalStorage() {
                     row.push(b.dealDone ? "Ja" : "Nein", '"' + (b.contactName || '') + '"', '"' + (b.contactPhone || '') + '"', '"' + (b.contactEmail || '') + '"');
                 }
                 if (expFinances) {
-                    row.push(gage.toFixed(2),(b.taxRate||0),fin.booking.net.toFixed(2),fin.booking.rate,'\"'+(b.bookingFeeRecipient||'')+'\"',fin.buyout.net.toFixed(2),fin.buyout.rate,'\"'+(b.buyoutRecipient||'')+'\"','\"'+getBuyoutPaymentLabel(b.buyoutPaymentMethod)+'\"',brutto.toFixed(2),'\"'+getPtText(b.paymentTermsType)+'\"','\"'+formatDateDE(b.advDate)+'\"','\"'+formatDateDE(b.fullPaidDate)+'\"');
+                    row.push(fin.agreedNet.toFixed(2),gage.toFixed(2),(b.taxRate||0),fin.booking.net.toFixed(2),fin.booking.rate,'\"'+(b.bookingFeeRecipient||'')+'\"',fin.buyout.net.toFixed(2),fin.buyout.rate,'\"'+(b.buyoutRecipient||'')+'\"','\"'+getBuyoutPaymentLabel(b.buyoutPaymentMethod)+'\"',brutto.toFixed(2),'\"'+getPtText(b.paymentTermsType)+'\"','\"'+formatDateDE(b.advDate)+'\"','\"'+formatDateDE(b.fullPaidDate)+'\"');
                 }
                 if (expRo) {
                     row.push('"' + (b.showday || '') + '"', '"' + (b.roStart || '') + '"', '"' + (b.roEnd || '') + '"', (b.roChangeover || 0));
@@ -7682,7 +7686,7 @@ function loadFromLocalStorage() {
                     var splitPct=Math.min(100,Math.max(0,Number(bf.ptSplitPct)||50));
                     var advanceAmount=brutto*(splitPct/100), remainderAmount=Math.max(0,brutto-advanceAmount);
                     html += '<div class="view-section"><strong class="export-band-name-title">' + bf.name + '</strong>' +
-                        '<div class="view-row"><span class="view-label">Gage Brutto:</span><span class="view-value export-highlight-amount">' + brutto.toFixed(2) + ' €</span></div>' +(fin.booking.net?'<div class="view-row"><span class="view-label">Booking Fee:</span><span class="view-value">'+fin.booking.gross.toFixed(2)+' € brutto · '+getBuyoutPaymentLabel(bf.bookingFeePaymentMethod)+' · fällig '+formatDateDE(bf.bookingFeeDueDate)+' · '+(bf.bookingFeePaid?'bezahlt':'offen')+' · '+(bf.bookingFeeRecipient||'-')+'</span></div>':'')+(fin.buyout.net?'<div class="view-row"><span class="view-label">Buyout:</span><span class="view-value">'+fin.buyout.gross.toFixed(2)+' € brutto · '+getBuyoutPaymentLabel(bf.buyoutPaymentMethod)+' · an '+(bf.buyoutRecipient||'-')+'</span></div>':'')+'<div class="view-row"><span class="view-label">Bandkosten gesamt:</span><span class="view-value export-highlight-amount">'+fin.totalGross.toFixed(2)+' €</span></div>' +
+                        '<div class="view-row"><span class="view-label">Reine Bandgage Brutto:</span><span class="view-value export-highlight-amount">' + brutto.toFixed(2) + ' €</span></div>' +(fin.booking.net?'<div class="view-row"><span class="view-label">Booking Fee:</span><span class="view-value">'+fin.booking.gross.toFixed(2)+' € brutto · '+getBuyoutPaymentLabel(bf.bookingFeePaymentMethod)+' · fällig '+formatDateDE(bf.bookingFeeDueDate)+' · '+(bf.bookingFeePaid?'bezahlt':'offen')+' · '+(bf.bookingFeeRecipient||'-')+'</span></div>':'')+(fin.buyout.net?'<div class="view-row"><span class="view-label">Buyout:</span><span class="view-value">'+fin.buyout.gross.toFixed(2)+' € brutto · '+getBuyoutPaymentLabel(bf.buyoutPaymentMethod)+' · an '+(bf.buyoutRecipient||'-')+'</span></div>':'')+'<div class="view-row"><span class="view-label">Bandkosten gesamt:</span><span class="view-value export-highlight-amount">'+fin.totalGross.toFixed(2)+' €</span></div>' +
                         '<div class="view-row"><span class="view-label">Zahlungsweise:</span><span class="view-value">' + getPtText(bf.paymentTermsType) + (bf.noInvoice?' · Ohne Rechnung':'') + '</span></div>';
                     if(isSplitPayment){
                         html+=exportPaymentLine('Anzahlung · '+splitPct.toFixed(0)+' %',advanceAmount,bf.advDueDate,!!bf.statusAdvPaid,bf.advDate)+
@@ -8020,7 +8024,7 @@ function loadFromLocalStorage() {
                     '</div>' +
 
                     '<div class="view-section"><h4>💶 Gage & Abrechnung</h4>' +
-                    '<div class="view-row"><span class="view-label">Gage:</span><span class="view-value">'+fin.gage.net.toFixed(2)+' € netto · '+fin.gage.rate+' % · '+fin.gage.gross.toFixed(2)+' € brutto</span></div>' +
+                    '<div class="view-row"><span class="view-label">Vereinbart inkl. Booking Fee:</span><span class="view-value">'+fin.agreedNet.toFixed(2)+' € netto</span></div>' + '<div class="view-row"><span class="view-label">Reine Bandgage:</span><span class="view-value">'+fin.gage.net.toFixed(2)+' € netto · '+fin.gage.rate+' % · '+fin.gage.gross.toFixed(2)+' € brutto</span></div>' +
                     (fin.booking.net?'<div class="view-row"><span class="view-label">Booking Fee:</span><span class="view-value">'+fin.booking.net.toFixed(2)+' € netto · '+fin.booking.rate+' % · '+fin.booking.gross.toFixed(2)+' € brutto'+(b.bookingFeeRecipient?' · '+escapeHtmlAuth(b.bookingFeeRecipient):'')+'</span></div>':'')+
                     (fin.buyout.net?'<div class="view-row"><span class="view-label">Buyout:</span><span class="view-value">'+fin.buyout.net.toFixed(2)+' € netto · '+fin.buyout.rate+' % · '+fin.buyout.gross.toFixed(2)+' € brutto · '+getBuyoutPaymentLabel(b.buyoutPaymentMethod)+(b.buyoutRecipient?' · an '+escapeHtmlAuth(b.buyoutRecipient):'')+'</span></div>':'')+
                     '<div class="view-row"><span class="view-label">Steuern gesamt:</span><span class="view-value">'+fin.totalTax.toFixed(2)+' €</span></div>' +
@@ -8127,8 +8131,8 @@ function loadFromLocalStorage() {
             var c=document.getElementById('fees-list');if(!c)return;c.innerHTML='';if(!bands.length){c.innerHTML='<p style="color:var(--text-muted);text-align:center;">Keine Bands eingetragen.</p>';return;}
             var m=function(v){return Number(v||0).toLocaleString('de-DE',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';},tn=0,tt=0,tg=0;
             var html='<table class="ro-modern-table fees-table"><thead><tr><th>Band / Bestandteil</th><th class="num">Netto</th><th class="num">Steuer</th><th class="num">Steuerbetrag</th><th class="num">Brutto</th></tr></thead><tbody>';
-            bands.forEach(function(b){var f=getBandFeeBreakdown(b);tn+=f.totalNet;tt+=f.totalTax;tg+=f.totalGross;html+='<tr><td><strong>'+escapeHtmlAuth(String(b.name||'').toUpperCase())+'</strong><div style="font-size:.68rem;color:var(--text-muted);margin-top:3px">Gage'+(f.booking.net?' · Booking Fee':'')+(f.buyout.net?' · Buyout':'')+'</div></td><td class="num">'+m(f.totalNet)+'</td><td class="num">mehrere</td><td class="num">'+m(f.totalTax)+'</td><td class="num"><strong class="cost-val">'+m(f.totalGross)+'</strong></td></tr>';
-                [['Gage',f.gage,''],['Booking Fee',f.booking,b.bookingFeeRecipient],['Buyout',f.buyout,b.buyoutRecipient]].forEach(function(x){if(!x[1].net&&x[0]!=='Gage')return;html+='<tr style="font-size:.78rem"><td style="padding-left:22px">↳ '+x[0]+(x[2]?' · '+escapeHtmlAuth(x[2]):'')+'</td><td class="num">'+m(x[1].net)+'</td><td class="num"><span class="'+(x[1].rate?'tax-active':'')+'">'+x[1].rate.toLocaleString('de-DE',{maximumFractionDigits:2})+' %</span></td><td class="num">'+m(x[1].tax)+'</td><td class="num">'+m(x[1].gross)+'</td></tr>';});});
+            bands.forEach(function(b){var f=getBandFeeBreakdown(b);tn+=f.totalNet;tt+=f.totalTax;tg+=f.totalGross;html+='<tr><td><strong>'+escapeHtmlAuth(String(b.name||'').toUpperCase())+'</strong><div style="font-size:.68rem;color:var(--text-muted);margin-top:3px">Vereinbart inkl. Booking Fee'+(f.buyout.net?' · Buyout zusätzlich':'')+'</div></td><td class="num">'+m(f.totalNet)+'</td><td class="num">mehrere</td><td class="num">'+m(f.totalTax)+'</td><td class="num"><strong class="cost-val">'+m(f.totalGross)+'</strong></td></tr>';
+                [['Reine Bandgage',f.gage,''],['Booking Fee (enthalten)',f.booking,b.bookingFeeRecipient],['Buyout (zusätzlich)',f.buyout,b.buyoutRecipient]].forEach(function(x){if(!x[1].net&&x[0]!=='Gage')return;html+='<tr style="font-size:.78rem"><td style="padding-left:22px">↳ '+x[0]+(x[2]?' · '+escapeHtmlAuth(x[2]):'')+'</td><td class="num">'+m(x[1].net)+'</td><td class="num"><span class="'+(x[1].rate?'tax-active':'')+'">'+x[1].rate.toLocaleString('de-DE',{maximumFractionDigits:2})+' %</span></td><td class="num">'+m(x[1].tax)+'</td><td class="num">'+m(x[1].gross)+'</td></tr>';});});
             html+='</tbody><tfoot><tr><td>GESAMTSUMME</td><td class="num">'+m(tn)+'</td><td class="num">—</td><td class="num">'+m(tt)+'</td><td class="num"><strong class="cost-val">'+m(tg)+'</strong></td></tr></tfoot></table>';c.innerHTML=html;
         }
 
