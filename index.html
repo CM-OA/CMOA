@@ -6454,7 +6454,7 @@ function loadFromLocalStorage() {
                             } catch (displayNameError) {
                                 console.warn('Getränkename konnte nicht geladen werden:', displayNameError);
                             }
-                            treeItems.push('<li class="tree-node-item"><strong>' + cnt + 'x</strong> ' + dDisplayName + (b.drinks[dKey].comment ? ' <em>(' + b.drinks[dKey].comment + ')</em>' : '') + '</li>');
+                            treeItems.push('<li class="tree-node-item"><strong>' + cnt + 'x</strong> ' + escapeHtmlAuth(dDisplayName) + (b.drinks[dKey].comment ? ' <em>(' + escapeHtmlAuth(b.drinks[dKey].comment) + ')</em>' : '') + '</li>');
                         }
                     }
 
@@ -6470,7 +6470,7 @@ function loadFromLocalStorage() {
                     for (var f = 0; f < b.extraFood.length; f++) {
                         var food = b.extraFood[f];
                         if (food.name && (parseInt(food.count) || 0) > 0) {
-                            foodArray.push('• <strong>' + food.count + 'x</strong> ' + food.name + (food.comment ? ' <em>(' + food.comment + ')</em>' : ''));
+                            foodArray.push('• <strong>' + food.count + 'x</strong> ' + escapeHtmlAuth(food.name) + (food.comment ? ' <em>(' + escapeHtmlAuth(food.comment) + ')</em>' : ''));
                         }
                     }
 
@@ -6478,7 +6478,7 @@ function loadFromLocalStorage() {
                     for (var s = 0; s < b.extraSpecials.length; s++) {
                         var special = b.extraSpecials[s];
                         if (special.text && special.text.trim()) {
-                            specialArray.push('• ' + special.text + (special.comment ? ' <em>(' + special.comment + ')</em>' : ''));
+                            specialArray.push('• ' + escapeHtmlAuth(special.text) + (special.comment ? ' <em>(' + escapeHtmlAuth(special.comment) + ')</em>' : ''));
                         }
                     }
 
@@ -6544,7 +6544,7 @@ function loadFromLocalStorage() {
                         bodyHtml += '<div class="catering-item-row">' +
                             '<div style="flex:2; font-weight:600; font-size:0.85rem;">' + drinkName + '</div>' +
                             '<div style="flex:1;"><input type="number" id="cat-drink-cnt-' + b.id + '-' + d + '" placeholder="Anzahl" value="' + (dData.count || '') + '"></div>' +
-                            '<div style="flex:2;"><input type="text" id="cat-drink-cmt-' + b.id + '-' + d + '" placeholder="Kommentar..." value="' + (dData.comment || '') + '"></div>' +
+                            '<div style="flex:2;"><input type="text" id="cat-drink-cmt-' + b.id + '-' + d + '" placeholder="Kommentar..." value="' + escapeHtmlAuth((dData.comment || '')) + '"></div>' +
                         '</div>';
                     }
 
@@ -6554,10 +6554,10 @@ function loadFromLocalStorage() {
                         if (DEFAULT_DRINKS.indexOf(customKey) === -1) {
                             var cData = b.drinks[customKey] || { count: 0, comment: '' };
                             bodyHtml += '<div class="catering-item-row">' +
-                                '<div style="flex:2; font-weight:600; font-size:0.85rem;">' + customKey + '</div>' +
+                                '<div style="flex:2; font-weight:600; font-size:0.85rem;">' + escapeHtmlAuth(customKey) + '</div>' +
                                 '<div style="flex:1;"><input type="number" id="cat-cdrink-cnt-' + b.id + '-' + cIdx + '" value="' + (cData.count || '') + '"></div>' +
-                                '<div style="flex:2;"><input type="text" id="cat-cdrink-cmt-' + b.id + '-' + cIdx + '" value="' + (cData.comment || '') + '"></div>' +
-                                '<button class="btn-danger" style="padding:4px 8px;" onclick="removeCustomDrink(\'' + b.id + '\', \'' + customKey + '\')">🗑️</button>' +
+                                '<div style="flex:2;"><input type="text" id="cat-cdrink-cmt-' + b.id + '-' + cIdx + '" value="' + escapeHtmlAuth((cData.comment || '')) + '"></div>' +
+                                '<button class="btn-danger" style="padding:4px 8px;" onclick="removeCustomDrink(\'' + b.id + '\', ' + cIdx + ')">🗑️</button>' +
                             '</div>';
                             cIdx++;
                         }
@@ -6572,9 +6572,9 @@ function loadFromLocalStorage() {
                     for (var f = 0; f < b.extraFood.length; f++) {
                         var food = b.extraFood[f];
                         bodyHtml += '<div class="catering-item-row">' +
-                            '<div style="flex:2;"><input type="text" id="cat-food-name-' + b.id + '-' + f + '" value="' + (food.name || '') + '" placeholder="Speise / Snack"></div>' +
+                            '<div style="flex:2;"><input type="text" id="cat-food-name-' + b.id + '-' + f + '" value="' + escapeHtmlAuth((food.name || '')) + '" placeholder="Speise / Snack"></div>' +
                             '<div style="flex:1;"><input type="number" id="cat-food-cnt-' + b.id + '-' + f + '" value="' + (food.count || '') + '" placeholder="Anzahl"></div>' +
-                            '<div style="flex:2;"><input type="text" id="cat-food-cmt-' + b.id + '-' + f + '" value="' + (food.comment || '') + '" placeholder="Notiz"></div>' +
+                            '<div style="flex:2;"><input type="text" id="cat-food-cmt-' + b.id + '-' + f + '" value="' + escapeHtmlAuth((food.comment || '')) + '" placeholder="Notiz"></div>' +
                             '<button class="btn-danger" style="padding:4px 8px;" onclick="removeExtraFood(\'' + b.id + '\', ' + f + ')">🗑️</button>' +
                         '</div>';
                     }
@@ -6585,8 +6585,8 @@ function loadFromLocalStorage() {
                     for (var s = 0; s < b.extraSpecials.length; s++) {
                         var special = b.extraSpecials[s];
                         bodyHtml += '<div class="catering-item-row">' +
-                            '<div style="flex:2;"><input type="text" id="cat-special-text-' + b.id + '-' + s + '" value="' + (special.text || '') + '" placeholder="Besonderheit / Sonderwunsch"></div>' +
-                            '<div style="flex:2;"><input type="text" id="cat-special-cmt-' + b.id + '-' + s + '" value="' + (special.comment || '') + '" placeholder="Notiz"></div>' +
+                            '<div style="flex:2;"><input type="text" id="cat-special-text-' + b.id + '-' + s + '" value="' + escapeHtmlAuth((special.text || '')) + '" placeholder="Besonderheit / Sonderwunsch"></div>' +
+                            '<div style="flex:2;"><input type="text" id="cat-special-cmt-' + b.id + '-' + s + '" value="' + escapeHtmlAuth((special.comment || '')) + '" placeholder="Notiz"></div>' +
                             '<button class="btn-danger" style="padding:4px 8px;" onclick="removeSpecialCatering(\'' + b.id + '\', ' + s + ')">🗑️</button>' +
                         '</div>';
                     }
@@ -6605,6 +6605,7 @@ function loadFromLocalStorage() {
                     if (toggleBtn) {
                         toggleBtn.onclick = function(e) {
                             e.stopPropagation();
+                            captureOpenCateringInputs();
                             openCateringBands[b.id] = !openCateringBands[b.id];
                             renderCateringPage();
                         };
@@ -6616,49 +6617,58 @@ function loadFromLocalStorage() {
             renderCateringGlobalTotals();
         }
 
+        // Vor Strukturänderungen alle geöffneten Formulare sichern, ohne sie zu schließen.
+        function captureCateringInputs(bandId) {
+            var b = getBandById(bandId);
+            if (!b) return;
+            function read(id, apply) {
+                var el = document.getElementById(id);
+                if (el) apply(el.value);
+            }
+            function number(id, target, key, fallback) {
+                read(id, function(value) { target[key] = Math.max(0, parseInt(value) || fallback || 0); });
+            }
+            number('cat-inp-pax-' + bandId, b, 'paxCount');
+            number('cat-inp-vip-' + bandId, b, 'vipGuests');
+            number('cat-inp-days-' + bandId, b, 'cateringDays', 1);
+            number('cat-inp-meat-' + bandId, b, 'meatCount');
+            number('cat-inp-veg-' + bandId, b, 'vegetarianCount');
+            number('cat-inp-vegan-' + bandId, b, 'veganCount');
+            if (!b.drinks) b.drinks = {};
+            var customIndex = 0;
+            var keys = DEFAULT_DRINKS.concat(Object.keys(b.drinks).filter(function(key) { return DEFAULT_DRINKS.indexOf(key) === -1; }));
+            keys.forEach(function(key) {
+                var standardIndex = DEFAULT_DRINKS.indexOf(key);
+                var prefix = standardIndex === -1 ? 'cat-cdrink-' : 'cat-drink-';
+                var index = standardIndex === -1 ? customIndex++ : standardIndex;
+                var countInput = document.getElementById(prefix + 'cnt-' + bandId + '-' + index);
+                if (!countInput) return;
+                var entry = Object.prototype.hasOwnProperty.call(b.drinks, key) ? b.drinks[key] : {};
+                entry.count = Math.max(0, parseInt(countInput.value) || 0);
+                read(prefix + 'cmt-' + bandId + '-' + index, function(value) { entry.comment = value; });
+                Object.defineProperty(b.drinks, key, { value: entry, enumerable: true, configurable: true, writable: true });
+            });
+            (b.extraFood || []).forEach(function(food, index) {
+                read('cat-food-name-' + bandId + '-' + index, function(value) { food.name = value; });
+                number('cat-food-cnt-' + bandId + '-' + index, food, 'count');
+                read('cat-food-cmt-' + bandId + '-' + index, function(value) { food.comment = value; });
+            });
+            (b.extraSpecials || []).forEach(function(item, index) {
+                read('cat-special-text-' + bandId + '-' + index, function(value) { item.text = value; });
+                read('cat-special-cmt-' + bandId + '-' + index, function(value) { item.comment = value; });
+            });
+        }
+
+        function captureOpenCateringInputs() {
+            bands.forEach(function(b) { if (openCateringBands[b.id]) captureCateringInputs(b.id); });
+        }
+
         function saveSingleBandCatering(bandId) {
             var b = getBandById(bandId);
             if (!b) return;
 
-            var getVal = function(id) { var el = document.getElementById(id); return el ? el.value : ''; };
-
-            b.paxCount = parseInt(getVal('cat-inp-pax-' + bandId)) || 0;
-            b.vipGuests = parseInt(getVal('cat-inp-vip-' + bandId)) || 0;
-            b.cateringDays = parseInt(getVal('cat-inp-days-' + bandId)) || 1;
-
-            if (!b.drinks) b.drinks = {};
-
-            for (var d = 0; d < DEFAULT_DRINKS.length; d++) {
-                var dName = DEFAULT_DRINKS[d];
-                var cnt = parseInt(getVal('cat-drink-cnt-' + bandId + '-' + d)) || 0;
-                var cmt = getVal('cat-drink-cmt-' + bandId + '-' + d);
-                b.drinks[dName] = { count: cnt, comment: cmt };
-            }
-
-            var cIdx = 0;
-            for (var customKey in b.drinks) {
-                if (DEFAULT_DRINKS.indexOf(customKey) === -1) {
-                    var cCnt = parseInt(getVal('cat-cdrink-cnt-' + bandId + '-' + cIdx)) || 0;
-                    var cCmt = getVal('cat-cdrink-cmt-' + bandId + '-' + cIdx);
-                    b.drinks[customKey] = { count: cCnt, comment: cCmt };
-                    cIdx++;
-                }
-            }
-
-            if (Array.isArray(b.extraFood)) {
-                for (var f = 0; f < b.extraFood.length; f++) {
-                    b.extraFood[f].name = getVal('cat-food-name-' + bandId + '-' + f);
-                    b.extraFood[f].count = parseInt(getVal('cat-food-cnt-' + bandId + '-' + f)) || 0;
-                    b.extraFood[f].comment = getVal('cat-food-cmt-' + bandId + '-' + f);
-                }
-            }
-
-            if (!Array.isArray(b.extraSpecials)) b.extraSpecials = [{ text: '', comment: '' }];
-            if (b.extraSpecials.length === 0) b.extraSpecials.push({ text: '', comment: '' });
-            for (var s = 0; s < b.extraSpecials.length; s++) {
-                b.extraSpecials[s].text = getVal('cat-special-text-' + bandId + '-' + s);
-                b.extraSpecials[s].comment = getVal('cat-special-cmt-' + bandId + '-' + s);
-            }
+            captureOpenCateringInputs();
+            captureCateringInputs(bandId);
 
             saveToStorage();
             openCateringBands[bandId] = false;
@@ -6667,6 +6677,7 @@ function loadFromLocalStorage() {
         }
 
         function addCustomDrink(bandId) {
+            captureOpenCateringInputs();
             var b = getBandById(bandId);
             if (!b) return;
             var input = document.getElementById('add-drink-name-' + bandId);
@@ -6674,16 +6685,29 @@ function loadFromLocalStorage() {
             if (!name) return;
 
             if (!b.drinks) b.drinks = {};
-            if (!b.drinks[name]) b.drinks[name] = { count: 0, comment: '' };
+            var displayNames = Array.isArray(window.cateringDrinkNames) ? window.cateringDrinkNames : DEFAULT_DRINKS;
+            var normalized = name.toLocaleLowerCase('de-DE');
+            var duplicate = Object.keys(b.drinks).some(function(key) { return key.toLocaleLowerCase('de-DE') === normalized; }) ||
+                DEFAULT_DRINKS.some(function(key) { return key.toLocaleLowerCase('de-DE') === normalized; }) ||
+                displayNames.some(function(key) { return key.toLocaleLowerCase('de-DE') === normalized; });
+            if (duplicate) {
+                alert('Dieses Getränk ist bereits vorhanden. Bitte die bestehende Zeile verwenden.');
+                return;
+            }
+            Object.defineProperty(b.drinks, name, { value: { count: 0, comment: '' }, enumerable: true, configurable: true, writable: true });
 
             saveToStorage();
             openCateringBands[bandId] = true;
             renderCateringPage();
         }
 
-        function removeCustomDrink(bandId, drinkName) {
+        function removeCustomDrink(bandId, drinkIndex) {
+            captureOpenCateringInputs();
             var b = getBandById(bandId);
             if (!b || !b.drinks) return;
+            var customKeys = Object.keys(b.drinks).filter(function(key) { return DEFAULT_DRINKS.indexOf(key) === -1; });
+            var drinkName = customKeys[drinkIndex];
+            if (drinkName === undefined) return;
             delete b.drinks[drinkName];
             saveToStorage();
             openCateringBands[bandId] = true;
@@ -6691,6 +6715,7 @@ function loadFromLocalStorage() {
         }
 
         function addExtraFood(bandId) {
+            captureOpenCateringInputs();
             var b = getBandById(bandId);
             if (!b) return;
             if (!Array.isArray(b.extraFood)) b.extraFood = [];
@@ -6701,6 +6726,7 @@ function loadFromLocalStorage() {
         }
 
         function removeExtraFood(bandId, index) {
+            captureOpenCateringInputs();
             var b = getBandById(bandId);
             if (!b || !b.extraFood) return;
             b.extraFood.splice(index, 1);
@@ -6710,6 +6736,7 @@ function loadFromLocalStorage() {
         }
 
         function addSpecialCatering(bandId) {
+            captureOpenCateringInputs();
             var b = getBandById(bandId);
             if (!b) return;
             if (!Array.isArray(b.extraSpecials)) b.extraSpecials = [{ text: '', comment: '' }];
@@ -6720,6 +6747,7 @@ function loadFromLocalStorage() {
         }
 
         function removeSpecialCatering(bandId, index) {
+            captureOpenCateringInputs();
             var b = getBandById(bandId);
             if (!b || !b.extraSpecials) return;
             b.extraSpecials.splice(index, 1);
@@ -6740,7 +6768,7 @@ function loadFromLocalStorage() {
             var container = document.getElementById('catering-global-totals');
             if (!container) return;
 
-            var drinkTotals = {};
+            var drinkTotals = Object.create(null);
             var foodTotals = [];
 
             for (var i = 0; i < bands.length; i++) {
@@ -6750,7 +6778,9 @@ function loadFromLocalStorage() {
                         var cnt = parseInt(b.drinks[dKey].count) || 0;
                         if (cnt > 0) {
                             var comment = b.drinks[dKey].comment ? b.drinks[dKey].comment.trim() : '';
-                            var fullDrinkLabel = comment !== '' ? dKey + ' (' + comment + ')' : dKey;
+                            var standardIndex = DEFAULT_DRINKS.indexOf(dKey);
+                            var displayName = standardIndex !== -1 && Array.isArray(window.cateringDrinkNames) ? window.cateringDrinkNames[standardIndex] : dKey;
+                            var fullDrinkLabel = comment !== '' ? displayName + ' (' + comment + ')' : displayName;
                             drinkTotals[fullDrinkLabel] = (drinkTotals[fullDrinkLabel] || 0) + cnt;
                         }
                     }
@@ -6772,7 +6802,9 @@ function loadFromLocalStorage() {
 
             var html = '<strong>🥤 Getränke Gesamtsummen (Alle Bands):</strong><div style="margin-top:6px; margin-bottom:12px;">';
             var hasDrinks = false;
-            for (var drinkLabel in drinkTotals) {
+            var sortedDrinkLabels = Object.keys(drinkTotals).sort(function(a, b) { return a.localeCompare(b, 'de', { sensitivity: 'base', numeric: true }); });
+            for (var di = 0; di < sortedDrinkLabels.length; di++) {
+                var drinkLabel = sortedDrinkLabels[di];
                 hasDrinks = true;
                 html += '<div class="stat-row"><span>' + drinkLabel + ':</span><strong>' + drinkTotals[drinkLabel] + ' Stk.</strong></div>';
             }
@@ -9747,14 +9779,6 @@ function loadFromLocalStorage() {
                         unassigned += Math.max(0, pax - m - v - vg);
                     }
                 }
-
-                var totalHtml = container.innerHTML;
-                for (var dn = 0; dn < DEFAULT_CATERING_DRINK_NAMES.length; dn++) {
-                    if (DEFAULT_CATERING_DRINK_NAMES[dn] !== cateringDrinkNames[dn]) {
-                        totalHtml = totalHtml.split(DEFAULT_CATERING_DRINK_NAMES[dn]).join(cateringDrinkNames[dn]);
-                    }
-                }
-                container.innerHTML = totalHtml;
 
                 var box = document.createElement('div');
                 box.style.cssText = 'background:var(--card-bg); border:1px solid var(--border); border-radius:8px; padding:10px; margin-bottom:12px;';
