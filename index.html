@@ -2177,6 +2177,10 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
     });
     </script>
 
+<style>
+#catering-shopping-dialog{width:min(760px,calc(100vw - 24px));max-height:90dvh;box-sizing:border-box;border:1px solid var(--border);border-radius:18px;padding:20px;background:var(--card-bg);color:var(--text-main);overflow:auto}#catering-shopping-dialog::backdrop{background:rgba(0,0,0,.65)}
+.shopping-toolbar,.shopping-export-heading,.shopping-item-head{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}.shopping-toolbar h2,.shopping-export-heading h3{margin:0}.shopping-toolbar p{margin:6px 0}.shopping-actions{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}.shopping-group{margin:22px 0 10px;padding-bottom:8px;border-bottom:2px solid var(--accent-blue)}.shopping-item{padding:14px;margin:10px 0;border:1px solid var(--border);border-radius:12px;background:var(--input-bg)}.shopping-item-head label{display:flex;align-items:center;gap:8px;min-width:0;overflow-wrap:anywhere;flex:1}.shopping-item-head input[type=checkbox]{width:20px;height:20px;flex-shrink:0}.shopping-item-head button{padding:6px}.shopping-note{font-size:.84rem;color:var(--text-muted);overflow-wrap:anywhere;margin:8px 0}.shopping-quantities{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-top:12px;align-items:center}.shopping-quantities small{display:block;margin-bottom:5px;color:var(--text-muted)}.shopping-quantities b{display:block;overflow-wrap:anywhere;font-size:.93rem}.shopping-quantities input{width:100%;min-width:0;box-sizing:border-box}.shopping-rest{color:var(--accent-blue)}.shopping-done{border-color:var(--accent-green)}.shopping-done .shopping-item-head strong{text-decoration:line-through;color:var(--text-muted)}.shopping-add-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}.shopping-add-grid input{width:100%;min-width:0;box-sizing:border-box}#shopping-save-status{font-size:.83rem;color:var(--accent-green);min-height:1.2em}@media(max-width:480px){#catering-shopping-dialog{padding:14px}.shopping-quantities{gap:8px}.shopping-quantities b{font-size:.82rem}.shopping-add-grid{grid-template-columns:1fr}}
+</style>
 </head>
 
 <body data-design="steel">
@@ -2699,7 +2703,7 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
 
             <!-- CATERING EXPORT KACHEL AM ENDE DER LISTE -->
             <div class="card" id="cat-export-card" style="border: 1px solid var(--accent-blue); margin-top:20px;">
-                <h3 style="color:var(--accent-blue);">📤 Catering Export</h3>
+                <div class="shopping-export-heading"><h3 style="color:var(--accent-blue);">📤 Catering Export</h3><button class="btn-primary" onclick="openCateringShopping()">🛒 Einkaufsliste</button></div>
                 
                 <div class="form-group">
                     <label>1. Bandauswahl wählen:</label>
@@ -3788,6 +3792,7 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
             if(module==='access_permits') return {accessPermits:Array.isArray(accessPermits)?accessPermits:[]};
             if(module==='todos') return {manualTodos:Array.isArray(manualTodos)?manualTodos:[],eventNeeds:Array.isArray(eventNeeds)?eventNeeds:[],autoTodoDone:autoTodoDone||{}};
             if(module==='bands') return {bands:(bands||[]).map(function(b){return bandSlice(b,module);}),bandsEnabled:eventBandsEnabled!==false};
+            if(module==='catering') return {bands:(bands||[]).map(function(b){return bandSlice(b,module);}),shoppingList:cateringShopping};
             if(module==='hotel') return {bands:(bands||[]).map(function(b){return bandSlice(b,module);}),hotelCostsList:Array.isArray(hotelCostsList)?hotelCostsList:[]};
             if(module==='shuttle') return {bands:(bands||[]).map(function(b){return bandSlice(b,module);}),shuttleTripLog:shuttleTripLog||{},shuttleVehicles:Array.isArray(shuttleVehicles)?shuttleVehicles:[]};
             if(module==='fees') return {bands:(bands||[]).map(function(b){return bandSlice(b,module);}),productionEntries:Array.isArray(productionEntries)?productionEntries:[],productionTasks:Array.isArray(productionTasks)?productionTasks:[],productionCategories:productionCategories};
@@ -3809,6 +3814,7 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
             if(module==='accreditation'){akkDb=Array.isArray(data.akkDb)?data.akkDb:[];return;}
             if(module==='access_permits'){accessPermits=Array.isArray(data.accessPermits)?data.accessPermits:[];return;}
             if(module==='todos'){manualTodos=Array.isArray(data.manualTodos)?data.manualTodos:[];eventNeeds=Array.isArray(data.eventNeeds)?data.eventNeeds:[];autoTodoDone=data.autoTodoDone && typeof data.autoTodoDone==='object' && !Array.isArray(data.autoTodoDone)?data.autoTodoDone:{};return;}
+            if(module==='catering') {var shopping=data.shoppingList||{};cateringShopping={entries:shopping.entries&&typeof shopping.entries==='object'&&!Array.isArray(shopping.entries)?shopping.entries:{},custom:Array.isArray(shopping.custom)?shopping.custom:[]};}
             if(module==='hotel' && Array.isArray(data.hotelCostsList)) hotelCostsList=data.hotelCostsList;
             if(module==='fees'){productionEntries=Array.isArray(data.productionEntries)?data.productionEntries:[];productionTasks=Array.isArray(data.productionTasks)?data.productionTasks:[];productionCategories=Array.isArray(data.productionCategories)?data.productionCategories.slice():['Aufbau','Orga','Catering','Bühne','Behörden','Logistik','Erledigungen'];productionTasks.concat(productionEntries).forEach(function(x){if(x.category&&!productionCategories.includes(x.category))productionCategories.push(x.category);});}
             if(module==='shuttle') {
@@ -3900,6 +3906,7 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
         }
         async function migrateLegacyStateIfNeeded(){ return false; }
         async function loadPhase2CloudData(){
+            cateringShopping={entries:{},custom:[]};
             bands=[];manualTodos=[];autoTodoDone={};eventNeeds=[];hotelCostsList=[];shuttleTripLog={};shuttleVehicles=[];productionEntries=[];productionTasks=[];productionCategories=['Aufbau','Orga','Catering','Bühne','Behörden','Logistik','Erledigungen'];akkDb=[];accessPermits=[];inventoryPurchases=[];inventoryPurchaseTotal=0;
             eventBandsEnabled=currentEvent&&currentEvent._bandsEnabled===false?false:true;
             await migrateLegacyStateIfNeeded();
@@ -4042,7 +4049,7 @@ function loadFromLocalStorage() {
         }
 
         function exportBackup() {
-            var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({ bands: bands, manualTodos: manualTodos, autoTodoDone:autoTodoDone, eventNeeds:eventNeeds, hotelCostsList: hotelCostsList, shuttleTripLog: shuttleTripLog, shuttleVehicles: shuttleVehicles, productionEntries: productionEntries, akkDb: akkDb }));
+            var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({ cateringShopping:cateringShopping, bands: bands, manualTodos: manualTodos, autoTodoDone:autoTodoDone, eventNeeds:eventNeeds, hotelCostsList: hotelCostsList, shuttleTripLog: shuttleTripLog, shuttleVehicles: shuttleVehicles, productionEntries: productionEntries, akkDb: akkDb }));
             var downloadAnchor = document.createElement('a');
             downloadAnchor.setAttribute("href", dataStr);
             downloadAnchor.setAttribute("download", "CMOA_2027_Backup.json");
@@ -4061,7 +4068,7 @@ function loadFromLocalStorage() {
                 try {
                     var imported = JSON.parse(e.target.result);
                     if (Array.isArray(imported)) { bands = imported; normalizeAllBandNames(); }
-                    else if (imported.bands) { bands = imported.bands || []; normalizeAllBandNames(); manualTodos = imported.manualTodos || []; autoTodoDone=imported.autoTodoDone || {}; eventNeeds=imported.eventNeeds||[]; hotelCostsList = imported.hotelCostsList || []; shuttleTripLog = imported.shuttleTripLog || {}; shuttleVehicles = imported.shuttleVehicles || []; productionEntries = imported.productionEntries || []; akkDb = imported.akkDb || imported.akkreditierung || []; }
+                    else if (imported.bands) { cateringShopping=imported.cateringShopping||{entries:{},custom:[]}; bands = imported.bands || []; normalizeAllBandNames(); manualTodos = imported.manualTodos || []; autoTodoDone=imported.autoTodoDone || {}; eventNeeds=imported.eventNeeds||[]; hotelCostsList = imported.hotelCostsList || []; shuttleTripLog = imported.shuttleTripLog || {}; shuttleVehicles = imported.shuttleVehicles || []; productionEntries = imported.productionEntries || []; akkDb = imported.akkDb || imported.akkreditierung || []; }
                     saveToStorage();
                     alert("✅ Backup erfolgreich geladen!");
                     showPage('main-page');
@@ -9739,6 +9746,7 @@ function loadFromLocalStorage() {
                 }
                 applyDrinkDisplayNames();
                 updateDietSummary();
+                if(document.getElementById('catering-shopping-dialog')&&document.getElementById('catering-shopping-dialog').open)renderCateringShopping();
             };
 
             var originalSaveSingleBandCatering = saveSingleBandCatering;
@@ -10816,5 +10824,121 @@ function loadFromLocalStorage() {
 })();
 </script>
 
+<dialog id="catering-shopping-dialog" aria-labelledby="shopping-title">
+ <div class="shopping-toolbar"><div><h2 id="shopping-title">🛒 Einkaufsliste</h2><p id="shopping-event"></p></div><button class="btn-primary" onclick="document.getElementById('catering-shopping-dialog').close()" aria-label="Schließen">✕</button></div>
+ <p id="shopping-progress"></p><p class="shopping-note">Alle Bands · Der Bedarf wird aus dem Catering berechnet. Unterschiedliche Sorten und Hinweise bleiben getrennt. Bei verändertem Bedarf wird eine erledigte Position wieder geöffnet.</p>
+ <div class="shopping-actions"><button class="btn-primary" onclick="exportShoppingPDF()">📄 PDF</button><button class="btn-primary" onclick="exportShoppingExcel()">📊 Excel</button><button class="btn-primary" onclick="shareCateringShopping()">↗ Teilen</button></div>
+ <p id="shopping-save-status" role="status" aria-live="polite"></p><button class="btn-primary" id="shopping-retry" hidden onclick="persistCateringShopping()">Erneut speichern</button><div id="shopping-items"></div>
+ <section id="shopping-custom-form"><h3 class="shopping-group">＋ Eigener Artikel</h3><div class="shopping-add-grid"><label>Artikel<input id="shopping-add-name" placeholder="z. B. Eiswürfel"></label><label>Menge<input id="shopping-add-amount" type="number" min="0" step="any" placeholder="Menge"></label><label>Einheit<input id="shopping-add-unit" value="Stk." placeholder="kg, Packungen …"></label><label>Hinweis<input id="shopping-add-note" placeholder="Optional"></label></div><button class="btn-primary" onclick="addCateringShopping()">＋ Hinzufügen</button></section>
+ <section id="shopping-share-fallback" hidden><h3>Liste versenden</h3><textarea id="shopping-share-text" rows="8" readonly style="width:100%"></textarea><div class="shopping-actions"><button class="btn-primary" onclick="copyCateringShopping()">Text kopieren</button><button class="btn-primary" onclick="emailCateringShopping()">✉ E-Mail vorbereiten</button></div></section>
+</dialog>
+
+<script>
+        var cateringShopping = { entries: {}, custom: [] };
+        var cateringShoppingRows = [];
+        var cateringShoppingSaving = false;
+        function shoppingEscape(v) { return escapeHtmlAuth(v); }
+        function shoppingName() { return currentEvent && (currentEvent.short_name || currentEvent.name) || 'Veranstaltung'; }
+        function shoppingNumber(v) { var n=Number(String(v).replace(',','.'));return Number.isFinite(n)?Math.max(0,n):0; }
+        function shoppingNormalize(v) {return String(v||'').trim().replace(/\s+/g,' ').toLocaleLowerCase('de-DE');}
+        function shoppingBuildRows() {
+            var map = new Map();
+            function add(group,name,amount,note,unit) {
+                name=String(name||'').trim();note=String(note||'').trim();if(!name||amount<=0)return;
+                var key=JSON.stringify([group,shoppingNormalize(name),shoppingNormalize(note),unit]);
+                if(!map.has(key))map.set(key,{key:key,group:group,name:name,note:note,unit:unit,need:0});
+                map.get(key).need+=amount;
+            }
+            (bands||[]).forEach(function(b) {
+                Object.keys(b.drinks||{}).forEach(function(key){var x=b.drinks[key]||{},i=DEFAULT_DRINKS.indexOf(key);var name=i>=0&&Array.isArray(window.cateringDrinkNames)?window.cateringDrinkNames[i]:key;add('Getränke',name,shoppingNumber(x.count),x.comment,'Stk.');});
+                (b.extraFood||[]).forEach(function(x){add('Speisen & Snacks',x.name,shoppingNumber(x.count),x.comment,'Stk.');});
+                var st=cateringBandStats(b),pax=st.pax,days=st.days;
+                var breakdown=[['Fleisch',st.meat],['Vegetarisch',st.veg],['Vegan',st.vegan],['Noch nicht zugeordnet',Math.max(0,pax-st.meat-st.veg-st.vegan)]];
+                ['Freitag','Samstag'].forEach(function(day){if(days>1||!['Fr','Sa'].includes(b.showday)||b.showday===(day==='Freitag'?'Fr':'Sa'))breakdown.forEach(function(x){add('Warme Mahlzeiten',day+' · '+x[0],x[1]*2,'2 warme Mahlzeiten pro Person / Tag','Portionen');});});
+            });
+            (cateringShopping.custom||[]).forEach(function(x){map.set('custom:'+x.id,{key:'custom:'+x.id,customId:x.id,group:'Zusätzlicher Bedarf',name:x.name,note:x.note||'',unit:x.unit||'Stk.',need:shoppingNumber(x.need)});});
+            var order=['Getränke','Speisen & Snacks','Warme Mahlzeiten','Zusätzlicher Bedarf'];
+            return Array.from(map.values()).sort(function(a,b){return order.indexOf(a.group)-order.indexOf(b.group)||a.name.localeCompare(b.name,'de',{sensitivity:'base',numeric:true})||a.note.localeCompare(b.note,'de');}).map(function(row){var entry=(cateringShopping.entries||{})[row.key]||{};row.stock=shoppingNumber(entry.stock);row.remaining=Math.max(0,row.need-row.stock);row.done=entry.done===true&&entry.doneNeed===row.need&&entry.doneStock===row.stock;return row;});
+        }
+        function shoppingNotes() {var notes=[];(bands||[]).forEach(function(b){(b.extraSpecials||[]).forEach(function(x){if(x.text&&x.text.trim())notes.push((b.name||'').toUpperCase()+': '+x.text+(x.comment?' ('+x.comment+')':''));});});return notes;}
+        function openCateringShopping() {
+            if(!hasModuleRight('catering','read')&&!hasDataModuleWrite('catering'))return;
+            captureOpenCateringInputs();
+            renderCateringShopping();
+            var dialog=document.getElementById('catering-shopping-dialog');if(!dialog.open)dialog.showModal();
+        }
+        function renderCateringShopping() {
+            var writable=hasDataModuleWrite('catering')&&!cateringShoppingSaving;
+            cateringShoppingRows=shoppingBuildRows();
+            var html='',group='';
+            cateringShoppingRows.forEach(function(row,i){
+                if(group!==row.group){group=row.group;html+='<h3 class="shopping-group">'+shoppingEscape(group)+'</h3>';}
+                html+='<div class="shopping-item '+(row.done?'shopping-done':'')+'"><div class="shopping-item-head"><label><input type="checkbox" '+(row.done?'checked ':'')+(!writable?'disabled ':'')+' onchange="updateCateringShopping('+i+',\'done\',this.checked)"> <strong>'+shoppingEscape(row.name)+'</strong></label>'+(row.customId&&writable?'<button class="btn-danger" aria-label="Artikel löschen" onclick="deleteCateringShopping('+i+')">🗑️</button>':'')+'</div>'+(row.note?'<p class="shopping-note">'+shoppingEscape(row.note)+'</p>':'')+'<div class="shopping-quantities"><div><small>Bedarf</small><b>'+row.need+' '+shoppingEscape(row.unit)+'</b></div><label><small>Vorhanden</small><input type="number" min="0" step="any" value="'+row.stock+'" '+(!writable?'disabled ':'')+' onchange="updateCateringShopping('+i+',\'stock\',this.value)"></label><div><small>'+(row.group==='Warme Mahlzeiten'?'Noch bestellen':'Noch kaufen')+'</small><b class="shopping-rest">'+row.remaining+' '+shoppingEscape(row.unit)+'</b></div></div></div>';
+            });
+            if(!html)html='<p>Noch kein Catering-Bedarf erfasst. Eigene Artikel können unten ergänzt werden.</p>';
+            var notes=shoppingNotes();if(notes.length)html+='<h3 class="shopping-group">⚠️ Besondere Wünsche</h3>'+notes.map(function(x){return '<p class="shopping-note">'+shoppingEscape(x)+'</p>';}).join('');
+            document.getElementById('shopping-items').innerHTML=html;
+            document.getElementById('shopping-event').textContent=shoppingName();
+            document.getElementById('shopping-progress').textContent=cateringShoppingRows.filter(function(x){return x.done;}).length+' / '+cateringShoppingRows.length+' Positionen erledigt';
+            document.getElementById('shopping-custom-form').hidden=!hasDataModuleWrite('catering');
+            document.querySelectorAll('#shopping-custom-form input, #shopping-custom-form button').forEach(function(el){el.disabled=!writable;});
+        }
+        async function persistCateringShopping() {
+            if(!hasDataModuleWrite('catering')||cateringShoppingSaving)return;
+            cateringShoppingSaving=true;document.getElementById('shopping-retry').hidden=true;renderCateringShopping();
+            var status=document.getElementById('shopping-save-status');status.textContent='Wird gespeichert …';
+            try{captureOpenCateringInputs();var result=await writeDataModule('catering');status.textContent=result&&result.queued?'Offline vorgemerkt – wird bei Verbindung synchronisiert':'✓ Gespeichert';}
+            catch(e){document.getElementById('shopping-retry').hidden=false;status.textContent='Speichern fehlgeschlagen. Bitte erneut versuchen.';alert('Einkaufsliste konnte nicht gespeichert werden: '+e.message);}
+            finally{cateringShoppingSaving=false;renderCateringShopping();}
+        }
+        async function updateCateringShopping(index,field,value) {
+            if(!hasDataModuleWrite('catering')||cateringShoppingSaving)return;
+            var row=cateringShoppingRows[index];if(!row)return;
+            if(!cateringShopping.entries)cateringShopping.entries={};
+            var entry=cateringShopping.entries[row.key]||{stock:0};
+            if(field==='stock'){entry.stock=shoppingNumber(value);entry.done=false;}
+            else{entry.done=!!value;entry.doneNeed=row.need;entry.doneStock=row.stock;}
+            cateringShopping.entries[row.key]=entry;await persistCateringShopping();
+        }
+        async function addCateringShopping() {
+            if(!hasDataModuleWrite('catering')||cateringShoppingSaving)return;
+            var name=document.getElementById('shopping-add-name').value.trim(),need=shoppingNumber(document.getElementById('shopping-add-amount').value);
+            if(!name||need<=0){alert('Bitte einen Artikelnamen und eine Menge größer als 0 eingeben.');return;}
+            cateringShopping.custom.push({id:Date.now().toString(36)+'-'+Math.random().toString(36).slice(2),name:name,need:need,unit:document.getElementById('shopping-add-unit').value.trim()||'Stk.',note:document.getElementById('shopping-add-note').value.trim()});
+            ['shopping-add-name','shopping-add-amount','shopping-add-note'].forEach(function(id){document.getElementById(id).value='';});await persistCateringShopping();
+        }
+        async function deleteCateringShopping(index) {
+            if(!hasDataModuleWrite('catering')||cateringShoppingSaving)return;var row=cateringShoppingRows[index];if(!row||!row.customId)return;
+            cateringShopping.custom=cateringShopping.custom.filter(function(x){return x.id!==row.customId;});delete cateringShopping.entries[row.key];await persistCateringShopping();
+        }
+        function shoppingText() {
+            var lines=['EINKAUFSLISTE · '+shoppingName(),new Date().toLocaleDateString('de-DE')],group='';
+            shoppingBuildRows().forEach(function(x){if(group!==x.group){group=x.group;lines.push('\n'+group.toUpperCase());}lines.push((x.done?'☑':'☐')+' '+x.name+(x.note?' ('+x.note+')':'')+' · Bedarf: '+x.need+' · Vorhanden: '+x.stock+' · Rest: '+x.remaining+' '+x.unit);});
+            var notes=shoppingNotes();if(notes.length)lines.push('\nBESONDERE WÜNSCHE',notes.join('\n'));return lines.join('\n');
+        }
+        async function shareCateringShopping() {
+            var data={title:'Einkaufsliste · '+shoppingName(),text:shoppingText()};
+            if(navigator.share){try{await navigator.share(data);return;}catch(e){if(e.name==='AbortError')return;}}
+            document.getElementById('shopping-share-text').value=data.text;document.getElementById('shopping-share-fallback').hidden=false;
+        }
+        async function copyCateringShopping() {var el=document.getElementById('shopping-share-text');try{await navigator.clipboard.writeText(el.value);document.getElementById('shopping-save-status').textContent='✓ Text kopiert';}catch(e){el.focus();el.select();document.getElementById('shopping-save-status').textContent='Text ist markiert – bitte kopieren.';}}
+        function emailCateringShopping(){window.location.href='mailto:?subject='+encodeURIComponent('Einkaufsliste · '+shoppingName())+'&body='+encodeURIComponent(shoppingText());}
+        function exportShoppingExcel() {
+            if(typeof XLSX==='undefined'){alert('Excel-Bibliothek nicht verfügbar. Bitte Verbindung prüfen.');return;}
+            var wb=XLSX.utils.book_new(),rows=shoppingBuildRows().map(function(x){return {'Bereich':x.group,'Artikel':x.name,'Hinweis':x.note,'Bedarf':x.need,'Vorhanden':x.stock,'Noch kaufen / bestellen':x.remaining,'Einheit':x.unit,'Erledigt':x.done?'Ja':'Nein'};});
+            var ws=XLSX.utils.json_to_sheet(rows,{header:['Bereich','Artikel','Hinweis','Bedarf','Vorhanden','Noch kaufen / bestellen','Einheit','Erledigt']});ws['!cols']=[{wch:22},{wch:34},{wch:45},{wch:10},{wch:12},{wch:24},{wch:12},{wch:10}];XLSX.utils.book_append_sheet(wb,ws,'Einkaufsliste');
+            XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet([{Veranstaltung:shoppingName(),Stand:new Date().toLocaleString('de-DE')}].concat(shoppingNotes().map(function(x){return {Hinweis:x};}))),'Hinweise');XLSX.writeFile(wb,'Einkaufsliste_'+shoppingName().replace(/[^a-z0-9äöüß_-]/gi,'_')+'.xlsx');
+        }
+        function exportShoppingPDF() {
+            if(!window.jspdf){alert('PDF-Bibliothek nicht verfügbar. Bitte Verbindung prüfen.');return;}
+            var doc=new window.jspdf.jsPDF({unit:'mm',format:'a4'}),y=20,group='',page=1;
+            function footer(){doc.setFontSize(9);doc.setTextColor(110);doc.text('Einkaufsliste · '+new Date().toLocaleDateString('de-DE')+' · Seite '+page,14,289);doc.setTextColor(35);}
+            function newPage(){footer();doc.addPage();page++;y=20;}
+            doc.setTextColor(35);doc.setFont('helvetica','bold');doc.setFontSize(20);doc.text('EINKAUFSLISTE',14,y);y+=9;doc.setFontSize(12);var title=doc.splitTextToSize(shoppingName(),182);doc.text(title,14,y);y+=title.length*6+8;
+            shoppingBuildRows().forEach(function(x){doc.setFontSize(11);var label=doc.splitTextToSize(x.name+(x.note?' – '+x.note:''),169);var height=label.length*5+13+(group!==x.group?12:0);if(y+height>278){newPage();group='';}if(group!==x.group){group=x.group;doc.setFont('helvetica','bold');doc.setFontSize(13);doc.text(group,14,y);y+=9;}doc.setFont('helvetica','normal');doc.setFontSize(11);doc.rect(14,y-3,3.5,3.5);if(x.done){doc.line(14,y-3,17.5,y+0.5);doc.line(17.5,y-3,14,y+0.5);}doc.text(label,21,y);y+=label.length*5;doc.setFontSize(10);doc.text('Bedarf: '+x.need+'   |   Vorhanden: '+x.stock+'   |   Rest: '+x.remaining+' '+x.unit,21,y);y+=9;});
+            var notes=shoppingNotes();if(notes.length){if(y>250)newPage();doc.setFont('helvetica','bold');doc.setFontSize(13);doc.text('Besondere Wünsche',14,y);y+=8;doc.setFont('helvetica','normal');doc.setFontSize(10);notes.forEach(function(note){doc.splitTextToSize(note,182).forEach(function(line){if(y>276)newPage();doc.text(line,14,y);y+=5;});y+=3;});}footer();doc.save('Einkaufsliste_'+shoppingName().replace(/[^a-z0-9äöüß_-]/gi,'_')+'.pdf');
+        }
+
+</script>
 </body>
 </html>
