@@ -2123,6 +2123,24 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
  #shuttle-overview-calendar { overflow:visible !important; }
 }
 
+
+/* Clear disclosure labels and touch-friendly access multi-selection. */
+.payment-countdown-summary { display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:8px; cursor:pointer; color:var(--accent-blue); font-weight:800; list-style:none; }
+.payment-countdown-summary::-webkit-details-marker { display:none; }
+.payment-countdown-summary .disclosure-close { display:none; }
+#payment-countdown-card[open] .disclosure-open { display:none; }
+#payment-countdown-card[open] .disclosure-close { display:inline; }
+#payment-countdown-card[open] > summary { margin-bottom:14px; padding-bottom:10px; border-bottom:1px solid var(--border); }
+.disclosure-open, .disclosure-close, .pt-toggle-arrow { font-size:.78rem; white-space:nowrap; }
+.akk-selection-hint { font-size:.75rem; color:var(--text-muted); line-height:1.5; margin:0 0 9px; }
+#grid-perm .akk-grid-btn { min-height:44px; }
+#grid-perm .akk-grid-btn.selected::after { content:' ✓'; }
+.akk-result-perm { overflow-wrap:anywhere; }
+@media screen and (max-width:700px) {
+ #payment-terms-list .cost-val { white-space:normal !important; }
+ #payment-terms-list .pt-toggle-arrow { display:block; margin-top:5px; }
+}
+
 </style>
     <meta name="theme-color" content="#000000">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -2800,7 +2818,7 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
                     <input type="email" id="in-email" placeholder="z. B. name@beispiel.de" autocomplete="email">
                     <div style="font-size:11px; color:var(--text-muted); margin-top:4px;">Für den späteren Versand der persönlichen Akkreditierungs-PDF. CC wird automatisch an cmoa@gmx.de gesendet.</div>
 
-                    <div class="akk-small-title">Berechtigung *</div>
+                    <div class="akk-small-title">Zugangsberechtigungen *</div><div class="akk-selection-hint">Mehrfachauswahl möglich. Antippen wählt einen Bereich aus; erneutes Antippen entfernt ihn.</div>
                     <div class="akk-grid" id="grid-perm">
                         <button type="button" class="akk-grid-btn" data-val="VIP">VIP</button>
                         <button type="button" class="akk-grid-btn" data-val="GAST">GAST</button>
@@ -3329,8 +3347,8 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
             </div>
 
 
-            <div class="card" id="payment-countdown-card" style="border:1px solid var(--accent-blue);">
-                <h3 style="color:var(--accent-blue);">⏳ Kommende Zahlungen – Tage bis zur Fälligkeit</h3>
+            <details class="card" id="payment-countdown-card" style="border:1px solid var(--accent-blue);">
+                <summary class="payment-countdown-summary"><span>⏳ Kommende Zahlungen – Tage bis zur Fälligkeit</span><span class="disclosure-open">▼ Öffnen</span><span class="disclosure-close">▲ Schließen</span></summary>
                 <div style="font-size:0.82rem; color:var(--text-muted); margin-bottom:10px;">
                     Übersicht über alle hinterlegten geplanten Zahlungsdaten. Bereits bezahlte Positionen werden als erledigt angezeigt.
                 </div>
@@ -3347,7 +3365,7 @@ body.night-mode .card,body.night-mode .progress-card,body.night-mode .akk-card {
                         <tbody id="payment-countdown-list"></tbody>
                     </table>
                 </div>
-            </div>
+            </details>
 
             <div class="card" id="pt-main-config-card">
                 <h3>💳 Zahlungsziele & Zahlungsweisen Konfiguration</h3>
@@ -4612,7 +4630,8 @@ function loadFromLocalStorage() {
             row('Pfandeinnahme',signedMoney(depositIncome,'+'),'green');row('Pfandauszahlung',signedMoney(depositExpense,'-'),'red');row('Differenz Pfandeinnahme − Pfandauszahlung',signedMoney(depositDifference,depositDifference>=0?'+':'-'),depositDifference>=0?'green':'red');
 
             section('Akkreditierungen nach Berechtigung');
-            var permissionCounts={};accreditationList.forEach(function(r){var key=r.perm||'Ohne Angabe';if(!permissionCounts[key])permissionCounts[key]={total:0,checked:0};permissionCounts[key].total++;if(r.chk)permissionCounts[key].checked++;});
+            compactNote('Mehrfachberechtigungen zählen in jedem gewählten Bereich.');
+            var permissionCounts={};accreditationList.forEach(function(r){var areas=akkPermissionAreas(r.perm);if(!areas.length)areas=['Ohne Angabe'];areas.forEach(function(key){if(!permissionCounts[key])permissionCounts[key]={total:0,checked:0};permissionCounts[key].total++;if(r.chk)permissionCounts[key].checked++;});});
             var permissionNames=Object.keys(permissionCounts).sort(function(a,b){return a.localeCompare(b,'de');});
             if(permissionNames.length)permissionNames.forEach(function(name){var p=permissionCounts[name];listLine(name,p.checked+' eingecheckt / '+p.total+' gesamt');});else note('Keine Akkreditierungen vorhanden.');
 
@@ -4914,6 +4933,11 @@ function loadFromLocalStorage() {
         // =============================================================
         // AKKREDITIERUNG LOGIK & INTERAKTIONEN
         // =============================================================
+        // Keep permission text compatible with existing stored single-area records.
+        function akkPermissionAreas(value) {
+            return Array.from(new Set((Array.isArray(value) ? value : String(value || '').split(/\s*[\/,;|]\s*/)).map(function(v){return String(v).trim();}).filter(Boolean)));
+        }
+
         function toggleAkkBlanko(){var blanko=document.getElementById('in-blanko'),name=document.getElementById('in-name');if(!blanko||!name)return;if(blanko.checked)name.value='';name.disabled=blanko.checked;name.placeholder=blanko.checked?'Auf PDF steht: Blanko':'Vor- und Nachname';}
         function initAkkreditierung() {
             function switchAkkTab(secId, btn) {
@@ -4932,20 +4956,27 @@ function loadFromLocalStorage() {
             if (tabUebersicht) tabUebersicht.onclick = function() { switchAkkTab('sec-akk-uebersicht', this); };
             if (tabCheckin) tabCheckin.onclick = function() { switchAkkTab('sec-akk-checkin', this); };
 
-            function setupGrid(containerId, callback) {
+            function setupGrid(containerId, callback, multiple) {
                 var container = document.getElementById(containerId);
                 if (!container) return;
                 var btns = container.querySelectorAll('.akk-grid-btn');
                 btns.forEach(function(b) {
+                    b.setAttribute('aria-pressed', String(b.classList.contains('selected')));
                     b.onclick = function() {
-                        btns.forEach(function(x){ x.classList.remove('selected'); });
-                        this.classList.add('selected');
-                        callback(this.getAttribute('data-val'));
+                        if (multiple) {
+                            this.classList.toggle('selected');
+                        } else {
+                            btns.forEach(function(x){ x.classList.remove('selected'); });
+                            this.classList.add('selected');
+                        }
+                        btns.forEach(function(x){ x.setAttribute('aria-pressed', String(x.classList.contains('selected'))); });
+                        var selected = Array.from(btns).filter(function(x){return x.classList.contains('selected');}).map(function(x){return x.getAttribute('data-val');});
+                        callback(multiple ? selected.join(' / ') : this.getAttribute('data-val'));
                     };
                 });
             }
 
-            setupGrid('grid-perm', function(val){ selPerm = val; });
+            setupGrid('grid-perm', function(val){ selPerm = val; }, true);
             setupGrid('grid-day', function(val){ selDay = val; });
 
             var freeBtn = document.getElementById('btn-free');
@@ -5026,7 +5057,7 @@ function loadFromLocalStorage() {
                     isFree = false;
                     freeBtn.classList.remove('selected');
                     selPerm = ""; selDay = "";
-                    document.querySelectorAll('#akkreditierung-page .akk-grid-btn').forEach(function(x){ x.classList.remove('selected'); });
+                    document.querySelectorAll('#akkreditierung-page .akk-grid-btn').forEach(function(x){ x.classList.remove('selected'); x.setAttribute('aria-pressed','false'); });
 
                     saveToStorage();
                     logCmoaChange('Akkreditierung angelegt','accreditation','accreditation',newAkkRecord.id,newAkkRecord.name,null,newAkkRecord,false);
@@ -5332,7 +5363,7 @@ function loadFromLocalStorage() {
             var listO = document.getElementById('list-overview');
             if(listO) {
                 var fO = akkDb.filter(function(r){
-                    var matchesSearch = String(r.name||'').toLowerCase().indexOf(qO) > -1 || String(r.org||'').toLowerCase().indexOf(qO) > -1 || String(r.id||'').toLowerCase().indexOf(qO) > -1 || String(r.email||'').toLowerCase().indexOf(qO) > -1;
+                    var matchesSearch = String(r.name||'').toLowerCase().indexOf(qO) > -1 || String(r.org||'').toLowerCase().indexOf(qO) > -1 || String(r.id||'').toLowerCase().indexOf(qO) > -1 || String(r.email||'').toLowerCase().indexOf(qO) > -1 || String(r.perm||'').toLowerCase().indexOf(qO) > -1;
                     var matchesOrg = !selectedOrg || String(r.org||'') === selectedOrg;
                     return matchesSearch && matchesOrg;
                 });
@@ -5362,7 +5393,7 @@ function loadFromLocalStorage() {
             var qC = srcCh ? srcCh.value.toLowerCase() : "";
             var listC = document.getElementById('list-checkin');
             if(listC) {
-                var fC = akkDb.filter(function(r){ return String(r.name||'').toLowerCase().indexOf(qC) > -1 || String(r.org||'').toLowerCase().indexOf(qC) > -1 || String(r.id||'').toLowerCase().indexOf(qC) > -1 || String(r.email||'').toLowerCase().indexOf(qC) > -1; });
+                var fC = akkDb.filter(function(r){ return String(r.name||'').toLowerCase().indexOf(qC) > -1 || String(r.org||'').toLowerCase().indexOf(qC) > -1 || String(r.id||'').toLowerCase().indexOf(qC) > -1 || String(r.email||'').toLowerCase().indexOf(qC) > -1 || String(r.perm||'').toLowerCase().indexOf(qC) > -1; });
                 var sortCheckinEl = document.getElementById('sort-checkin');
                 fC = sortAkkRecords(fC, sortCheckinEl ? sortCheckinEl.value : 'newest');
 
@@ -5498,6 +5529,13 @@ function loadFromLocalStorage() {
                 var isIdRow = (r === 0);
                 var boxH = isIdRow ? 27 : 17;
                 var stepH = isIdRow ? 29 : 19;
+                var permissionLines = null;
+                if (r === 3) {
+                    doc.setFont('helvetica','normal'); doc.setFontSize(10.5);
+                    permissionLines = doc.splitTextToSize(rows[r][1],infoW-12);
+                    var extra = Math.max(0,permissionLines.length-1)*4.8;
+                    boxH += extra; stepH += extra;
+                }
 
                 doc.setFillColor(r%2===0?248:255,r%2===0?248:255,r%2===0?248:255);
                 doc.roundedRect(infoX,y,infoW,boxH,1.5,1.5,'F');
@@ -5531,8 +5569,8 @@ function loadFromLocalStorage() {
                     } else {
                         doc.setTextColor(dark[0],dark[1],dark[2]);
                     }
-                    doc.setFont('helvetica','normal'); doc.setFontSize(11.5);
-                    var valLines=doc.splitTextToSize(rows[r][1],infoW-12);
+                    doc.setFont('helvetica','normal'); doc.setFontSize(r === 3 ? 10.5 : 11.5);
+                    var valLines=permissionLines || doc.splitTextToSize(rows[r][1],infoW-12);
                     doc.text(valLines,infoX+6,y+12.8);
                 }
                 y += stepH;
@@ -7020,10 +7058,10 @@ function loadFromLocalStorage() {
                     var card = document.createElement('div'); card.className = 'card';
 
                     card.innerHTML = 
-                        '<button type="button" onclick="togglePaymentBand(\'' + b.id + '\')" style="width:100%; border:0; background:transparent; color:var(--text-main); cursor:pointer; padding:0; text-align:left;">' +
+                        '<button type="button" aria-expanded="false" onclick="togglePaymentBand(\'' + b.id + '\')" style="width:100%; border:0; background:transparent; color:var(--text-main); cursor:pointer; padding:0; text-align:left;">' +
                             '<div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding-bottom:8px; margin-bottom:10px; gap:12px;">' +
                                 '<h4 style="margin:0; font-size:1.1rem; color:var(--text-main); text-transform:uppercase; text-align:left;">' + escapeHtmlAuth(b.name) + '</h4>' +
-                                '<span class="cost-val" style="font-size:1rem; white-space:nowrap;">Gesamtbrutto: ' + totalBrutto.toFixed(2) + ' € <span class="pt-toggle-arrow">▼</span></span>' +
+                                '<span class="cost-val" style="font-size:1rem; white-space:nowrap;">Gesamtbrutto: ' + totalBrutto.toFixed(2) + ' € <span class="pt-toggle-arrow">▼ Öffnen</span></span>' +
                             '</div>' +
                         '</button>' +
                         '<div id="pt-body-' + b.id + '" style="display:none;">' +
@@ -7104,7 +7142,9 @@ function loadFromLocalStorage() {
             body.style.display = isOpen ? 'none' : 'block';
             var card = body.parentElement;
             var arrow = card ? card.querySelector('.pt-toggle-arrow') : null;
-            if (arrow) arrow.innerText = isOpen ? '▼' : '▲';
+            if (arrow) arrow.innerText = isOpen ? '▼ Öffnen' : '▲ Schließen';
+            var toggle = card ? card.querySelector('button') : null;
+            if (toggle) toggle.setAttribute('aria-expanded', String(!isOpen));
         }
 
         function togglePtUI(bandId) {
